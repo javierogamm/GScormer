@@ -11,8 +11,8 @@ Aplicación base para gestionar SCORMs con Next.js + Supabase, preparada para de
 
 1. Copia `.env.example` a `.env.local`.
 2. Configura estas variables:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ## Desarrollo
 
@@ -34,8 +34,7 @@ npm run start
 - Build command: `npm run build`
 - Output: `.next`
 - Variables de entorno requeridas:
-  - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
-  - (opcional) `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 La aplicación carga por defecto una vista tabla editable para todos los registros de `scorms_master`.
