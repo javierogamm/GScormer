@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const columns = [
+  { key: 'scorm_idioma', label: 'Idioma', editable: true },
   { key: 'scorm_code', label: 'Código', editable: true },
   { key: 'scorm_name', label: 'Nombre', editable: true },
   { key: 'scorm_responsable', label: 'Responsable', editable: true },
@@ -16,6 +17,8 @@ const columns = [
 ];
 
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
+
+const STATUS_ORDER = ['En proceso', 'Publicado', 'Actualizado pendiente de publicar'];
 
 const CATEGORY_COLORS = {
   '02-Gestión Documental y Archivo': {
@@ -67,6 +70,13 @@ const getCategoryColor = (category) => {
 
 const getRowState = (row) => row.scorm_estado || 'Sin estado';
 
+const getDisplayName = (row) => {
+  const idioma = String(row.scorm_idioma || '');
+  const codigo = String(row.scorm_code || '');
+  const normalized = `${idioma}${codigo}`.replace(/[\s_\-]+/g, '');
+  return normalized || 'Sin nombre mostrado';
+};
+
 export default function ScormsTable() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +89,10 @@ export default function ScormsTable() {
   const [viewMode, setViewMode] = useState('table');
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedCardIds, setExpandedCardIds] = useState([]);
+  const [dragOverState, setDragOverState] = useState('');
+  const [draggedRowIds, setDraggedRowIds] = useState([]);
+  const [moveHistory, setMoveHistory] = useState([]);
+  const [redoHistory, setRedoHistory] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -111,7 +125,10 @@ export default function ScormsTable() {
           return true;
         }
 
-        const value = String(row[column.key] || '').toLowerCase();
+        const value =
+          column.key === 'scorm_name'
+            ? getDisplayName(row).toLowerCase()
+            : String(row[column.key] || '').toLowerCase();
         return fieldFilters.some((filterValue) => value.includes(filterValue.toLowerCase()));
       });
     });
@@ -129,9 +146,12 @@ export default function ScormsTable() {
       return acc;
     }, {});
 
-    return Object.entries(groups)
-      .sort(([stateA], [stateB]) => stateA.localeCompare(stateB))
-      .map(([state, groupRows]) => ({ state, rows: groupRows }));
+    const orderedStates = [
+      ...STATUS_ORDER,
+      ...Object.keys(groups).filter((state) => !STATUS_ORDER.includes(state)).sort((a, b) => a.localeCompare(b)),
+    ];
+
+    return orderedStates.map((state) => ({ state, rows: groups[state] || [] }));
   }, [filteredRows]);
 
   const addFieldFilter = (field) => {
@@ -233,23 +253,47 @@ export default function ScormsTable() {
     );
   };
 
-  const updateRowsStatus = async (rowIds, nextState) => {
-    if (rowIds.length === 0) {
+  const persistStatusUpdates = async (statusByRowId) => {
+    const entries = Object.entries(statusByRowId);
+    if (entries.length === 0) {
+      return { ok: true };
+    }
+
+    const updates = entries.map(([rowId, state]) =>
+      supabase.from('scorms_master').update({ scorm_estado: state }).eq('id', Number(rowId))
+    );
+    const results = await Promise.all(updates);
+    const failedUpdate = results.find((result) => result.error);
+
+    if (failedUpdate?.error) {
+      return { ok: false, message: failedUpdate.error.message };
+    }
+
+    return { ok: true };
+  };
+
+  const updateRowsStatus = async (rowIds, nextState, options = { recordHistory: true }) => {
+    if (rowIds.length === 0 || !nextState) {
       return;
     }
 
     setError('');
     setStatusMessage('');
 
-    const updates = rowIds.map((rowId) =>
-      supabase.from('scorms_master').update({ scorm_estado: nextState }).eq('id', rowId)
-    );
+    const fromStates = {};
+    const statusByRowId = {};
 
-    const results = await Promise.all(updates);
-    const failedUpdate = results.find((result) => result.error);
+    rowIds.forEach((rowId) => {
+      const row = rows.find((item) => item.id === rowId);
+      if (row) {
+        fromStates[rowId] = getRowState(row);
+        statusByRowId[rowId] = nextState;
+      }
+    });
 
-    if (failedUpdate?.error) {
-      setError(`No se pudieron mover los SCORM seleccionados: ${failedUpdate.error.message}`);
+    const persistResult = await persistStatusUpdates(statusByRowId);
+    if (!persistResult.ok) {
+      setError(`No se pudieron mover los SCORM seleccionados: ${persistResult.message}`);
       return;
     }
 
@@ -265,11 +309,68 @@ export default function ScormsTable() {
     );
 
     setSelectedIds([]);
+    setDraggedRowIds([]);
+
+    if (options.recordHistory) {
+      setMoveHistory((previous) => [...previous, { rowIds, fromStates, toState: nextState }]);
+      setRedoHistory([]);
+    }
+
     setStatusMessage(
       rowIds.length === 1
         ? 'SCORM movido correctamente al nuevo estado.'
         : `${rowIds.length} SCORMs movidos correctamente al nuevo estado.`
     );
+  };
+
+  const handleUndo = async () => {
+    const lastMove = moveHistory[moveHistory.length - 1];
+    if (!lastMove) {
+      return;
+    }
+
+    const restoreStates = lastMove.rowIds.reduce((acc, rowId) => {
+      if (lastMove.fromStates[rowId]) {
+        acc[rowId] = lastMove.fromStates[rowId];
+      }
+      return acc;
+    }, {});
+
+    setError('');
+    setStatusMessage('');
+
+    const persistResult = await persistStatusUpdates(restoreStates);
+    if (!persistResult.ok) {
+      setError(`No se pudo deshacer el movimiento: ${persistResult.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((row) =>
+        restoreStates[row.id]
+          ? {
+              ...row,
+              scorm_estado: restoreStates[row.id],
+            }
+          : row
+      )
+    );
+
+    setMoveHistory((previous) => previous.slice(0, -1));
+    setRedoHistory((previous) => [...previous, lastMove]);
+    setStatusMessage('Último movimiento deshecho correctamente.');
+  };
+
+  const handleRedo = async () => {
+    const moveToRestore = redoHistory[redoHistory.length - 1];
+    if (!moveToRestore) {
+      return;
+    }
+
+    await updateRowsStatus(moveToRestore.rowIds, moveToRestore.toState, { recordHistory: false });
+    setRedoHistory((previous) => previous.slice(0, -1));
+    setMoveHistory((previous) => [...previous, moveToRestore]);
+    setStatusMessage('Movimiento rehecho correctamente.');
   };
 
   const handleCardClick = (event, rowId) => {
@@ -286,10 +387,17 @@ export default function ScormsTable() {
     const rowIdsToMove = selectedIds.includes(rowId) ? selectedIds : [rowId];
     event.dataTransfer.setData('text/plain', JSON.stringify(rowIdsToMove));
     event.dataTransfer.effectAllowed = 'move';
+    setDraggedRowIds(rowIdsToMove);
+  };
+
+  const handleDragEnd = () => {
+    setDragOverState('');
+    setDraggedRowIds([]);
   };
 
   const handleDropInState = async (event, targetState) => {
     event.preventDefault();
+    setDragOverState('');
 
     let draggedIds = [];
     try {
@@ -314,8 +422,14 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.3.0</h2>
+        <h2>GScormer · v1.4.0</h2>
         <div className="header-actions">
+          <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
+            Deshacer
+          </button>
+          <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
+            Rehacer
+          </button>
           {viewMode === 'table' ? (
             <button type="button" className="secondary" onClick={() => setViewMode('status')}>
               Vista por estado
@@ -427,6 +541,8 @@ export default function ScormsTable() {
                         <span className="category-chip" style={getCategoryColor(row[column.key])}>
                           {row[column.key] || 'Sin categoría'}
                         </span>
+                      ) : column.key === 'scorm_name' ? (
+                        <span>{getDisplayName(row)}</span>
                       ) : (
                         <span>{row[column.key] || '-'}</span>
                       )}
@@ -449,8 +565,19 @@ export default function ScormsTable() {
           {stateGroups.map((group) => (
             <article
               key={group.state}
-              className="status-lane"
-              onDragOver={(event) => event.preventDefault()}
+              className={`status-lane ${dragOverState === group.state ? 'drag-over' : ''}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (dragOverState !== group.state) {
+                  setDragOverState(group.state);
+                }
+              }}
+              onDragEnter={() => setDragOverState(group.state)}
+              onDragLeave={() => {
+                if (dragOverState === group.state) {
+                  setDragOverState('');
+                }
+              }}
               onDrop={(event) => handleDropInState(event, group.state)}
             >
               <header>
@@ -469,11 +596,12 @@ export default function ScormsTable() {
                       className={`status-card ${isSelected ? 'selected' : ''}`}
                       draggable
                       onDragStart={(event) => handleDragStart(event, row.id)}
+                      onDragEnd={handleDragEnd}
                       onClick={(event) => handleCardClick(event, row.id)}
                     >
                       <div className="status-card-main">
-                        <strong>{row.scorm_code || 'Sin código'}</strong>
-                        <span>{row.scorm_name || 'Sin nombre'}</span>
+                        <strong>{getDisplayName(row)}</strong>
+                        <span>{row.scorm_code || 'Sin código'}</span>
                       </div>
                       <span className="category-chip" style={getCategoryColor(row.scorm_categoria)}>
                         {row.scorm_categoria || 'Sin categoría'}
@@ -523,7 +651,7 @@ export default function ScormsTable() {
             <header className="modal-header">
               <div>
                 <h3 id="detalle-titulo">{detailDraft.scorm_code || 'Sin código'}</h3>
-                <p>{detailDraft.scorm_name || 'Sin nombre'}</p>
+                <p>{getDisplayName(detailDraft)}</p>
               </div>
               <button type="button" className="secondary" onClick={closeDetails}>
                 Cerrar

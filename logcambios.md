@@ -1,5 +1,29 @@
 # Log de cambios
 
+## v1.4.0 - Animación visual de arrastre, deshacer/rehacer y nuevo idioma SCORM
+
+### Cambios consolidados
+- Se mejoró la experiencia de arrastre en la vista por estado:
+  - las tarjetas tienen transición visual durante la interacción,
+  - el bloque de destino se resalta (sombreado) al pasar el SCORM por encima antes de soltarlo.
+- Se añadieron botones **Deshacer** y **Rehacer** en la parte superior para revertir y reaplicar movimientos de estado.
+- Se fijó el orden de paneles de estado a:
+  - **En proceso**,
+  - **Publicado**,
+  - **Actualizado pendiente de publicar**,
+  y después el resto de estados adicionales en orden alfabético.
+- Se incorporó soporte de BDD para la nueva columna **`scorm_idioma`** mediante migración SQL.
+- Se actualizó el **nombre mostrado** en tabla, tarjetas y ficha/modal para que sea la concatenación de:
+  - `scorm_idioma` + `scorm_code`,
+  - sin espacios, guiones ni guion bajo.
+- Se mantiene el **código SCORM** (`scorm_code`) visible y buscable, incluyendo su presencia en detalle y filtros.
+
+### Versionado
+- Versión anterior: `1.3.0`
+- Nueva versión consolidada: `1.4.0`
+
+---
+
 ## v1.3.0 - Vista por estado, filtros desplegables y tablero drag & drop
 
 ### Cambios consolidados
