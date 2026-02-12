@@ -1,0 +1,132 @@
+:root {
+  --bg: #0b1020;
+  --panel: #131a2f;
+  --panel-soft: #1b2542;
+  --text: #e6ecff;
+  --muted: #a6b2d8;
+  --primary: #6aa3ff;
+  --primary-strong: #4d90ff;
+  --ok: #1db57a;
+  --error: #ff5f7a;
+  --border: #273356;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, 'Segoe UI', Roboto, sans-serif;
+  background: radial-gradient(circle at top right, #17244b 0%, var(--bg) 48%);
+  color: var(--text);
+}
+
+.page {
+  width: min(1300px, calc(100% - 2.5rem));
+  margin: 2rem auto;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.card {
+  background: linear-gradient(180deg, var(--panel) 0%, #101831 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.2rem;
+  box-shadow: 0 20px 60px rgba(2, 8, 22, 0.35);
+}
+
+.hero h1 {
+  margin: 0.5rem 0;
+}
+
+.eyebrow {
+  color: var(--primary);
+  margin: 0;
+  font-weight: 600;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: #061124;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: var(--primary-strong);
+}
+
+button.secondary {
+  background: var(--panel-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.status {
+  color: var(--muted);
+  margin: 0.7rem 0;
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.error {
+  color: var(--error);
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #0e1530;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
+input:focus {
+  outline: 2px solid rgba(106, 163, 255, 0.4);
+  border-color: var(--primary);
+}
