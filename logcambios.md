@@ -1,5 +1,27 @@
 # Log de cambios
 
+## v1.4.1 - Nombre oficial SCORM y código internacionalizado
+
+### Cambios consolidados
+- Se recuperó la columna **`scorm_nombre`** como fuente principal del nombre oficial del SCORM en:
+  - tabla,
+  - tarjetas de la vista por estado,
+  - encabezado del modal de detalles.
+- Se mantuvo compatibilidad de lectura con `scorm_name` como respaldo en caso de datos históricos.
+- Se definió el **código internacionalizado** como concatenación de:
+  - `scorm_idioma` + `-` + `scorm_code`.
+- Se actualizó la visualización del campo **Código** para mostrar el código internacionalizado en tabla, tarjetas y modal.
+- Se actualizó el comportamiento de filtros para que:
+  - **Nombre** filtre por `scorm_nombre` (con respaldo en `scorm_name`),
+  - **Código** filtre por el nuevo formato internacionalizado.
+- Se ajustó el estilo de ancho de columna para contemplar la clase nueva `col-scorm_nombre` sin perder compatibilidad visual.
+
+### Versionado
+- Versión anterior: `1.4.0`
+- Nueva versión consolidada: `1.4.1`
+
+---
+
 ## v1.4.0 - Animación visual de arrastre, deshacer/rehacer y nuevo idioma SCORM
 
 ### Cambios consolidados
