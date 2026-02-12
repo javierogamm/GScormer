@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 const columns = [
   { key: 'scorm_idioma', label: 'Idioma', editable: true },
   { key: 'scorm_code', label: 'Código', editable: true },
-  { key: 'scorm_name', label: 'Nombre', editable: true },
+  { key: 'scorm_nombre', label: 'Nombre', editable: true },
   { key: 'scorm_responsable', label: 'Responsable', editable: true },
   { key: 'scorm_tipo', label: 'Tipo', editable: true },
   { key: 'scorm_categoria', label: 'Categoría', editable: true },
@@ -70,11 +70,25 @@ const getCategoryColor = (category) => {
 
 const getRowState = (row) => row.scorm_estado || 'Sin estado';
 
-const getDisplayName = (row) => {
-  const idioma = String(row.scorm_idioma || '');
-  const codigo = String(row.scorm_code || '');
-  const normalized = `${idioma}${codigo}`.replace(/[\s_\-]+/g, '');
-  return normalized || 'Sin nombre mostrado';
+const getOfficialName = (row) => String(row.scorm_nombre || row.scorm_name || '').trim() || 'Sin nombre oficial';
+
+const getInternationalizedCode = (row) => {
+  const idioma = String(row.scorm_idioma || '').trim();
+  const codigo = String(row.scorm_code || '').trim();
+
+  if (!idioma && !codigo) {
+    return 'Sin código internacionalizado';
+  }
+
+  if (!idioma) {
+    return codigo;
+  }
+
+  if (!codigo) {
+    return idioma;
+  }
+
+  return `${idioma}-${codigo}`;
 };
 
 export default function ScormsTable() {
@@ -126,8 +140,10 @@ export default function ScormsTable() {
         }
 
         const value =
-          column.key === 'scorm_name'
-            ? getDisplayName(row).toLowerCase()
+          column.key === 'scorm_nombre'
+            ? getOfficialName(row).toLowerCase()
+            : column.key === 'scorm_code'
+              ? getInternationalizedCode(row).toLowerCase()
             : String(row[column.key] || '').toLowerCase();
         return fieldFilters.some((filterValue) => value.includes(filterValue.toLowerCase()));
       });
@@ -422,7 +438,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.4.0</h2>
+        <h2>GScormer · v1.4.1</h2>
         <div className="header-actions">
           <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
             Deshacer
@@ -541,8 +557,10 @@ export default function ScormsTable() {
                         <span className="category-chip" style={getCategoryColor(row[column.key])}>
                           {row[column.key] || 'Sin categoría'}
                         </span>
-                      ) : column.key === 'scorm_name' ? (
-                        <span>{getDisplayName(row)}</span>
+                      ) : column.key === 'scorm_nombre' ? (
+                        <span>{getOfficialName(row)}</span>
+                      ) : column.key === 'scorm_code' ? (
+                        <span>{getInternationalizedCode(row)}</span>
                       ) : (
                         <span>{row[column.key] || '-'}</span>
                       )}
@@ -600,8 +618,8 @@ export default function ScormsTable() {
                       onClick={(event) => handleCardClick(event, row.id)}
                     >
                       <div className="status-card-main">
-                        <strong>{getDisplayName(row)}</strong>
-                        <span>{row.scorm_code || 'Sin código'}</span>
+                        <strong>{getOfficialName(row)}</strong>
+                        <span>{getInternationalizedCode(row)}</span>
                       </div>
                       <span className="category-chip" style={getCategoryColor(row.scorm_categoria)}>
                         {row.scorm_categoria || 'Sin categoría'}
@@ -650,8 +668,8 @@ export default function ScormsTable() {
           >
             <header className="modal-header">
               <div>
-                <h3 id="detalle-titulo">{detailDraft.scorm_code || 'Sin código'}</h3>
-                <p>{getDisplayName(detailDraft)}</p>
+                <h3 id="detalle-titulo">{getOfficialName(detailDraft)}</h3>
+                <p>{getInternationalizedCode(detailDraft)}</p>
               </div>
               <button type="button" className="secondary" onClick={closeDetails}>
                 Cerrar
