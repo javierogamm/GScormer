@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const columns = [
-  { key: 'id', label: 'ID', editable: false },
-  { key: 'created_at', label: 'Creado', editable: false },
   { key: 'scorm_code', label: 'Código', editable: true },
   { key: 'scorm_name', label: 'Nombre', editable: true },
   { key: 'scorm_responsable', label: 'Responsable', editable: true },
@@ -107,7 +105,7 @@ export default function ScormsTable() {
             <thead>
               <tr>
                 {columns.map((column) => (
-                  <th key={column.key}>{column.label}</th>
+                  <th key={column.key} className={`col-${column.key}`}>{column.label}</th>
                 ))}
                 <th>Acciones</th>
               </tr>
@@ -116,7 +114,7 @@ export default function ScormsTable() {
               {rows.map((row, rowIndex) => (
                 <tr key={row.id}>
                   {columns.map((column) => (
-                    <td key={`${row.id}-${column.key}`}>
+                    <td key={`${row.id}-${column.key}`} className={`col-${column.key}`}>
                       {column.editable ? (
                         <input
                           type="text"
@@ -126,11 +124,7 @@ export default function ScormsTable() {
                           }
                         />
                       ) : (
-                        <span>
-                          {column.key === 'created_at'
-                            ? new Date(row[column.key]).toLocaleString('es-ES')
-                            : row[column.key]}
-                        </span>
+                        <span>{row[column.key]}</span>
                       )}
                     </td>
                   ))}
