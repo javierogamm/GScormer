@@ -33,8 +33,9 @@ npm run start
 - Framework: Next.js.
 - Build command: `npm run build`
 - Output: `.next`
-- Variables de entorno requeridas:
+- Variables de entorno recomendadas:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Compatibilidad adicional: si en Vercel solo defines `SUPABASE_URL` y `SUPABASE_ANON_KEY`, `next.config.mjs` las mapea automáticamente a `NEXT_PUBLIC_*` durante el build.
 
 La aplicación carga por defecto una vista tabla editable para todos los registros de `scorms_master`.
