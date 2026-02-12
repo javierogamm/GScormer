@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="hero card">
-        <p className="eyebrow">GScormer · v1.0.0</p>
+        <p className="eyebrow">GScormer · v1.2.0</p>
         <h1>Gestor de flujo de trabajo de SCORMs</h1>
         <p>
           Aplicación base en Next.js preparada para Vercel y Supabase. Incluye vista de tabla
