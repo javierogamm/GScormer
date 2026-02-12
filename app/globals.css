@@ -1,14 +1,14 @@
 :root {
-  --bg: #0b1020;
-  --panel: #131a2f;
-  --panel-soft: #1b2542;
-  --text: #e6ecff;
-  --muted: #a6b2d8;
-  --primary: #6aa3ff;
-  --primary-strong: #4d90ff;
-  --ok: #1db57a;
-  --error: #ff5f7a;
-  --border: #273356;
+  --bg: #f4f8ff;
+  --panel: #ffffff;
+  --panel-soft: #f1f5fb;
+  --text: #1f314d;
+  --muted: #5d7090;
+  --primary: #7fb3ff;
+  --primary-strong: #63a0ff;
+  --ok: #59bb92;
+  --error: #e8708b;
+  --border: #d7e3f6;
 }
 
 * {
@@ -19,7 +19,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: Inter, 'Segoe UI', Roboto, sans-serif;
-  background: radial-gradient(circle at top right, #17244b 0%, var(--bg) 48%);
+  background: radial-gradient(circle at top right, #e9f3ff 0%, var(--bg) 48%);
   color: var(--text);
 }
 
@@ -31,11 +31,11 @@ body {
 }
 
 .card {
-  background: linear-gradient(180deg, var(--panel) 0%, #101831 100%);
+  background: linear-gradient(180deg, var(--panel) 0%, #f8fbff 100%);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.2rem;
-  box-shadow: 0 20px 60px rgba(2, 8, 22, 0.35);
+  box-shadow: 0 12px 36px rgba(77, 120, 173, 0.14);
 }
 
 .hero h1 {
@@ -43,7 +43,7 @@ body {
 }
 
 .eyebrow {
-  color: var(--primary);
+  color: #4c89d8;
   margin: 0;
   font-weight: 600;
 }
@@ -61,7 +61,7 @@ button {
   padding: 0.55rem 0.9rem;
   font-weight: 600;
   background: var(--primary);
-  color: #061124;
+  color: #0e2b52;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -93,40 +93,63 @@ button.secondary {
 .table-wrapper {
   width: 100%;
   overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
 }
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   min-width: 1100px;
 }
 
 th,
 td {
   border-bottom: 1px solid var(--border);
-  padding: 0.7rem;
+  border-right: 1px solid #e4edf9;
+  padding: 0.75rem;
   text-align: left;
   vertical-align: top;
+  background: #fff;
+}
+
+th:last-child,
+td:last-child {
+  border-right: 0;
 }
 
 th {
   font-size: 0.84rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--muted);
+  color: #4c6486;
   white-space: nowrap;
+  background: #eef5ff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+tbody tr:nth-child(even) td {
+  background: #f9fcff;
+}
+
+.col-scorm_name {
+  min-width: 320px;
 }
 
 input {
   width: 100%;
-  border: 1px solid var(--border);
-  background: #0e1530;
+  border: 1px solid #c8daf2;
+  background: #fcfeff;
   color: var(--text);
   border-radius: 8px;
   padding: 0.45rem 0.6rem;
 }
 
 input:focus {
-  outline: 2px solid rgba(106, 163, 255, 0.4);
+  outline: 2px solid rgba(127, 179, 255, 0.35);
   border-color: var(--primary);
 }
