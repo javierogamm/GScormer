@@ -17,21 +17,55 @@ const columns = [
 
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
-const getCategoryColor = (category) => {
-  const source = String(category || 'Sin categoría');
-  let hash = 0;
-
-  for (let index = 0; index < source.length; index += 1) {
-    hash = source.charCodeAt(index) + ((hash << 5) - hash);
-  }
-
-  const hue = Math.abs(hash) % 360;
-  return {
-    backgroundColor: `hsl(${hue} 74% 94%)`,
-    borderColor: `hsl(${hue} 62% 80%)`,
-    color: `hsl(${hue} 50% 28%)`,
-  };
+const CATEGORY_COLORS = {
+  '02-Gestión Documental y Archivo': {
+    backgroundColor: '#eef4ff',
+    borderColor: '#c4d8ff',
+    color: '#2456a8',
+  },
+  '00-Configuración General': {
+    backgroundColor: '#f4efff',
+    borderColor: '#d8c5ff',
+    color: '#59329f',
+  },
+  '01-Atención Ciudadana': {
+    backgroundColor: '#edfff8',
+    borderColor: '#bfeeda',
+    color: '#156a4a',
+  },
+  '04-Gestión Económica': {
+    backgroundColor: '#fff6eb',
+    borderColor: '#ffd7ad',
+    color: '#915515',
+  },
+  '05-Escritorio de tramitación': {
+    backgroundColor: '#ffeef2',
+    borderColor: '#ffc8d5',
+    color: '#983351',
+  },
+  '06-Gestiona Code': {
+    backgroundColor: '#ebfbff',
+    borderColor: '#bceef8',
+    color: '#13657a',
+  },
+  '03-Analiza': {
+    backgroundColor: '#f5f8e9',
+    borderColor: '#d9e8af',
+    color: '#576d13',
+  },
 };
+
+const getCategoryColor = (category) => {
+  return (
+    CATEGORY_COLORS[category] || {
+      backgroundColor: '#f2f5fb',
+      borderColor: '#d4deef',
+      color: '#415a80',
+    }
+  );
+};
+
+const getRowState = (row) => row.scorm_estado || 'Sin estado';
 
 export default function ScormsTable() {
   const [rows, setRows] = useState([]);
@@ -42,6 +76,9 @@ export default function ScormsTable() {
   const [detailDraft, setDetailDraft] = useState(null);
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
+  const [viewMode, setViewMode] = useState('table');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [expandedCardIds, setExpandedCardIds] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -81,6 +118,21 @@ export default function ScormsTable() {
   }, [rows, filters]);
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
+
+  const stateGroups = useMemo(() => {
+    const groups = filteredRows.reduce((acc, row) => {
+      const rowState = getRowState(row);
+      if (!acc[rowState]) {
+        acc[rowState] = [];
+      }
+      acc[rowState].push(row);
+      return acc;
+    }, {});
+
+    return Object.entries(groups)
+      .sort(([stateA], [stateB]) => stateA.localeCompare(stateB))
+      .map(([state, groupRows]) => ({ state, rows: groupRows }));
+  }, [filteredRows]);
 
   const addFieldFilter = (field) => {
     const nextValue = (filterInputs[field] || '').trim();
@@ -169,66 +221,169 @@ export default function ScormsTable() {
     closeDetails();
   };
 
+  const toggleCardExpansion = (rowId) => {
+    setExpandedCardIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]
+    );
+  };
+
+  const toggleSelection = (rowId) => {
+    setSelectedIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]
+    );
+  };
+
+  const updateRowsStatus = async (rowIds, nextState) => {
+    if (rowIds.length === 0) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const updates = rowIds.map((rowId) =>
+      supabase.from('scorms_master').update({ scorm_estado: nextState }).eq('id', rowId)
+    );
+
+    const results = await Promise.all(updates);
+    const failedUpdate = results.find((result) => result.error);
+
+    if (failedUpdate?.error) {
+      setError(`No se pudieron mover los SCORM seleccionados: ${failedUpdate.error.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((row) =>
+        rowIds.includes(row.id)
+          ? {
+              ...row,
+              scorm_estado: nextState,
+            }
+          : row
+      )
+    );
+
+    setSelectedIds([]);
+    setStatusMessage(
+      rowIds.length === 1
+        ? 'SCORM movido correctamente al nuevo estado.'
+        : `${rowIds.length} SCORMs movidos correctamente al nuevo estado.`
+    );
+  };
+
+  const handleCardClick = (event, rowId) => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      toggleSelection(rowId);
+      return;
+    }
+
+    toggleCardExpansion(rowId);
+  };
+
+  const handleDragStart = (event, rowId) => {
+    const rowIdsToMove = selectedIds.includes(rowId) ? selectedIds : [rowId];
+    event.dataTransfer.setData('text/plain', JSON.stringify(rowIdsToMove));
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDropInState = async (event, targetState) => {
+    event.preventDefault();
+
+    let draggedIds = [];
+    try {
+      draggedIds = JSON.parse(event.dataTransfer.getData('text/plain') || '[]');
+    } catch {
+      draggedIds = [];
+    }
+
+    const uniqueIds = [...new Set(draggedIds)].filter(Boolean);
+    if (uniqueIds.length === 0) {
+      return;
+    }
+
+    const idsToMove = uniqueIds.filter((rowId) => {
+      const row = rows.find((item) => item.id === rowId);
+      return row && getRowState(row) !== targetState;
+    });
+
+    await updateRowsStatus(idsToMove, targetState);
+  };
+
   return (
-    <section className="card">
+    <section className="card card-wide">
       <header className="card-header">
-        <h2>Vista de tabla de SCORMs</h2>
-        <button type="button" className="secondary" onClick={fetchData}>
-          Recargar
-        </button>
+        <h2>GScormer · v1.3.0</h2>
+        <div className="header-actions">
+          {viewMode === 'table' ? (
+            <button type="button" className="secondary" onClick={() => setViewMode('status')}>
+              Vista por estado
+            </button>
+          ) : (
+            <button type="button" className="secondary" onClick={() => setViewMode('table')}>
+              Volver a tabla
+            </button>
+          )}
+          <button type="button" className="secondary" onClick={fetchData}>
+            Recargar
+          </button>
+        </div>
       </header>
 
       <section className="filters card-soft">
-        <h3>Buscador con filtros por campo</h3>
-        <div className="filters-grid">
+        <h3>Filtros</h3>
+        <div className="filters-grid compact">
           {columns.map((column) => (
-            <div key={column.key} className="filter-field">
-              <p>{column.label}</p>
-              <div className="filter-controls">
-                <input
-                  type="text"
-                  placeholder={`Añadir filtro en ${column.label}`}
-                  value={filterInputs[column.key] || ''}
-                  onChange={(event) =>
-                    setFilterInputs((previous) => ({
-                      ...previous,
-                      [column.key]: event.target.value,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      addFieldFilter(column.key);
-                    }
-                  }}
-                />
-                <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
-                  Añadir
-                </button>
-              </div>
-              <div className="filter-tags">
-                {(filters[column.key] || []).map((value) => (
-                  <button
-                    key={`${column.key}-${value}`}
-                    type="button"
-                    className="filter-tag"
-                    onClick={() => removeFieldFilter(column.key, value)}
-                    title="Quitar filtro"
-                  >
-                    {value} ✕
-                  </button>
-                ))}
+            <details key={column.key} className="filter-dropdown">
+              <summary>
+                {column.label}
                 {(filters[column.key] || []).length > 0 && (
-                  <button
-                    type="button"
-                    className="clear-filters"
-                    onClick={() => clearFieldFilters(column.key)}
-                  >
-                    Quitar filtros
-                  </button>
+                  <span className="filter-counter">{(filters[column.key] || []).length}</span>
                 )}
+              </summary>
+              <div className="filter-dropdown-content">
+                <div className="filter-controls">
+                  <input
+                    type="text"
+                    placeholder={`Añadir filtro en ${column.label}`}
+                    value={filterInputs[column.key] || ''}
+                    onChange={(event) =>
+                      setFilterInputs((previous) => ({
+                        ...previous,
+                        [column.key]: event.target.value,
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addFieldFilter(column.key);
+                      }
+                    }}
+                  />
+                  <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
+                    Añadir
+                  </button>
+                </div>
+                <div className="filter-tags">
+                  {(filters[column.key] || []).map((value) => (
+                    <button
+                      key={`${column.key}-${value}`}
+                      type="button"
+                      className="filter-tag"
+                      onClick={() => removeFieldFilter(column.key, value)}
+                    >
+                      {value} ✕
+                    </button>
+                  ))}
+                  {(filters[column.key] || []).length > 0 && (
+                    <button type="button" className="clear-filters" onClick={() => clearFieldFilters(column.key)}>
+                      Quitar filtros
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            </details>
           ))}
         </div>
       </section>
@@ -242,7 +397,7 @@ export default function ScormsTable() {
         <p className="status">No hay registros que coincidan con los filtros actuales.</p>
       )}
 
-      {!loading && canRenderTable && (
+      {!loading && canRenderTable && viewMode === 'table' && (
         <div className="table-wrapper">
           <table>
             <thead>
@@ -287,6 +442,73 @@ export default function ScormsTable() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!loading && canRenderTable && viewMode === 'status' && (
+        <section className="status-board">
+          {stateGroups.map((group) => (
+            <article
+              key={group.state}
+              className="status-lane"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => handleDropInState(event, group.state)}
+            >
+              <header>
+                <h4>{group.state}</h4>
+                <p>{group.rows.length} SCORMs</p>
+              </header>
+
+              <div className="status-lane-cards">
+                {group.rows.map((row) => {
+                  const isSelected = selectedIds.includes(row.id);
+                  const isExpanded = expandedCardIds.includes(row.id);
+
+                  return (
+                    <div
+                      key={row.id}
+                      className={`status-card ${isSelected ? 'selected' : ''}`}
+                      draggable
+                      onDragStart={(event) => handleDragStart(event, row.id)}
+                      onClick={(event) => handleCardClick(event, row.id)}
+                    >
+                      <div className="status-card-main">
+                        <strong>{row.scorm_code || 'Sin código'}</strong>
+                        <span>{row.scorm_name || 'Sin nombre'}</span>
+                      </div>
+                      <span className="category-chip" style={getCategoryColor(row.scorm_categoria)}>
+                        {row.scorm_categoria || 'Sin categoría'}
+                      </span>
+
+                      {isExpanded && (
+                        <div className="status-card-details">
+                          <p>
+                            <strong>Responsable:</strong> {row.scorm_responsable || '-'}
+                          </p>
+                          <p>
+                            <strong>Tipo:</strong> {row.scorm_tipo || '-'}
+                          </p>
+                          <p>
+                            <strong>Subcategoría:</strong> {row.scorm_subcategoria || '-'}
+                          </p>
+                          <p>
+                            <strong>Etiquetas:</strong> {row.scorm_etiquetas || '-'}
+                          </p>
+                          {row.scorm_url ? (
+                            <a href={row.scorm_url} target="_blank" rel="noreferrer" className="table-link">
+                              Abrir enlace
+                            </a>
+                          ) : (
+                            <span className="muted">Sin URL</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          ))}
+        </section>
       )}
 
       {activeRow && detailDraft && (
