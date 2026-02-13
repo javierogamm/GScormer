@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.8.0 - Botones unificados y histórico de actualizaciones en Detalles
+
+### Cambios consolidados
+- Se unificó la estética y tamaño de los botones **Detalles** y **Actualizar SCORM** en las acciones de tabla y tarjetas de estado, aplicando el mismo estilo secundario y ancho mínimo común.
+- En la vista de **Detalles** se añadió el botón **Actualizaciones** para consultar el histórico del SCORM seleccionado.
+- Se incorporó un nuevo modal de **Histórico de actualizaciones** que consulta `scorms_actualizacion` por `scorm_code` y muestra tipo de cambio, fecha de modificación, usuario y notas.
+- Se añadió feedback de carga, estado vacío y manejo de error cuando no se puede recuperar historial.
+- Se actualizó la versión visible en cabecera de la APP a **v1.8.0** y el versionado de `package.json` a `1.8.0`.
+
+### Versionado
+- Versión anterior: `1.7.0`
+- Nueva versión consolidada: `1.8.0`
+
+---
+
 ## v1.7.0 - Homogeneización de acciones, actualización múltiple y alta de SCORM
 
 ### Cambios consolidados

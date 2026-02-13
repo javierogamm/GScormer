@@ -155,6 +155,9 @@ export default function ScormsTable() {
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -349,6 +352,38 @@ export default function ScormsTable() {
   const closeDetails = () => {
     setActiveRow(null);
     setDetailDraft(null);
+    setHistoryModalOpen(false);
+    setHistoryRecords([]);
+    setHistoryLoading(false);
+  };
+
+  const openHistoryModal = async () => {
+    const scormCode = String(detailDraft?.scorm_code || '').trim();
+
+    if (!scormCode) {
+      setError('Este SCORM no tiene código y no puede consultar historial de actualizaciones.');
+      return;
+    }
+
+    setHistoryLoading(true);
+    setError('');
+
+    const { data, error: historyError } = await supabase
+      .from('scorms_actualizacion')
+      .select('*')
+      .eq('scorm_codigo', scormCode)
+      .order('fecha_modif', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+
+    if (historyError) {
+      setHistoryLoading(false);
+      setError(`No se pudo cargar el historial de actualizaciones: ${historyError.message}`);
+      return;
+    }
+
+    setHistoryRecords(data || []);
+    setHistoryLoading(false);
+    setHistoryModalOpen(true);
   };
 
   const openUpdateModal = (rowsToUpdate) => {
@@ -775,7 +810,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.7.0</h2>
+        <h2>GScormer · v1.8.0</h2>
         <div className="header-actions">
           <button type="button" onClick={openCreateModal}>
             Crear SCORM
@@ -939,7 +974,7 @@ export default function ScormsTable() {
                   ))}
                   <td>
                     <div className="row-actions">
-                      <button type="button" onClick={() => openDetails(row)}>
+                      <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
                         Detalles
                       </button>
                       <button
@@ -1020,7 +1055,7 @@ export default function ScormsTable() {
                             <strong>Etiquetas:</strong> {row.scorm_etiquetas || '-'}
                           </p>
                           <div className="card-actions">
-                            <button type="button" className="secondary" onClick={() => openDetails(row)}>
+                            <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
                               Detalles
                             </button>
                             <button
@@ -1184,6 +1219,9 @@ export default function ScormsTable() {
             </div>
 
             <footer className="modal-footer">
+              <button type="button" className="secondary action-button" onClick={openHistoryModal}>
+                Actualizaciones
+              </button>
               <button type="button" className="secondary action-button" onClick={() => openUpdateModal(detailDraft)}>
                 Actualizar SCORM
               </button>
@@ -1191,6 +1229,50 @@ export default function ScormsTable() {
                 Guardar detalles
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+
+      {historyModalOpen && detailDraft && (
+        <div className="modal-overlay" role="presentation" onClick={() => setHistoryModalOpen(false)}>
+          <div
+            className="modal-content modal-content-narrow"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="historico-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="historico-titulo">Histórico de actualizaciones</h3>
+                <p>{getOfficialName(detailDraft)} · {getInternationalizedCode(detailDraft)}</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setHistoryModalOpen(false)}>
+                Cerrar
+              </button>
+            </header>
+
+            {historyLoading ? (
+              <p className="status">Cargando histórico...</p>
+            ) : historyRecords.length === 0 ? (
+              <p className="status">No hay actualizaciones registradas para este SCORM.</p>
+            ) : (
+              <ul className="history-list">
+                {historyRecords.map((record) => (
+                  <li key={`history-${record.id}`}>
+                    <strong>{record.cambio_tipo || 'Sin tipo de cambio'}</strong>
+                    <span>
+                      Fecha modificación:{' '}
+                      {record.fecha_modif
+                        ? new Date(record.fecha_modif).toLocaleDateString('es-ES')
+                        : '-'}
+                    </span>
+                    <span>Usuario: {record.cambio_user || '-'}</span>
+                    <span>Notas: {record.cambio_notas || '-'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       )}
