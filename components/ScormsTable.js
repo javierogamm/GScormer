@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 const columns = [
   { key: 'scorm_idioma', label: 'Idioma', editable: true },
   { key: 'scorm_code', label: 'Código', editable: true },
-  { key: 'scorm_nombre', label: 'Nombre', editable: true },
+  { key: 'scorm_name', label: 'Nombre', editable: true },
   { key: 'scorm_responsable', label: 'Responsable', editable: true },
   { key: 'scorm_tipo', label: 'Tipo', editable: true },
   { key: 'scorm_categoria', label: 'Categoría', editable: true },
@@ -87,7 +87,7 @@ const getCategoryColor = (category) => {
 
 const getRowState = (row) => row.scorm_estado || 'Sin estado';
 
-const getOfficialName = (row) => String(row.scorm_nombre || row.scorm_name || '').trim() || 'Sin nombre oficial';
+const getOfficialName = (row) => String(row.scorm_name || row.scorm_nombre || '').trim() || 'Sin nombre oficial';
 
 const getInternationalizedCode = (row) => {
   const idioma = normalizeLanguage(row.scorm_idioma);
@@ -167,7 +167,7 @@ export default function ScormsTable() {
         }
 
         const value =
-          column.key === 'scorm_nombre'
+          column.key === 'scorm_name'
             ? getOfficialName(row).toLowerCase()
             : column.key === 'scorm_code'
               ? getInternationalizedCode(row).toLowerCase()
@@ -642,7 +642,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.6.0</h2>
+        <h2>GScormer · v1.6.1</h2>
         <div className="header-actions">
           <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
             Deshacer
@@ -766,7 +766,7 @@ export default function ScormsTable() {
                         <span className="category-chip" style={getCategoryColor(row[column.key])}>
                           {row[column.key] || 'Sin categoría'}
                         </span>
-                      ) : column.key === 'scorm_nombre' ? (
+                      ) : column.key === 'scorm_name' ? (
                         <span>{getOfficialName(row)}</span>
                       ) : column.key === 'scorm_code' ? (
                         <span>{getInternationalizedCode(row)}</span>
@@ -947,7 +947,7 @@ export default function ScormsTable() {
                   {translationRows.map((group) => (
                     <tr key={`translation-${group.groupId}`}>
                       <td>{group.code}</td>
-                      <td className="col-scorm_nombre">{group.preferredName}</td>
+                      <td className="col-scorm_name">{group.preferredName}</td>
                       {availableLanguages.map((language) => (
                         <td key={`translation-${group.groupId}-${language}`}>
                           {group.languages.has(language) ? (

@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.6.1 - Corrección de campo de nombre SCORM (`scorm_name`)
+
+### Cambios consolidados
+- Se corrigió la referencia de la columna editable **Nombre** para usar `scorm_name` (en lugar de `scorm_nombre`) en la configuración principal de columnas.
+- Se ajustó la lógica de filtros de la columna **Nombre** para evaluar `scorm_name` como clave oficial.
+- Se actualizó la renderización condicional de celdas para la columna **Nombre** usando `scorm_name`.
+- Se priorizó `scorm_name` como fuente de nombre oficial en lectura, manteniendo compatibilidad con `scorm_nombre` como respaldo histórico.
+- Se actualizó la versión visible en cabecera de la APP a **v1.6.1**.
+
+### Versionado
+- Versión anterior: `1.6.0`
+- Nueva versión consolidada: `1.6.1`
+
+---
+
 ## v1.6.0 - Flujo de actualización de SCORM con trazabilidad en Supabase
 
 ### Cambios consolidados
