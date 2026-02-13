@@ -20,6 +20,12 @@ const editableColumns = columns.filter((column) => column.editable).map((column)
 
 const STATUS_ORDER = ['En proceso', 'Publicado', 'Actualizado pendiente de publicar'];
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT'];
+const UPDATE_TYPES = [
+  'Cambios menores',
+  'Cambio de estructura',
+  'Actualización de imágenes',
+  'Actualización de storyline',
+];
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -120,6 +126,14 @@ export default function ScormsTable() {
   const [redoHistory, setRedoHistory] = useState([]);
   const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('ES');
+  const [updateTargetRow, setUpdateTargetRow] = useState(null);
+  const [updateForm, setUpdateForm] = useState({
+    cambio_tipo: '',
+    fecha_modif: new Date().toISOString().slice(0, 10),
+    cambio_user: '',
+    cambio_notas: '',
+  });
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -206,6 +220,7 @@ export default function ScormsTable() {
           nameByLanguage: {},
           languages: new Set(),
           fallbackName: getOfficialName(row),
+          representativeRow: row,
         };
       }
 
@@ -223,6 +238,7 @@ export default function ScormsTable() {
         ...group,
         preferredName:
           group.nameByLanguage.ES || group.nameByLanguage.CAT || group.nameByLanguage.PT || group.fallbackName,
+        representativeRow: group.representativeRow,
       }))
       .filter((group) => {
         if (translationPreset === 'todos') {
@@ -312,6 +328,33 @@ export default function ScormsTable() {
   const closeDetails = () => {
     setActiveRow(null);
     setDetailDraft(null);
+  };
+
+  const openUpdateModal = (row) => {
+    setError('');
+    setStatusMessage('');
+    setUpdateTargetRow(row);
+    setUpdateForm({
+      cambio_tipo: '',
+      fecha_modif: new Date().toISOString().slice(0, 10),
+      cambio_user: '',
+      cambio_notas: '',
+    });
+  };
+
+  const closeUpdateModal = () => {
+    if (updateSubmitting) {
+      return;
+    }
+
+    setUpdateTargetRow(null);
+  };
+
+  const updateUpdateFormField = (field, value) => {
+    setUpdateForm((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   };
 
   const updateDetailDraft = (field, value) => {
@@ -529,10 +572,77 @@ export default function ScormsTable() {
     await updateRowsStatus(idsToMove, targetState);
   };
 
+  const submitScormUpdate = async () => {
+    if (!updateTargetRow?.id) {
+      return;
+    }
+
+    if (!updateForm.cambio_tipo) {
+      setError('Debes seleccionar un tipo de cambio para registrar la actualización.');
+      return;
+    }
+
+    const scormCode = String(updateTargetRow.scorm_code || '').trim();
+    if (!scormCode) {
+      setError('No se puede actualizar este SCORM porque no tiene scorm_code informado.');
+      return;
+    }
+
+    setUpdateSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const payload = {
+      scorm_codigo: scormCode,
+      cambio_tipo: updateForm.cambio_tipo,
+      fecha_modif: updateForm.fecha_modif || null,
+      cambio_user: updateForm.cambio_user || null,
+      cambio_notas: updateForm.cambio_notas || null,
+    };
+
+    const { error: insertError } = await supabase.from('scorms_actualizacion').insert(payload);
+
+    if (insertError) {
+      setUpdateSubmitting(false);
+      setError(`No se pudo registrar la actualización del SCORM: ${insertError.message}`);
+      return;
+    }
+
+    const { error: stateError } = await supabase
+      .from('scorms_master')
+      .update({ scorm_estado: 'Actualizado pendiente de publicar' })
+      .eq('id', updateTargetRow.id);
+
+    if (stateError) {
+      setUpdateSubmitting(false);
+      setError(`Se registró el cambio, pero no se pudo actualizar el estado: ${stateError.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((row) =>
+        row.id === updateTargetRow.id ? { ...row, scorm_estado: 'Actualizado pendiente de publicar' } : row
+      )
+    );
+    setDetailDraft((previous) =>
+      previous && previous.id === updateTargetRow.id
+        ? { ...previous, scorm_estado: 'Actualizado pendiente de publicar' }
+        : previous
+    );
+    setActiveRow((previous) =>
+      previous && previous.id === updateTargetRow.id
+        ? { ...previous, scorm_estado: 'Actualizado pendiente de publicar' }
+        : previous
+    );
+    setUpdateTargetRow(null);
+    setUpdateSubmitting(false);
+    setStatusMessage('Actualización SCORM registrada y estado cambiado a "Actualizado pendiente de publicar".');
+  };
+
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.5.0</h2>
+        <h2>GScormer · v1.6.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
             Deshacer
@@ -666,9 +776,14 @@ export default function ScormsTable() {
                     </td>
                   ))}
                   <td>
-                    <button type="button" onClick={() => openDetails(row)}>
-                      Detalles
-                    </button>
+                    <div className="row-actions">
+                      <button type="button" onClick={() => openDetails(row)}>
+                        Detalles
+                      </button>
+                      <button type="button" className="secondary" onClick={() => openUpdateModal(row)}>
+                        Actualizar SCORM
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -738,6 +853,14 @@ export default function ScormsTable() {
                           <p>
                             <strong>Etiquetas:</strong> {row.scorm_etiquetas || '-'}
                           </p>
+                          <div className="card-actions">
+                            <button type="button" className="secondary" onClick={() => openDetails(row)}>
+                              Detalles
+                            </button>
+                            <button type="button" className="secondary" onClick={() => openUpdateModal(row)}>
+                              Actualizar SCORM
+                            </button>
+                          </div>
                           {row.scorm_url ? (
                             <a href={row.scorm_url} target="_blank" rel="noreferrer" className="table-link">
                               Abrir enlace
@@ -817,6 +940,7 @@ export default function ScormsTable() {
                     {availableLanguages.map((language) => (
                       <th key={`translation-head-${language}`}>{language}</th>
                     ))}
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -833,6 +957,24 @@ export default function ScormsTable() {
                           )}
                         </td>
                       ))}
+                      <td>
+                        {group.representativeRow ? (
+                          <div className="row-actions">
+                            <button type="button" onClick={() => openDetails(group.representativeRow)}>
+                              Detalles
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => openUpdateModal(group.representativeRow)}
+                            >
+                              Actualizar SCORM
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="muted">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -876,8 +1018,87 @@ export default function ScormsTable() {
             </div>
 
             <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={() => openUpdateModal(detailDraft)}>
+                Actualizar SCORM
+              </button>
               <button type="button" onClick={saveDetails}>
                 Guardar detalles
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {updateTargetRow && (
+        <div className="modal-overlay" role="presentation" onClick={closeUpdateModal}>
+          <div
+            className="modal-content modal-content-narrow"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="actualizacion-scorm-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="actualizacion-scorm-titulo">Actualizar SCORM</h3>
+                <p>
+                  {getOfficialName(updateTargetRow)} · {getInternationalizedCode(updateTargetRow)}
+                </p>
+              </div>
+              <button type="button" className="secondary" onClick={closeUpdateModal} disabled={updateSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <div className="details-grid details-grid-single">
+              <label>
+                <span>Tipo de cambio (obligatorio)</span>
+                <select
+                  value={updateForm.cambio_tipo}
+                  onChange={(event) => updateUpdateFormField('cambio_tipo', event.target.value)}
+                  required
+                >
+                  <option value="">Selecciona un tipo</option>
+                  {UPDATE_TYPES.map((type) => (
+                    <option key={`update-type-${type}`} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Fecha de modificación</span>
+                <input
+                  type="date"
+                  value={updateForm.fecha_modif}
+                  onChange={(event) => updateUpdateFormField('fecha_modif', event.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>Usuario (opcional)</span>
+                <input
+                  type="text"
+                  value={updateForm.cambio_user}
+                  placeholder="Indicar manualmente"
+                  onChange={(event) => updateUpdateFormField('cambio_user', event.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>Notas (opcional)</span>
+                <textarea
+                  value={updateForm.cambio_notas}
+                  placeholder="Notas del proceso de actualización"
+                  onChange={(event) => updateUpdateFormField('cambio_notas', event.target.value)}
+                />
+              </label>
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitScormUpdate} disabled={updateSubmitting}>
+                {updateSubmitting ? 'Registrando...' : 'Registrar actualización'}
               </button>
             </footer>
           </div>
