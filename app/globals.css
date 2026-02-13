@@ -63,6 +63,16 @@ body {
   gap: 0.55rem;
 }
 
+
+.app-switcher {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.col-curso_nombre {
+  min-width: 320px;
+}
+
 button {
   border: 0;
   border-radius: 10px;
