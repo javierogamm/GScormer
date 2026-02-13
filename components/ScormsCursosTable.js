@@ -30,19 +30,22 @@ const columns = [
   { key: 'link_inscripcion', label: 'Link inscripción' },
 ];
 
+const compactColumns = ['categoria', 'subcategoria', 'tipologia', 'materia', 'curso_codigo', 'curso_nombre', 'existe'];
+const detailColumns = columns.filter((column) => !compactColumns.includes(column.key));
+
 const isUrl = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
   return normalized.startsWith('http://') || normalized.startsWith('https://');
 };
 
-export default function ScormsCursosTable() {
+export default function ScormsCursosTable({ onBackToScorms }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
-  const [activeRow, setActiveRow] = useState(null);
+  const [expandedRows, setExpandedRows] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,6 +82,12 @@ export default function ScormsCursosTable() {
       });
     });
   }, [rows, filters]);
+
+  const toggleExpandRow = (rowId) => {
+    setExpandedRows((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId],
+    );
+  };
 
   const handleFilterInputChange = (columnKey, value) => {
     setFilterInputs((previous) => ({
@@ -146,6 +155,11 @@ export default function ScormsCursosTable() {
           <button className="secondary" onClick={fetchData} disabled={loading}>
             {loading ? 'Cargando...' : 'Refrescar'}
           </button>
+          {onBackToScorms ? (
+            <button className="secondary" onClick={onBackToScorms}>
+              ← Volver a SCORMs
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -212,70 +226,64 @@ export default function ScormsCursosTable() {
       </details>
 
       <div className="table-wrapper">
-        <table>
+        <table className="cursos-table compact-rows">
           <thead>
             <tr>
-              {columns.map((column) => (
-                <th key={column.key}>{column.label}</th>
-              ))}
               <th>Detalle</th>
+              {compactColumns.map((columnKey) => {
+                const column = columns.find((item) => item.key === columnKey);
+                return <th key={column.key}>{column.label}</th>;
+              })}
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map((row) => (
-              <tr key={row.id}>
-                {columns.map((column) => {
-                  const value = row[column.key];
+            {filteredRows.map((row) => {
+              const isExpanded = expandedRows.includes(row.id);
 
-                  return (
-                    <td key={`${row.id}-${column.key}`} className={column.key === 'curso_nombre' ? 'col-curso_nombre' : ''}>
-                      {isUrl(value) ? (
-                        <a className="table-link" href={value} target="_blank" rel="noreferrer">
-                          Abrir enlace
-                        </a>
-                      ) : (
-                        String(value || '-')
-                      )}
+              return [
+                <tr key={`row-${row.id}`}>
+                  <td className="first-col-detail">
+                    <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
+                      {isExpanded ? 'Colapsar' : 'Expandir'}
+                    </button>
+                  </td>
+                  {compactColumns.map((columnKey) => {
+                    const value = row[columnKey];
+
+                    return (
+                      <td key={`${row.id}-${columnKey}`} className={columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''}>
+                        {isUrl(value) ? (
+                          <a className="table-link" href={value} target="_blank" rel="noreferrer">
+                            Abrir enlace
+                          </a>
+                        ) : (
+                          String(value || '-')
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>,
+                isExpanded ? (
+                  <tr key={`detail-${row.id}`} className="expanded-detail-row">
+                    <td colSpan={compactColumns.length + 1}>
+                      <div className="details-grid">
+                        {detailColumns.map((column) => (
+                          <label key={`detail-${row.id}-${column.key}`}>
+                            <span>{column.label}</span>
+                            <input value={String(row[column.key] || '')} readOnly />
+                          </label>
+                        ))}
+                      </div>
                     </td>
-                  );
-                })}
-                <td>
-                  <button className="secondary" onClick={() => setActiveRow(row)}>
-                    Ver detalle
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  </tr>
+                ) : null,
+              ];
+            })}
           </tbody>
         </table>
       </div>
 
       {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
-
-      {activeRow ? (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="curso-detalle-title">
-          <div className="modal-content">
-            <div className="modal-header">
-              <div>
-                <h3 id="curso-detalle-title">Detalle del curso</h3>
-                <p>{activeRow.curso_nombre || activeRow.pa_nombre || 'Sin nombre'}</p>
-              </div>
-              <button className="secondary" onClick={() => setActiveRow(null)}>
-                Cerrar
-              </button>
-            </div>
-
-            <div className="details-grid">
-              {columns.map((column) => (
-                <label key={`detail-${column.key}`}>
-                  <span>{column.label}</span>
-                  <input value={String(activeRow[column.key] || '')} readOnly />
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

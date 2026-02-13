@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.15.1 - Ajustes de navegación y detalle compacto en SCORMs Cursos
+
+### Cambios consolidados
+- Se añadió un botón **Volver a SCORMs** dentro de la vista de `scorms_cursos` para retornar de forma directa a la vista anterior.
+- Se rediseñó la tabla de cursos a filas más compactas (menor alto de fila y tipografía más contenida).
+- Se movió el control de detalle a la **primera columna** de la tabla.
+- Se sustituyó el modal de detalle por un patrón de **expandir/colapsar** por fila para mostrar los campos extendidos en línea.
+- Se mantiene el panel de filtros y el scroll lateral de la tabla.
+- Se actualizó la versión de la APP en `package.json` a `1.15.1`.
+
+### Versionado
+- Versión anterior: `1.15.0`
+- Nueva versión consolidada: `1.15.1`
+
+---
+
 ## v1.15.0 - Integración de SCORMs Cursos con vista y filtros propios
 
 ### Cambios consolidados

@@ -32,7 +32,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {activeView === 'scorms' ? <ScormsTable /> : <ScormsCursosTable />}
+      {activeView === 'scorms' ? (
+        <ScormsTable />
+      ) : (
+        <ScormsCursosTable onBackToScorms={() => setActiveView('scorms')} />
+      )}
     </main>
   );
 }
