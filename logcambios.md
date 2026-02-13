@@ -1,5 +1,31 @@
 # Log de cambios
 
+## v1.6.0 - Flujo de actualización de SCORM con trazabilidad en Supabase
+
+### Cambios consolidados
+- Se añadió la acción **Actualizar SCORM** en la columna de acciones de la vista principal (tabla), con apertura de modal dedicado al flujo de actualización.
+- Se añadió también el botón **Actualizar SCORM** dentro del modal de detalles, para que la acción esté disponible desde la ficha del SCORM independientemente de la vista desde la que se haya abierto.
+- Se implementó el nuevo modal de actualización con validaciones y campos alineados a la nueva tabla `scorms_actualizacion`:
+  - `cambio_tipo` **obligatorio** con 4 opciones cerradas:
+    - Cambios menores
+    - Cambio de estructura
+    - Actualización de imágenes
+    - Actualización de storyline
+  - `fecha_modif` editable (por defecto fecha actual),
+  - `cambio_user` opcional manual,
+  - `cambio_notas` opcional.
+- Al confirmar la actualización:
+  - se inserta el registro en `scorms_actualizacion` con `scorm_codigo` vinculado al `scorm_code` del registro principal,
+  - se actualiza automáticamente el estado del SCORM a **Actualizado pendiente de publicar** en `scorms_master`.
+- Se añadieron estilos para la nueva UX (acciones múltiples por fila, modal compacto de actualización y campo de notas multilínea).
+- Se creó migración SQL para la tabla `public.scorms_actualizacion`.
+
+### Versionado
+- Versión anterior: `1.5.1`
+- Nueva versión consolidada: `1.6.0`
+
+---
+
 ## v1.5.1 - Normalización de idioma catalán y preset TODOS en Traducciones
 
 ### Cambios consolidados
