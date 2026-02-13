@@ -18,6 +18,7 @@ const columns = [
 
 const publishColumns = [
   ...columns.filter((column) => !['scorm_subcategoria', 'scorm_etiquetas'].includes(column.key)),
+  { key: 'publication_update_type', label: 'Tipo de actualización', editable: false },
   { key: 'publication_date', label: 'Fecha', editable: false },
 ];
 
@@ -165,6 +166,23 @@ const getPublicationDateMs = (row, latestUpdateByCode = {}) => {
   return getRowDateMs(row);
 };
 
+const getPublicationUpdateType = (row, latestUpdateByCode = {}) => {
+  const rowState = getRowState(row);
+
+  if (rowState === 'Pendiente de publicar') {
+    return 'Nueva publicación';
+  }
+
+  if (rowState === 'Actualizado pendiente de publicar') {
+    const normalizedCode = String(row.scorm_code || '').trim().toUpperCase();
+    const latestUpdate = normalizedCode ? latestUpdateByCode[normalizedCode] : null;
+
+    return latestUpdate?.cambio_tipo || 'Sin tipo de cambio';
+  }
+
+  return '-';
+};
+
 const formatDateDDMMYYYY = (value) => {
   const dateMs = typeof value === 'number' ? value : getDateMsFromCandidates([value]);
   if (!dateMs) {
@@ -216,7 +234,7 @@ export default function ScormsTable() {
 
     const [masterResponse, updatesResponse] = await Promise.all([
       supabase.from('scorms_master').select('*').order('id', { ascending: true }),
-      supabase.from('scorms_actualizacion').select('scorm_codigo, fecha_modif, created_at'),
+      supabase.from('scorms_actualizacion').select('scorm_codigo, cambio_tipo, fecha_modif, created_at'),
     ]);
 
     if (masterResponse.error) {
@@ -246,6 +264,7 @@ export default function ScormsTable() {
           acc[code] = {
             raw: item.fecha_modif || item.created_at,
             dateMs,
+            cambio_tipo: item.cambio_tipo,
           };
         }
 
@@ -990,7 +1009,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.13.0</h2>
+        <h2>GScormer · v1.14.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1454,6 +1473,8 @@ export default function ScormsTable() {
                         <td key={`publish-${row.id}-${column.key}`} className={`col-${column.key}`}>
                           {column.key === 'publication_date' ? (
                             <span>{formatDateDDMMYYYY(getPublicationDateMs(row, latestUpdateByCode))}</span>
+                          ) : column.key === 'publication_update_type' ? (
+                            <span>{getPublicationUpdateType(row, latestUpdateByCode)}</span>
                           ) : column.key === 'scorm_url' ? (
                             row[column.key] ? (
                               <a href={row[column.key]} target="_blank" rel="noreferrer" className="table-link">
