@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.10.0 - Controles sobre tabla, filtros en cabecera y KPI integrado
+
+### Cambios consolidados
+- Se movieron los botones **Crear SCORM**, **Actualizar selección**, **Deshacer** y **Rehacer** para que queden justo encima de la tabla principal (dentro del bloque de tabla).
+- Se retiró el panel de filtros superior y se integró directamente en la cabecera operativa de la tabla mediante un desplegable **Filtros**, manteniendo la misma lógica de uso por columna (añadir filtros, chips y quitar filtros).
+- Se mantuvo el comportamiento de filtrado global para las vistas existentes, pero su punto de interacción ahora vive en el encabezado de la tabla.
+- El KPI de publicación se integró dentro del botón **Actualizaciones** (vista de publicación pendiente), ubicado a la derecha en formato de círculo con la paleta cálida solicitada.
+- Se actualizó la versión visible de la APP a **v1.10.0** y el versionado de `package.json` a `1.10.0`.
+
+### Versionado
+- Versión anterior: `1.9.0`
+- Nueva versión consolidada: `1.10.0`
+
+---
+
 ## v1.9.0 - Vista de publicación pendiente, KPI y acción publicar
 
 ### Cambios consolidados
