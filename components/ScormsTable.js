@@ -19,7 +19,17 @@ const columns = [
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
 const STATUS_ORDER = ['En proceso', 'Publicado', 'Actualizado pendiente de publicar'];
-const DEFAULT_LANGUAGES = ['ES', 'CA', 'PT'];
+const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT'];
+
+const normalizeLanguage = (language) => {
+  const normalized = String(language || '').trim().toUpperCase();
+
+  if (normalized === 'CA') {
+    return 'CAT';
+  }
+
+  return normalized;
+};
 
 const CATEGORY_COLORS = {
   '02-Gestión Documental y Archivo': {
@@ -74,7 +84,7 @@ const getRowState = (row) => row.scorm_estado || 'Sin estado';
 const getOfficialName = (row) => String(row.scorm_nombre || row.scorm_name || '').trim() || 'Sin nombre oficial';
 
 const getInternationalizedCode = (row) => {
-  const idioma = String(row.scorm_idioma || '').trim();
+  const idioma = normalizeLanguage(row.scorm_idioma);
   const codigo = String(row.scorm_code || '').trim();
 
   if (!idioma && !codigo) {
@@ -108,7 +118,7 @@ export default function ScormsTable() {
   const [draggedRowIds, setDraggedRowIds] = useState([]);
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
-  const [translationPreset, setTranslationPreset] = useState('all');
+  const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('ES');
 
   const fetchData = useCallback(async () => {
@@ -158,7 +168,7 @@ export default function ScormsTable() {
   const availableLanguages = useMemo(() => {
     const discovered = new Set(
       rows
-        .map((row) => String(row.scorm_idioma || '').trim().toUpperCase())
+        .map((row) => normalizeLanguage(row.scorm_idioma))
         .filter(Boolean)
     );
 
@@ -199,7 +209,7 @@ export default function ScormsTable() {
         };
       }
 
-      const language = String(row.scorm_idioma || '').trim().toUpperCase();
+      const language = normalizeLanguage(row.scorm_idioma);
       if (language) {
         acc[groupKey].languages.add(language);
         acc[groupKey].nameByLanguage[language] = getOfficialName(row);
@@ -212,9 +222,13 @@ export default function ScormsTable() {
       .map((group) => ({
         ...group,
         preferredName:
-          group.nameByLanguage.ES || group.nameByLanguage.CA || group.nameByLanguage.PT || group.fallbackName,
+          group.nameByLanguage.ES || group.nameByLanguage.CAT || group.nameByLanguage.PT || group.fallbackName,
       }))
       .filter((group) => {
+        if (translationPreset === 'todos') {
+          return true;
+        }
+
         if (translationPreset === 'all') {
           return availableLanguages.every((language) => group.languages.has(language));
         }
@@ -745,6 +759,13 @@ export default function ScormsTable() {
       {!loading && canRenderTable && viewMode === 'translations' && (
         <section className="translations-view">
           <div className="translation-presets">
+            <button
+              type="button"
+              className={`secondary ${translationPreset === 'todos' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('todos')}
+            >
+              TODOS
+            </button>
             <button
               type="button"
               className={`secondary ${translationPreset === 'all' ? 'active-preset' : ''}`}

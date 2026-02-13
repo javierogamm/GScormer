@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.5.1 - Normalización de idioma catalán y preset TODOS en Traducciones
+
+### Cambios consolidados
+- Se normalizó el idioma catalán a **CAT** (en lugar de CA) en toda la vista para:
+  - detección de idiomas disponibles,
+  - agrupación por cobertura de traducciones,
+  - formato de código internacionalizado mostrado en tabla y tarjetas.
+- En la vista **Traducciones** se añadió el preset **TODOS** y se dejó como filtro por defecto para mostrar todos los SCORMs agrupados por `scorm_code` al entrar en la vista.
+- Se mantiene la lógica de que un SCORM multiidioma es el mismo contenido funcional cuando comparte `scorm_code` (por ejemplo, `SCR0067`), diferenciando únicamente su disponibilidad por idioma.
+
+### Versionado
+- Versión anterior: `1.5.0`
+- Nueva versión consolidada: `1.5.1`
+
+---
+
 ## v1.5.0 - Nueva vista Traducciones con filtros por cobertura de idioma
 
 ### Cambios consolidados
