@@ -1,5 +1,18 @@
 # Log de cambios
 
+## v1.13.0 - KPI y color dinámico en botón Publicación pendiente
+
+### Cambios consolidados
+- En la cabecera principal se añadió el **KPI** dentro del botón **Publicación pendiente**, mostrando el total de SCORMs con estado **Pendiente de publicar** + **Actualizado pendiente de publicar**.
+- El botón **Publicación pendiente** ahora cambia a estilo destacado (naranja) cuando existe al menos un SCORM pendiente de publicación (nuevo o actualizado).
+- Se actualizó la versión visible de la APP a **v1.13.0** y el versionado de `package.json` a `1.13.0`.
+
+### Versionado
+- Versión anterior: `1.12.0`
+- Nueva versión consolidada: `1.13.0`
+
+---
+
 ## v1.12.0 - Fechas y ordenación en Publicación pendiente
 
 ### Cambios consolidados
