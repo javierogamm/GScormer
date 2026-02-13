@@ -195,6 +195,16 @@ button:disabled {
   box-shadow: 0 0 0 1px rgba(116, 167, 238, 0.45);
 }
 
+button.secondary.pending-highlight {
+  border-color: #f59a4f;
+  background: #fff4e6;
+  color: #915515;
+}
+
+button.secondary.pending-highlight:hover {
+  background: #ffe7cc;
+}
+
 .preset-kpi-badge {
   display: inline-flex;
   align-items: center;
@@ -262,6 +272,10 @@ select {
   border-radius: 10px;
   background: #fff;
   overflow: hidden;
+}
+
+.global-filters-toggle {
+  margin: 0.5rem 0 0.9rem;
 }
 
 .table-filters-toggle summary {

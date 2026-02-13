@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.11.0 - Filtros globales recuperados y KPIs de publicación
+
+### Cambios consolidados
+- Se recuperó el acceso a **Filtros** para todas las vistas (Tabla, Vista por estado, Traducciones y Publicación pendiente), dejando el mismo panel global justo debajo de la cabecera principal.
+- Se mantuvo intacta la lógica de filtrado común para todas las vistas, pero ahora el control vuelve a estar visible en cualquier modo de trabajo.
+- En la vista **Publicación pendiente**, el botón **Actualizaciones** ahora se resalta en naranja cuando existe al menos un SCORM en estado **Pendiente de publicar** o **Actualizado pendiente de publicar**.
+- Se añadió KPI también al filtro de **Pendientes de publicar** (antes "Nuevos SCORMs"), mostrando el recuento de SCORMs en ese estado directamente en el botón.
+- Se mantuvo el KPI de **Actualizaciones** dentro de su botón para ver el conteo de "Actualizado pendiente de publicar".
+- Se actualizó la versión visible de la APP a **v1.11.0** y el versionado de `package.json` a `1.11.0`.
+
+### Versionado
+- Versión anterior: `1.10.0`
+- Nueva versión consolidada: `1.11.0`
+
+---
+
 ## v1.10.0 - Controles sobre tabla, filtros en cabecera y KPI integrado
 
 ### Cambios consolidados
