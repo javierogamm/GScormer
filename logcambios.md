@@ -1,5 +1,26 @@
 # Log de cambios
 
+## v1.9.0 - Vista de publicación pendiente, KPI y acción publicar
+
+### Cambios consolidados
+- Se creó una nueva vista **Publicación pendiente** accesible desde la cabecera, pensada para gestionar solo SCORMs en estado **Pendiente de publicar** y **Actualizado pendiente de publicar**.
+- La nueva vista mantiene los filtros globales existentes (los mismos de la tabla principal) y muestra una tabla equivalente a la principal, pero acotada a esos estados.
+- Se añadieron filtros rápidos propios de la vista:
+  - **TODOS**: muestra todos los SCORMs pendientes de publicación,
+  - **Recientes**: muestra los de la última semana,
+  - **Nuevos SCORMs**: muestra solo estado *Pendiente de publicar*,
+  - **Actualizaciones**: muestra solo estado *Actualizado pendiente de publicar*.
+- En la columna de acciones de esta vista se sustituyó la operación de actualización por un botón **PUBLICAR SCORM** con estilo cálido.
+- Al pulsar **PUBLICAR SCORM**, el estado del registro cambia a **Publicado** en Supabase y se refleja de inmediato en la UI.
+- En la cabecera principal se añadió un **KPI publicación** con el recuento rápido de SCORMs pendientes de publicar (nuevos + actualizados).
+- Se actualizó la versión visible de la APP a **v1.9.0** y el versionado de `package.json` a `1.9.0`.
+
+### Versionado
+- Versión anterior: `1.8.0`
+- Nueva versión consolidada: `1.9.0`
+
+---
+
 ## v1.8.0 - Botones unificados y histórico de actualizaciones en Detalles
 
 ### Cambios consolidados

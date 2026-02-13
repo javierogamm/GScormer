@@ -26,6 +26,7 @@ const UPDATE_TYPES = [
   'Actualización de imágenes',
   'Actualización de storyline',
 ];
+const PUBLISH_PENDING_STATES = ['Pendiente de publicar', 'Actualizado pendiente de publicar'];
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -126,6 +127,19 @@ const getNextAvailableScormCode = (rows) => {
   return `SCR${String(nextNumber).padStart(4, '0')}`;
 };
 
+const getRowDateMs = (row) => {
+  const candidates = [row.updated_at, row.created_at, row.fecha_modif].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const parsed = new Date(candidate).getTime();
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
 export default function ScormsTable() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -158,6 +172,7 @@ export default function ScormsTable() {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRecords, setHistoryRecords] = useState([]);
+  const [publishPreset, setPublishPreset] = useState('todos');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -303,6 +318,35 @@ export default function ScormsTable() {
 
     return orderedStates.map((state) => ({ state, rows: groups[state] || [] }));
   }, [filteredRows]);
+
+  const pendingPublishRows = useMemo(
+    () => filteredRows.filter((row) => PUBLISH_PENDING_STATES.includes(getRowState(row))),
+    [filteredRows]
+  );
+
+  const publishKpiCount = pendingPublishRows.length;
+
+  const publicationRows = useMemo(() => {
+    const now = Date.now();
+    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    if (publishPreset === 'nuevos') {
+      return pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar');
+    }
+
+    if (publishPreset === 'actualizaciones') {
+      return pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar');
+    }
+
+    if (publishPreset === 'recientes') {
+      return pendingPublishRows.filter((row) => {
+        const rowDateMs = getRowDateMs(row);
+        return rowDateMs ? rowDateMs >= oneWeekAgo : false;
+      });
+    }
+
+    return pendingPublishRows;
+  }, [pendingPublishRows, publishPreset]);
 
   const addFieldFilter = (field) => {
     const nextValue = (filterInputs[field] || '').trim();
@@ -807,10 +851,59 @@ export default function ScormsTable() {
     setStatusMessage(`SCORM ${code} creado correctamente.`);
   };
 
+  const publishScorm = async (row) => {
+    if (!row?.id) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const { error: publishError } = await supabase
+      .from('scorms_master')
+      .update({ scorm_estado: 'Publicado' })
+      .eq('id', row.id);
+
+    if (publishError) {
+      setError(`No se pudo publicar el SCORM: ${publishError.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((currentRow) =>
+        currentRow.id === row.id
+          ? {
+              ...currentRow,
+              scorm_estado: 'Publicado',
+            }
+          : currentRow
+      )
+    );
+
+    setDetailDraft((previous) =>
+      previous?.id === row.id
+        ? {
+            ...previous,
+            scorm_estado: 'Publicado',
+          }
+        : previous
+    );
+    setActiveRow((previous) =>
+      previous?.id === row.id
+        ? {
+            ...previous,
+            scorm_estado: 'Publicado',
+          }
+        : previous
+    );
+
+    setStatusMessage(`SCORM ${getInternationalizedCode(row)} publicado correctamente.`);
+  };
+
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.8.0</h2>
+        <h2>GScormer · v1.9.0</h2>
         <div className="header-actions">
           <button type="button" onClick={openCreateModal}>
             Crear SCORM
@@ -835,6 +928,17 @@ export default function ScormsTable() {
           <button type="button" className="secondary" onClick={() => setViewMode('status')} disabled={viewMode === 'status'}>
             Vista por estado
           </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setViewMode('publish')}
+            disabled={viewMode === 'publish'}
+          >
+            Publicación pendiente
+          </button>
+          <span className="kpi-chip" title="SCORMs pendientes de publicar o actualizados pendientes de publicar">
+            KPI publicación: {publishKpiCount}
+          </span>
           <button
             type="button"
             className="secondary"
@@ -1175,6 +1279,99 @@ export default function ScormsTable() {
                         ) : (
                           <span className="muted">-</span>
                         )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!loading && viewMode === 'publish' && (
+        <section className="publish-view">
+          <div className="translation-presets">
+            <button
+              type="button"
+              className={`secondary ${publishPreset === 'todos' ? 'active-preset' : ''}`}
+              onClick={() => setPublishPreset('todos')}
+            >
+              TODOS
+            </button>
+            <button
+              type="button"
+              className={`secondary ${publishPreset === 'recientes' ? 'active-preset' : ''}`}
+              onClick={() => setPublishPreset('recientes')}
+            >
+              Recientes
+            </button>
+            <button
+              type="button"
+              className={`secondary ${publishPreset === 'nuevos' ? 'active-preset' : ''}`}
+              onClick={() => setPublishPreset('nuevos')}
+            >
+              Nuevos SCORMs
+            </button>
+            <button
+              type="button"
+              className={`secondary ${publishPreset === 'actualizaciones' ? 'active-preset' : ''}`}
+              onClick={() => setPublishPreset('actualizaciones')}
+            >
+              Actualizaciones
+            </button>
+          </div>
+
+          {publicationRows.length === 0 ? (
+            <p className="status">No hay SCORMs para publicar con el filtro seleccionado.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    {columns.map((column) => (
+                      <th key={`publish-head-${column.key}`} className={`col-${column.key}`}>
+                        {column.label}
+                      </th>
+                    ))}
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {publicationRows.map((row) => (
+                    <tr key={`publish-row-${row.id}`}>
+                      {columns.map((column) => (
+                        <td key={`publish-${row.id}-${column.key}`} className={`col-${column.key}`}>
+                          {column.key === 'scorm_url' ? (
+                            row[column.key] ? (
+                              <a href={row[column.key]} target="_blank" rel="noreferrer" className="table-link">
+                                Abrir enlace
+                              </a>
+                            ) : (
+                              <span className="muted">Sin URL</span>
+                            )
+                          ) : column.key === 'scorm_categoria' ? (
+                            <span className="category-chip" style={getCategoryColor(row[column.key])}>
+                              {row[column.key] || 'Sin categoría'}
+                            </span>
+                          ) : column.key === 'scorm_name' ? (
+                            <span>{getOfficialName(row)}</span>
+                          ) : column.key === 'scorm_code' ? (
+                            <span>{getInternationalizedCode(row)}</span>
+                          ) : (
+                            <span>{row[column.key] || '-'}</span>
+                          )}
+                        </td>
+                      ))}
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
+                            Detalles
+                          </button>
+                          <button type="button" className="publish-button action-button" onClick={() => publishScorm(row)}>
+                            PUBLICAR SCORM
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
