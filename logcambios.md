@@ -1,5 +1,27 @@
 # Log de cambios
 
+## v1.7.0 - Homogeneización de acciones, actualización múltiple y alta de SCORM
+
+### Cambios consolidados
+- Se homogeneizó la experiencia visual de las acciones de actualización en todas las vistas (tabla, estado, traducciones y modal de detalle), unificando estilo y tamaño del botón **Actualizar SCORM** para mejorar consistencia de lectura y uso.
+- Se incorporó selección por **check** en la vista tabla:
+  - check por fila para selección individual,
+  - check en cabecera para seleccionar/deseleccionar todos los SCORM visibles por filtros.
+- Se añadió la acción **Actualizar selección (N)** en cabecera para actualizar varios SCORM a la vez con un único flujo.
+- El modal de actualización ahora soporta operación múltiple:
+  - inserta un registro en `scorms_actualizacion` por cada SCORM seleccionado,
+  - cambia el estado de todos los seleccionados a **Actualizado pendiente de publicar**.
+- Se añadió el botón **Crear SCORM** en cabecera con modal de alta completa (todos los campos editables de `scorms_master`).
+- En el alta de SCORM se sugiere automáticamente el siguiente código libre en formato `SCRNNNN` (ejemplo: si el último detectado es `SCR0999`, propone `SCR1000`).
+- Se añadieron validaciones en alta para requerir **Código** y **Nombre**, y evitar códigos duplicados.
+- Se actualizó la versión visible de la APP a **v1.7.0** y el versionado de `package.json` a `1.7.0`.
+
+### Versionado
+- Versión anterior: `1.6.1`
+- Nueva versión consolidada: `1.7.0`
+
+---
+
 ## v1.6.1 - Corrección de campo de nombre SCORM (`scorm_name`)
 
 ### Cambios consolidados
