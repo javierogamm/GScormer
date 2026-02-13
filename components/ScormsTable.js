@@ -990,7 +990,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.12.0</h2>
+        <h2>GScormer · v1.13.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1000,11 +1000,12 @@ export default function ScormsTable() {
           </button>
           <button
             type="button"
-            className="secondary"
+            className={`secondary ${hasItemsPendingPublication ? 'pending-highlight' : ''}`}
             onClick={() => setViewMode('publish')}
             disabled={viewMode === 'publish'}
           >
             Publicación pendiente
+            <span className="kpi-badge">{pendingPublishRows.length}</span>
           </button>
           <button
             type="button"
