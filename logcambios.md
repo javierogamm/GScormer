@@ -1,5 +1,38 @@
 # Log de cambios
 
+## v1.15.1 - Ajustes de navegación y detalle compacto en SCORMs Cursos
+
+### Cambios consolidados
+- Se añadió un botón **Volver a SCORMs** dentro de la vista de `scorms_cursos` para retornar de forma directa a la vista anterior.
+- Se rediseñó la tabla de cursos a filas más compactas (menor alto de fila y tipografía más contenida).
+- Se movió el control de detalle a la **primera columna** de la tabla.
+- Se sustituyó el modal de detalle por un patrón de **expandir/colapsar** por fila para mostrar los campos extendidos en línea.
+- Se mantiene el panel de filtros y el scroll lateral de la tabla.
+- Se actualizó la versión de la APP en `package.json` a `1.15.1`.
+
+### Versionado
+- Versión anterior: `1.15.0`
+- Nueva versión consolidada: `1.15.1`
+
+---
+
+## v1.15.0 - Integración de SCORMs Cursos con vista y filtros propios
+
+### Cambios consolidados
+- Se creó la migración `20260213_create_scorms_cursos.sql` para incorporar la nueva tabla `public.scorms_cursos` con el esquema completo solicitado.
+- Se añadió la nueva vista **SCORMs Cursos · Vista general** conectada a Supabase sobre `scorms_cursos`, con refresco de datos y contador de carga.
+- Se incorporó un **panel de filtros** por columna (múltiples filtros por campo) equivalente al enfoque de filtros desplegables de SCORMs.
+- La nueva tabla de cursos incluye **scroll lateral** para manejar todas las columnas del esquema de forma usable en pantalla.
+- Se añadió una acción **Ver detalle** por fila para abrir un modal con los datos completos del curso seleccionado.
+- Se incorporó un selector superior para alternar entre la gestión tradicional de **SCORMs** y la nueva vista de **SCORMs Cursos**.
+- Se actualizó la versión de la APP en `package.json` a `1.15.0`.
+
+### Versionado
+- Versión anterior: `1.14.0`
+- Nueva versión consolidada: `1.15.0`
+
+---
+
 ## v1.14.0 - Tipo de actualización en tabla de Publicación pendiente
 
 ### Cambios consolidados

@@ -63,6 +63,16 @@ body {
   gap: 0.55rem;
 }
 
+
+.app-switcher {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.col-curso_nombre {
+  min-width: 320px;
+}
+
 button {
   border: 0;
   border-radius: 10px;
@@ -644,4 +654,24 @@ textarea:focus {
 
 .table-sort-button:hover {
   color: #2f6fb9;
+}
+
+.cursos-table.compact-rows th,
+.cursos-table.compact-rows td {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.cursos-table .first-col-detail {
+  min-width: 110px;
+}
+
+.expand-row-button {
+  min-width: 90px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.76rem;
+}
+
+.expanded-detail-row td {
+  background: #f7fbff !important;
 }
