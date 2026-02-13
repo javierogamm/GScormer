@@ -613,3 +613,19 @@ textarea:focus {
   outline: 2px solid rgba(127, 179, 255, 0.35);
   border-color: var(--primary);
 }
+
+
+.table-sort-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.table-sort-button:hover {
+  color: #2f6fb9;
+}

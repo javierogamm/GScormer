@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.12.0 - Fechas y ordenación en Publicación pendiente
+
+### Cambios consolidados
+- En la vista **Publicación pendiente** se añadió una columna **Fecha** con formato **DD/MM/AAAA**.
+- Para filas en estado **Actualizado pendiente de publicar**, la fecha mostrada pasa a ser la **última fecha de actualización** registrada en `scorms_actualizacion`.
+- Para filas en estado **Pendiente de publicar**, la fecha mostrada corresponde a la **fecha de creación** del SCORM (`created_at` en `scorms_master`).
+- Se habilitó la **ordenación por fecha** al hacer clic sobre el encabezado de la nueva columna Fecha (alterna ascendente/descendente).
+- En esa tabla se eliminaron las columnas **Subcategoría** y **Etiquetas**.
+- Se actualizó la versión visible de la APP a **v1.12.0** y el versionado de `package.json` a `1.12.0`.
+
+### Versionado
+- Versión anterior: `1.11.0`
+- Nueva versión consolidada: `1.12.0`
+
+---
+
 ## v1.11.0 - Filtros globales recuperados y KPIs de publicación
 
 ### Cambios consolidados

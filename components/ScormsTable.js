@@ -16,6 +16,11 @@ const columns = [
   { key: 'scorm_etiquetas', label: 'Etiquetas', editable: true },
 ];
 
+const publishColumns = [
+  ...columns.filter((column) => !['scorm_subcategoria', 'scorm_etiquetas'].includes(column.key)),
+  { key: 'publication_date', label: 'Fecha', editable: false },
+];
+
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
 const STATUS_ORDER = ['En proceso', 'Publicado', 'Actualizado pendiente de publicar'];
@@ -127,10 +132,8 @@ const getNextAvailableScormCode = (rows) => {
   return `SCR${String(nextNumber).padStart(4, '0')}`;
 };
 
-const getRowDateMs = (row) => {
-  const candidates = [row.updated_at, row.created_at, row.fecha_modif].filter(Boolean);
-
-  for (const candidate of candidates) {
+const getDateMsFromCandidates = (candidates) => {
+  for (const candidate of candidates.filter(Boolean)) {
     const parsed = new Date(candidate).getTime();
     if (!Number.isNaN(parsed)) {
       return parsed;
@@ -138,6 +141,37 @@ const getRowDateMs = (row) => {
   }
 
   return null;
+};
+
+const getRowDateMs = (row) => {
+  const candidates = [row.updated_at, row.created_at, row.fecha_modif];
+
+  return getDateMsFromCandidates(candidates);
+};
+
+const getPublicationDateMs = (row, latestUpdateByCode = {}) => {
+  const rowState = getRowState(row);
+  const normalizedCode = String(row.scorm_code || '').trim().toUpperCase();
+  const latestUpdateDate = normalizedCode ? latestUpdateByCode[normalizedCode] : null;
+
+  if (rowState === 'Actualizado pendiente de publicar') {
+    return getDateMsFromCandidates([latestUpdateDate, row.fecha_modif, row.updated_at, row.created_at]);
+  }
+
+  if (rowState === 'Pendiente de publicar') {
+    return getDateMsFromCandidates([row.created_at, row.updated_at]);
+  }
+
+  return getRowDateMs(row);
+};
+
+const formatDateDDMMYYYY = (value) => {
+  const dateMs = typeof value === 'number' ? value : getDateMsFromCandidates([value]);
+  if (!dateMs) {
+    return '-';
+  }
+
+  return new Date(dateMs).toLocaleDateString('es-ES');
 };
 
 export default function ScormsTable() {
@@ -173,22 +207,55 @@ export default function ScormsTable() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRecords, setHistoryRecords] = useState([]);
   const [publishPreset, setPublishPreset] = useState('todos');
+  const [latestUpdateByCode, setLatestUpdateByCode] = useState({});
+  const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
 
-    const { data, error: queryError } = await supabase
-      .from('scorms_master')
-      .select('*')
-      .order('id', { ascending: true });
+    const [masterResponse, updatesResponse] = await Promise.all([
+      supabase.from('scorms_master').select('*').order('id', { ascending: true }),
+      supabase.from('scorms_actualizacion').select('scorm_codigo, fecha_modif, created_at'),
+    ]);
 
-    if (queryError) {
-      setError(`No se pudieron cargar los datos: ${queryError.message}`);
+    if (masterResponse.error) {
+      setError(`No se pudieron cargar los datos: ${masterResponse.error.message}`);
       setRows([]);
-    } else {
-      setRows(data || []);
+      setLatestUpdateByCode({});
+      setLoading(false);
+      return;
     }
+
+    if (updatesResponse.error) {
+      setError(`No se pudieron cargar las fechas de actualización: ${updatesResponse.error.message}`);
+      setLatestUpdateByCode({});
+    } else {
+      const latestDatesByCode = (updatesResponse.data || []).reduce((acc, item) => {
+        const code = String(item.scorm_codigo || '').trim().toUpperCase();
+        if (!code) {
+          return acc;
+        }
+
+        const dateMs = getDateMsFromCandidates([item.fecha_modif, item.created_at]);
+        if (!dateMs) {
+          return acc;
+        }
+
+        if (!acc[code] || dateMs > acc[code].dateMs) {
+          acc[code] = {
+            raw: item.fecha_modif || item.created_at,
+            dateMs,
+          };
+        }
+
+        return acc;
+      }, {});
+
+      setLatestUpdateByCode(latestDatesByCode);
+    }
+
+    setRows(masterResponse.data || []);
 
     setLoading(false);
   }, []);
@@ -332,23 +399,37 @@ export default function ScormsTable() {
     const now = Date.now();
     const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    if (publishPreset === 'nuevos') {
-      return pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar');
-    }
+    const rowsForPreset =
+      publishPreset === 'nuevos'
+        ? pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar')
+        : publishPreset === 'actualizaciones'
+          ? pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar')
+          : publishPreset === 'recientes'
+            ? pendingPublishRows.filter((row) => {
+                const rowDateMs = getPublicationDateMs(row, latestUpdateByCode);
+                return rowDateMs ? rowDateMs >= oneWeekAgo : false;
+              })
+            : pendingPublishRows;
 
-    if (publishPreset === 'actualizaciones') {
-      return pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar');
-    }
+    return [...rowsForPreset].sort((left, right) => {
+      const leftMs = getPublicationDateMs(left, latestUpdateByCode);
+      const rightMs = getPublicationDateMs(right, latestUpdateByCode);
 
-    if (publishPreset === 'recientes') {
-      return pendingPublishRows.filter((row) => {
-        const rowDateMs = getRowDateMs(row);
-        return rowDateMs ? rowDateMs >= oneWeekAgo : false;
-      });
-    }
+      if (leftMs && rightMs && leftMs !== rightMs) {
+        return publishDateSortDirection === 'asc' ? leftMs - rightMs : rightMs - leftMs;
+      }
 
-    return pendingPublishRows;
-  }, [pendingPublishRows, publishPreset]);
+      if (leftMs && !rightMs) {
+        return -1;
+      }
+
+      if (!leftMs && rightMs) {
+        return 1;
+      }
+
+      return getInternationalizedCode(left).localeCompare(getInternationalizedCode(right));
+    });
+  }, [latestUpdateByCode, pendingPublishRows, publishDateSortDirection, publishPreset]);
 
   const addFieldFilter = (field) => {
     const nextValue = (filterInputs[field] || '').trim();
@@ -902,10 +983,14 @@ export default function ScormsTable() {
     setStatusMessage(`SCORM ${getInternationalizedCode(row)} publicado correctamente.`);
   };
 
+  const togglePublishDateSort = () => {
+    setPublishDateSortDirection((previous) => (previous === 'asc' ? 'desc' : 'asc'));
+  };
+
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.11.0</h2>
+        <h2>GScormer · v1.12.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1347,9 +1432,15 @@ export default function ScormsTable() {
               <table>
                 <thead>
                   <tr>
-                    {columns.map((column) => (
+                    {publishColumns.map((column) => (
                       <th key={`publish-head-${column.key}`} className={`col-${column.key}`}>
-                        {column.label}
+                        {column.key === 'publication_date' ? (
+                          <button type="button" className="table-sort-button" onClick={togglePublishDateSort}>
+                            {column.label} {publishDateSortDirection === 'asc' ? '↑' : '↓'}
+                          </button>
+                        ) : (
+                          column.label
+                        )}
                       </th>
                     ))}
                     <th>Acciones</th>
@@ -1358,9 +1449,11 @@ export default function ScormsTable() {
                 <tbody>
                   {publicationRows.map((row) => (
                     <tr key={`publish-row-${row.id}`}>
-                      {columns.map((column) => (
+                      {publishColumns.map((column) => (
                         <td key={`publish-${row.id}-${column.key}`} className={`col-${column.key}`}>
-                          {column.key === 'scorm_url' ? (
+                          {column.key === 'publication_date' ? (
+                            <span>{formatDateDDMMYYYY(getPublicationDateMs(row, latestUpdateByCode))}</span>
+                          ) : column.key === 'scorm_url' ? (
                             row[column.key] ? (
                               <a href={row[column.key]} target="_blank" rel="noreferrer" className="table-link">
                                 Abrir enlace
