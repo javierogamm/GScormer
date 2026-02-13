@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.14.0 - Tipo de actualización en tabla de Publicación pendiente
+
+### Cambios consolidados
+- En la vista **Publicación pendiente** se añadió la columna **Tipo de actualización** ubicada a la izquierda de la columna **Fecha**.
+- Para registros en estado **Pendiente de publicar**, la nueva columna muestra el texto fijo **"Nueva publicación"**.
+- Para registros en estado **Actualizado pendiente de publicar**, la nueva columna muestra el valor de **`cambio_tipo`** recuperado desde `scorms_actualizacion` (última actualización por código SCORM).
+- Se amplió la carga de datos de actualizaciones para incluir `cambio_tipo` junto con la fecha y así reutilizar una sola consulta para fecha + tipo.
+- Se actualizó la versión visible de la APP a **v1.14.0** y el versionado de `package.json` a `1.14.0`.
+
+### Versionado
+- Versión anterior: `1.13.0`
+- Nueva versión consolidada: `1.14.0`
+
+---
+
 ## v1.13.0 - KPI y color dinámico en botón Publicación pendiente
 
 ### Cambios consolidados
