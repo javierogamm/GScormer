@@ -182,6 +182,45 @@ button:disabled {
   padding: 0.25rem 0.6rem;
 }
 
+
+.translation-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.active-preset {
+  border-color: #74a7ee !important;
+  box-shadow: 0 0 0 1px rgba(116, 167, 238, 0.45);
+}
+
+.missing-language-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+select {
+  border: 1px solid #c8daf2;
+  border-radius: 8px;
+  background: #fcfeff;
+  color: var(--text);
+  padding: 0.45rem 0.6rem;
+}
+
+.lang-ok {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #e6f8ef;
+  color: #167147;
+  border: 1px solid #b9e7d0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .table-wrapper {
   width: 100%;
   overflow: auto;

@@ -1,5 +1,25 @@
 # Log de cambios
 
+## v1.5.0 - Nueva vista Traducciones con filtros por cobertura de idioma
+
+### Cambios consolidados
+- Se creó la nueva vista **Traducciones** dentro del selector de vistas principal para priorizar el control por idioma.
+- La vista agrupa SCORMs por **`scorm_code`** y muestra una tabla con columnas dinámicas de idioma:
+  - idiomas actuales soportados por defecto: **ES, CA, PT**,
+  - detección automática de nuevos idiomas en datos para que aparezcan sin cambios de código.
+- Se añadieron tres filtros predefinidos de usabilidad en la vista Traducciones:
+  - **Traducidos a todos los idiomas**: muestra SCORMs con cobertura completa de todos los idiomas disponibles.
+  - **Solo en Español**: muestra SCORMs que únicamente existen en idioma ES.
+  - **Pendiente de idioma**: permite seleccionar un idioma y muestra los SCORMs que no lo tienen.
+- Se mantiene el panel de filtros común de la aplicación, compartido por tabla, estado y traducciones.
+- Se ajustaron estilos para los nuevos controles de presets, selector de idioma y estados visuales de disponibilidad de traducción.
+
+### Versionado
+- Versión anterior: `1.4.1`
+- Nueva versión consolidada: `1.5.0`
+
+---
+
 ## v1.4.1 - Nombre oficial SCORM y código internacionalizado
 
 ### Cambios consolidados

@@ -19,6 +19,7 @@ const columns = [
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
 const STATUS_ORDER = ['En proceso', 'Publicado', 'Actualizado pendiente de publicar'];
+const DEFAULT_LANGUAGES = ['ES', 'CA', 'PT'];
 
 const CATEGORY_COLORS = {
   '02-Gestión Documental y Archivo': {
@@ -107,6 +108,8 @@ export default function ScormsTable() {
   const [draggedRowIds, setDraggedRowIds] = useState([]);
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
+  const [translationPreset, setTranslationPreset] = useState('all');
+  const [pendingLanguage, setPendingLanguage] = useState('ES');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -151,6 +154,83 @@ export default function ScormsTable() {
   }, [rows, filters]);
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
+
+  const availableLanguages = useMemo(() => {
+    const discovered = new Set(
+      rows
+        .map((row) => String(row.scorm_idioma || '').trim().toUpperCase())
+        .filter(Boolean)
+    );
+
+    DEFAULT_LANGUAGES.forEach((language) => discovered.add(language));
+
+    return [...discovered].sort((left, right) => {
+      const leftIndex = DEFAULT_LANGUAGES.indexOf(left);
+      const rightIndex = DEFAULT_LANGUAGES.indexOf(right);
+
+      if (leftIndex !== -1 && rightIndex !== -1) {
+        return leftIndex - rightIndex;
+      }
+
+      if (leftIndex !== -1) {
+        return -1;
+      }
+
+      if (rightIndex !== -1) {
+        return 1;
+      }
+
+      return left.localeCompare(right);
+    });
+  }, [rows]);
+
+  const translationRows = useMemo(() => {
+    const grouped = filteredRows.reduce((acc, row) => {
+      const rowCode = String(row.scorm_code || '').trim();
+      const groupKey = rowCode || `SIN-CODIGO-${row.id}`;
+
+      if (!acc[groupKey]) {
+        acc[groupKey] = {
+          groupId: groupKey,
+          code: rowCode || 'Sin código',
+          nameByLanguage: {},
+          languages: new Set(),
+          fallbackName: getOfficialName(row),
+        };
+      }
+
+      const language = String(row.scorm_idioma || '').trim().toUpperCase();
+      if (language) {
+        acc[groupKey].languages.add(language);
+        acc[groupKey].nameByLanguage[language] = getOfficialName(row);
+      }
+
+      return acc;
+    }, {});
+
+    return Object.values(grouped)
+      .map((group) => ({
+        ...group,
+        preferredName:
+          group.nameByLanguage.ES || group.nameByLanguage.CA || group.nameByLanguage.PT || group.fallbackName,
+      }))
+      .filter((group) => {
+        if (translationPreset === 'all') {
+          return availableLanguages.every((language) => group.languages.has(language));
+        }
+
+        if (translationPreset === 'only_es') {
+          return group.languages.size === 1 && group.languages.has('ES');
+        }
+
+        if (translationPreset === 'missing_language') {
+          return pendingLanguage ? !group.languages.has(pendingLanguage) : true;
+        }
+
+        return true;
+      })
+      .sort((left, right) => left.code.localeCompare(right.code));
+  }, [availableLanguages, filteredRows, pendingLanguage, translationPreset]);
 
   const stateGroups = useMemo(() => {
     const groups = filteredRows.reduce((acc, row) => {
@@ -438,7 +518,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.4.1</h2>
+        <h2>GScormer · v1.5.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
             Deshacer
@@ -446,15 +526,20 @@ export default function ScormsTable() {
           <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
             Rehacer
           </button>
-          {viewMode === 'table' ? (
-            <button type="button" className="secondary" onClick={() => setViewMode('status')}>
-              Vista por estado
-            </button>
-          ) : (
-            <button type="button" className="secondary" onClick={() => setViewMode('table')}>
-              Volver a tabla
-            </button>
-          )}
+          <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
+            Tabla
+          </button>
+          <button type="button" className="secondary" onClick={() => setViewMode('status')} disabled={viewMode === 'status'}>
+            Vista por estado
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setViewMode('translations')}
+            disabled={viewMode === 'translations'}
+          >
+            Traducciones
+          </button>
           <button type="button" className="secondary" onClick={fetchData}>
             Recargar
           </button>
@@ -656,6 +741,86 @@ export default function ScormsTable() {
           ))}
         </section>
       )}
+
+      {!loading && canRenderTable && viewMode === 'translations' && (
+        <section className="translations-view">
+          <div className="translation-presets">
+            <button
+              type="button"
+              className={`secondary ${translationPreset === 'all' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('all')}
+            >
+              Traducidos a todos los idiomas
+            </button>
+            <button
+              type="button"
+              className={`secondary ${translationPreset === 'only_es' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('only_es')}
+            >
+              Solo en Español
+            </button>
+            <div className="missing-language-filter">
+              <button
+                type="button"
+                className={`secondary ${translationPreset === 'missing_language' ? 'active-preset' : ''}`}
+                onClick={() => setTranslationPreset('missing_language')}
+              >
+                Pendiente de idioma
+              </button>
+              <select
+                value={pendingLanguage}
+                onChange={(event) => {
+                  setPendingLanguage(event.target.value);
+                  setTranslationPreset('missing_language');
+                }}
+                aria-label="Seleccionar idioma pendiente"
+              >
+                {availableLanguages.map((language) => (
+                  <option key={`pending-${language}`} value={language}>
+                    {language}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {translationRows.length === 0 ? (
+            <p className="status">No hay SCORMs que coincidan con el filtro de traducciones seleccionado.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    {availableLanguages.map((language) => (
+                      <th key={`translation-head-${language}`}>{language}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {translationRows.map((group) => (
+                    <tr key={`translation-${group.groupId}`}>
+                      <td>{group.code}</td>
+                      <td className="col-scorm_nombre">{group.preferredName}</td>
+                      {availableLanguages.map((language) => (
+                        <td key={`translation-${group.groupId}-${language}`}>
+                          {group.languages.has(language) ? (
+                            <span className="lang-ok">Disponible</span>
+                          ) : (
+                            <span className="muted">Pendiente</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
 
       {activeRow && detailDraft && (
         <div className="modal-overlay" role="presentation" onClick={closeDetails}>
