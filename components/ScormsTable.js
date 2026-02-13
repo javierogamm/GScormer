@@ -325,6 +325,8 @@ export default function ScormsTable() {
   );
 
   const publishUpdatesCount = pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar').length;
+  const publishPendingCount = pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar').length;
+  const hasItemsPendingPublication = pendingPublishRows.length > 0;
 
   const publicationRows = useMemo(() => {
     const now = Date.now();
@@ -903,7 +905,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.10.0</h2>
+        <h2>GScormer · v1.11.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -942,6 +944,68 @@ export default function ScormsTable() {
         <p className="status">No hay registros que coincidan con los filtros actuales.</p>
       )}
 
+      {!loading && canRenderTable && (
+        <details className="table-filters-toggle global-filters-toggle">
+          <summary>
+            Filtros
+            {Object.values(filters).flat().length > 0 && <span className="filter-counter">{Object.values(filters).flat().length}</span>}
+          </summary>
+          <div className="filters-grid compact">
+            {columns.map((column) => (
+              <details key={column.key} className="filter-dropdown">
+                <summary>
+                  {column.label}
+                  {(filters[column.key] || []).length > 0 && (
+                    <span className="filter-counter">{(filters[column.key] || []).length}</span>
+                  )}
+                </summary>
+                <div className="filter-dropdown-content">
+                  <div className="filter-controls">
+                    <input
+                      type="text"
+                      placeholder={`Añadir filtro en ${column.label}`}
+                      value={filterInputs[column.key] || ''}
+                      onChange={(event) =>
+                        setFilterInputs((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addFieldFilter(column.key);
+                        }
+                      }}
+                    />
+                    <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
+                      Añadir
+                    </button>
+                  </div>
+                  <div className="filter-tags">
+                    {(filters[column.key] || []).map((value) => (
+                      <button
+                        key={`${column.key}-${value}`}
+                        type="button"
+                        className="filter-tag"
+                        onClick={() => removeFieldFilter(column.key, value)}
+                      >
+                        {value} ✕
+                      </button>
+                    ))}
+                    {(filters[column.key] || []).length > 0 && (
+                      <button type="button" className="clear-filters" onClick={() => clearFieldFilters(column.key)}>
+                        Quitar filtros
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </details>
+            ))}
+          </div>
+        </details>
+      )}
+
       {!loading && canRenderTable && viewMode === 'table' && (
         <div className="table-wrapper">
           <div className="table-top-controls">
@@ -965,67 +1029,6 @@ export default function ScormsTable() {
               </button>
             </div>
 
-            <details className="table-filters-toggle">
-              <summary>
-                Filtros
-                {Object.values(filters).flat().length > 0 && (
-                  <span className="filter-counter">{Object.values(filters).flat().length}</span>
-                )}
-              </summary>
-              <div className="filters-grid compact">
-                {columns.map((column) => (
-                  <details key={column.key} className="filter-dropdown">
-                    <summary>
-                      {column.label}
-                      {(filters[column.key] || []).length > 0 && (
-                        <span className="filter-counter">{(filters[column.key] || []).length}</span>
-                      )}
-                    </summary>
-                    <div className="filter-dropdown-content">
-                      <div className="filter-controls">
-                        <input
-                          type="text"
-                          placeholder={`Añadir filtro en ${column.label}`}
-                          value={filterInputs[column.key] || ''}
-                          onChange={(event) =>
-                            setFilterInputs((previous) => ({
-                              ...previous,
-                              [column.key]: event.target.value,
-                            }))
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault();
-                              addFieldFilter(column.key);
-                            }
-                          }}
-                        />
-                        <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
-                          Añadir
-                        </button>
-                      </div>
-                      <div className="filter-tags">
-                        {(filters[column.key] || []).map((value) => (
-                          <button
-                            key={`${column.key}-${value}`}
-                            type="button"
-                            className="filter-tag"
-                            onClick={() => removeFieldFilter(column.key, value)}
-                          >
-                            {value} ✕
-                          </button>
-                        ))}
-                        {(filters[column.key] || []).length > 0 && (
-                          <button type="button" className="clear-filters" onClick={() => clearFieldFilters(column.key)}>
-                            Quitar filtros
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </details>
           </div>
 
           <table>
@@ -1318,11 +1321,16 @@ export default function ScormsTable() {
               className={`secondary ${publishPreset === 'nuevos' ? 'active-preset' : ''}`}
               onClick={() => setPublishPreset('nuevos')}
             >
-              Nuevos SCORMs
+              Pendientes de publicar
+              <span className="preset-kpi-badge" title="SCORMs nuevos pendientes de publicar">
+                {publishPendingCount}
+              </span>
             </button>
             <button
               type="button"
-              className={`secondary ${publishPreset === 'actualizaciones' ? 'active-preset' : ''}`}
+              className={`secondary ${publishPreset === 'actualizaciones' ? 'active-preset' : ''} ${
+                hasItemsPendingPublication ? 'pending-highlight' : ''
+              }`}
               onClick={() => setPublishPreset('actualizaciones')}
             >
               Actualizaciones
