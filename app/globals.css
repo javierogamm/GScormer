@@ -470,6 +470,29 @@ input:focus {
   text-align: center;
 }
 
+
+.kpi-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #ffd7ad;
+  background: #fff4e6;
+  color: #915515;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.publish-button {
+  background: #ffb26b;
+  color: #5b2f05;
+  border: 1px solid #f59a4f;
+}
+
+.publish-button:hover {
+  background: #ffa14a;
+}
+
 .history-list {
   margin: 0;
   padding: 0;
