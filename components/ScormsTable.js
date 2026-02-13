@@ -108,6 +108,24 @@ const getInternationalizedCode = (row) => {
   return `${idioma}-${codigo}`;
 };
 
+const getNextAvailableScormCode = (rows) => {
+  const usedNumbers = rows.reduce((acc, row) => {
+    const code = String(row.scorm_code || '').trim().toUpperCase();
+    const match = code.match(/^SCR(\d+)$/);
+
+    if (match) {
+      acc.push(Number(match[1]));
+    }
+
+    return acc;
+  }, []);
+
+  const lastNumber = usedNumbers.length > 0 ? Math.max(...usedNumbers) : 0;
+  const nextNumber = lastNumber + 1;
+
+  return `SCR${String(nextNumber).padStart(4, '0')}`;
+};
+
 export default function ScormsTable() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +145,7 @@ export default function ScormsTable() {
   const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('ES');
   const [updateTargetRow, setUpdateTargetRow] = useState(null);
+  const [updateTargetRows, setUpdateTargetRows] = useState([]);
   const [updateForm, setUpdateForm] = useState({
     cambio_tipo: '',
     fecha_modif: new Date().toISOString().slice(0, 10),
@@ -134,6 +153,8 @@ export default function ScormsTable() {
     cambio_notas: '',
   });
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
+  const [createDraft, setCreateDraft] = useState(null);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -330,10 +351,18 @@ export default function ScormsTable() {
     setDetailDraft(null);
   };
 
-  const openUpdateModal = (row) => {
+  const openUpdateModal = (rowsToUpdate) => {
+    const normalizedRows = Array.isArray(rowsToUpdate) ? rowsToUpdate : [rowsToUpdate];
+    const validRows = normalizedRows.filter(Boolean);
+
+    if (validRows.length === 0) {
+      return;
+    }
+
     setError('');
     setStatusMessage('');
-    setUpdateTargetRow(row);
+    setUpdateTargetRows(validRows);
+    setUpdateTargetRow(validRows[0]);
     setUpdateForm({
       cambio_tipo: '',
       fecha_modif: new Date().toISOString().slice(0, 10),
@@ -348,6 +377,39 @@ export default function ScormsTable() {
     }
 
     setUpdateTargetRow(null);
+    setUpdateTargetRows([]);
+  };
+
+  const openCreateModal = () => {
+    setError('');
+    setStatusMessage('');
+    setCreateDraft({
+      scorm_idioma: 'ES',
+      scorm_code: getNextAvailableScormCode(rows),
+      scorm_name: '',
+      scorm_responsable: '',
+      scorm_tipo: '',
+      scorm_categoria: '',
+      scorm_subcategoria: '',
+      scorm_url: '',
+      scorm_estado: 'En proceso',
+      scorm_etiquetas: '',
+    });
+  };
+
+  const closeCreateModal = () => {
+    if (createSubmitting) {
+      return;
+    }
+
+    setCreateDraft(null);
+  };
+
+  const updateCreateDraft = (field, value) => {
+    setCreateDraft((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   };
 
   const updateUpdateFormField = (field, value) => {
@@ -404,6 +466,18 @@ export default function ScormsTable() {
     setSelectedIds((previous) =>
       previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]
     );
+  };
+
+  const toggleAllFilteredRows = () => {
+    const visibleIds = filteredRows.map((row) => row.id);
+    const areAllSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+
+    if (areAllSelected) {
+      setSelectedIds((previous) => previous.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+
+    setSelectedIds((previous) => [...new Set([...previous, ...visibleIds])]);
   };
 
   const persistStatusUpdates = async (statusByRowId) => {
@@ -573,7 +647,7 @@ export default function ScormsTable() {
   };
 
   const submitScormUpdate = async () => {
-    if (!updateTargetRow?.id) {
+    if (updateTargetRows.length === 0) {
       return;
     }
 
@@ -582,9 +656,9 @@ export default function ScormsTable() {
       return;
     }
 
-    const scormCode = String(updateTargetRow.scorm_code || '').trim();
-    if (!scormCode) {
-      setError('No se puede actualizar este SCORM porque no tiene scorm_code informado.');
+    const rowsWithoutCode = updateTargetRows.filter((row) => !String(row.scorm_code || '').trim());
+    if (rowsWithoutCode.length > 0) {
+      setError('No se pueden actualizar algunos SCORM porque no tienen scorm_code informado.');
       return;
     }
 
@@ -592,13 +666,13 @@ export default function ScormsTable() {
     setError('');
     setStatusMessage('');
 
-    const payload = {
-      scorm_codigo: scormCode,
+    const payload = updateTargetRows.map((row) => ({
+      scorm_codigo: String(row.scorm_code || '').trim(),
       cambio_tipo: updateForm.cambio_tipo,
       fecha_modif: updateForm.fecha_modif || null,
       cambio_user: updateForm.cambio_user || null,
       cambio_notas: updateForm.cambio_notas || null,
-    };
+    }));
 
     const { error: insertError } = await supabase.from('scorms_actualizacion').insert(payload);
 
@@ -611,7 +685,10 @@ export default function ScormsTable() {
     const { error: stateError } = await supabase
       .from('scorms_master')
       .update({ scorm_estado: 'Actualizado pendiente de publicar' })
-      .eq('id', updateTargetRow.id);
+      .in(
+        'id',
+        updateTargetRows.map((row) => row.id)
+      );
 
     if (stateError) {
       setUpdateSubmitting(false);
@@ -621,29 +698,96 @@ export default function ScormsTable() {
 
     setRows((previousRows) =>
       previousRows.map((row) =>
-        row.id === updateTargetRow.id ? { ...row, scorm_estado: 'Actualizado pendiente de publicar' } : row
+        updateTargetRows.some((targetRow) => targetRow.id === row.id)
+          ? { ...row, scorm_estado: 'Actualizado pendiente de publicar' }
+          : row
       )
     );
     setDetailDraft((previous) =>
-      previous && previous.id === updateTargetRow.id
+      previous && updateTargetRows.some((targetRow) => targetRow.id === previous.id)
         ? { ...previous, scorm_estado: 'Actualizado pendiente de publicar' }
         : previous
     );
     setActiveRow((previous) =>
-      previous && previous.id === updateTargetRow.id
+      previous && updateTargetRows.some((targetRow) => targetRow.id === previous.id)
         ? { ...previous, scorm_estado: 'Actualizado pendiente de publicar' }
         : previous
     );
     setUpdateTargetRow(null);
+    setUpdateTargetRows([]);
+    setSelectedIds([]);
     setUpdateSubmitting(false);
-    setStatusMessage('Actualización SCORM registrada y estado cambiado a "Actualizado pendiente de publicar".');
+    setStatusMessage(
+      updateTargetRows.length === 1
+        ? 'Actualización SCORM registrada y estado cambiado a "Actualizado pendiente de publicar".'
+        : `${updateTargetRows.length} SCORMs actualizados y marcados como "Actualizado pendiente de publicar".`
+    );
+  };
+
+  const submitCreateScorm = async () => {
+    if (!createDraft) {
+      return;
+    }
+
+    const code = String(createDraft.scorm_code || '').trim().toUpperCase();
+    const name = String(createDraft.scorm_name || '').trim();
+
+    if (!code || !name) {
+      setError('Para crear el SCORM debes informar, como mínimo, Código y Nombre.');
+      return;
+    }
+
+    const alreadyExists = rows.some((row) => String(row.scorm_code || '').trim().toUpperCase() === code);
+    if (alreadyExists) {
+      setError(`El código ${code} ya existe. Usa otro código libre.`);
+      return;
+    }
+
+    setCreateSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const payload = editableColumns.reduce((acc, key) => {
+      const value = createDraft[key];
+      acc[key] = typeof value === 'string' ? value.trim() || null : value || null;
+      return acc;
+    }, {});
+
+    payload.scorm_code = code;
+
+    const { data, error: insertError } = await supabase.from('scorms_master').insert(payload).select('*').single();
+
+    if (insertError) {
+      setCreateSubmitting(false);
+      setError(`No se pudo crear el SCORM: ${insertError.message}`);
+      return;
+    }
+
+    if (data) {
+      setRows((previous) => [...previous, data]);
+    }
+
+    setCreateSubmitting(false);
+    setCreateDraft(null);
+    setStatusMessage(`SCORM ${code} creado correctamente.`);
   };
 
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.6.1</h2>
+        <h2>GScormer · v1.7.0</h2>
         <div className="header-actions">
+          <button type="button" onClick={openCreateModal}>
+            Crear SCORM
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => openUpdateModal(rows.filter((row) => selectedIds.includes(row.id)))}
+            disabled={selectedIds.length === 0}
+          >
+            Actualizar selección ({selectedIds.length})
+          </button>
           <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
             Deshacer
           </button>
@@ -741,6 +885,16 @@ export default function ScormsTable() {
           <table>
             <thead>
               <tr>
+                <th className="col-selector">
+                  <input
+                    type="checkbox"
+                    aria-label="Seleccionar todos los SCORM visibles"
+                    checked={
+                      filteredRows.length > 0 && filteredRows.every((row) => selectedIds.includes(row.id))
+                    }
+                    onChange={toggleAllFilteredRows}
+                  />
+                </th>
                 {columns.map((column) => (
                   <th key={column.key} className={`col-${column.key}`}>
                     {column.label}
@@ -752,6 +906,14 @@ export default function ScormsTable() {
             <tbody>
               {filteredRows.map((row) => (
                 <tr key={row.id}>
+                  <td className="col-selector">
+                    <input
+                      type="checkbox"
+                      aria-label={`Seleccionar SCORM ${getOfficialName(row)}`}
+                      checked={selectedIds.includes(row.id)}
+                      onChange={() => toggleSelection(row.id)}
+                    />
+                  </td>
                   {columns.map((column) => (
                     <td key={`${row.id}-${column.key}`} className={`col-${column.key}`}>
                       {column.key === 'scorm_url' ? (
@@ -780,7 +942,11 @@ export default function ScormsTable() {
                       <button type="button" onClick={() => openDetails(row)}>
                         Detalles
                       </button>
-                      <button type="button" className="secondary" onClick={() => openUpdateModal(row)}>
+                      <button
+                        type="button"
+                        className="secondary action-button"
+                        onClick={() => openUpdateModal(row)}
+                      >
                         Actualizar SCORM
                       </button>
                     </div>
@@ -857,7 +1023,11 @@ export default function ScormsTable() {
                             <button type="button" className="secondary" onClick={() => openDetails(row)}>
                               Detalles
                             </button>
-                            <button type="button" className="secondary" onClick={() => openUpdateModal(row)}>
+                            <button
+                              type="button"
+                              className="secondary action-button"
+                              onClick={() => openUpdateModal(row)}
+                            >
                               Actualizar SCORM
                             </button>
                           </div>
@@ -963,11 +1133,7 @@ export default function ScormsTable() {
                             <button type="button" onClick={() => openDetails(group.representativeRow)}>
                               Detalles
                             </button>
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={() => openUpdateModal(group.representativeRow)}
-                            >
+                            <button type="button" className="secondary action-button" onClick={() => openUpdateModal(group.representativeRow)}>
                               Actualizar SCORM
                             </button>
                           </div>
@@ -1018,7 +1184,7 @@ export default function ScormsTable() {
             </div>
 
             <footer className="modal-footer">
-              <button type="button" className="secondary" onClick={() => openUpdateModal(detailDraft)}>
+              <button type="button" className="secondary action-button" onClick={() => openUpdateModal(detailDraft)}>
                 Actualizar SCORM
               </button>
               <button type="button" onClick={saveDetails}>
@@ -1042,7 +1208,9 @@ export default function ScormsTable() {
               <div>
                 <h3 id="actualizacion-scorm-titulo">Actualizar SCORM</h3>
                 <p>
-                  {getOfficialName(updateTargetRow)} · {getInternationalizedCode(updateTargetRow)}
+                  {updateTargetRows.length === 1
+                    ? `${getOfficialName(updateTargetRow)} · ${getInternationalizedCode(updateTargetRow)}`
+                    : `${updateTargetRows.length} SCORMs seleccionados para actualizar`}
                 </p>
               </div>
               <button type="button" className="secondary" onClick={closeUpdateModal} disabled={updateSubmitting}>
@@ -1099,6 +1267,47 @@ export default function ScormsTable() {
             <footer className="modal-footer">
               <button type="button" onClick={submitScormUpdate} disabled={updateSubmitting}>
                 {updateSubmitting ? 'Registrando...' : 'Registrar actualización'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {createDraft && (
+        <div className="modal-overlay" role="presentation" onClick={closeCreateModal}>
+          <div
+            className="modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="crear-scorm-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="crear-scorm-titulo">Crear SCORM</h3>
+                <p>Nuevo registro completo en scorms_master con código sugerido libre.</p>
+              </div>
+              <button type="button" className="secondary" onClick={closeCreateModal} disabled={createSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <div className="details-grid">
+              {columns.map((column) => (
+                <label key={`create-${column.key}`}>
+                  <span>{column.label}</span>
+                  <input
+                    type="text"
+                    value={createDraft[column.key] || ''}
+                    onChange={(event) => updateCreateDraft(column.key, event.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitCreateScorm} disabled={createSubmitting}>
+                {createSubmitting ? 'Creando...' : 'Crear SCORM'}
               </button>
             </footer>
           </div>

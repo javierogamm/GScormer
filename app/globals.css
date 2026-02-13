@@ -465,6 +465,21 @@ input:focus {
   flex-wrap: wrap;
 }
 
+.action-button {
+  min-width: 132px;
+  text-align: center;
+}
+
+.col-selector {
+  width: 52px;
+  text-align: center;
+}
+
+.col-selector input {
+  width: 18px;
+  height: 18px;
+}
+
 .details-grid-single {
   grid-template-columns: 1fr;
 }
