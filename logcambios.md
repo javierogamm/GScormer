@@ -1,5 +1,23 @@
 # Log de cambios
 
+## v1.18.0 - Rediseño y reordenación del panel de filtros
+
+### Cambios consolidados
+- Se rediseñó el panel de filtros para que las cajas estén **siempre visibles**, eliminando la necesidad de abrir desplegables para escribir filtros.
+- Se reorganizó el orden de filtros en tres líneas:
+  - Línea 1: **Código SCORM**, **Nombre**.
+  - Línea 2: **Responsable**, **Clasificación**, **Estado**, **Idioma**.
+  - Línea 3: resto de campos.
+- En los filtros de **Responsable, Clasificación, Estado e Idioma** se sustituyó la entrada libre por un selector con valores posibles detectados automáticamente de los registros cargados.
+- Se aplicó un ajuste estético del panel para un estilo más fino (tarjetas más compactas, cabeceras suaves y espaciado reducido).
+- Se actualizó la versión visible de la APP a **v1.18.0** y el versionado de `package.json` a `1.18.0`.
+
+### Versionado
+- Versión anterior: `1.17.0`
+- Nueva versión consolidada: `1.18.0`
+
+---
+
 ## v1.17.0 - Orden de estados, KPI por bloque y deshacer/rehacer en vista por estado
 
 ### Cambios consolidados
