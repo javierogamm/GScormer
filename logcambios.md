@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.17.0 - Orden de estados, KPI por bloque y deshacer/rehacer en vista por estado
+
+### Cambios consolidados
+- En la vista por estado se ajustó el orden fijo de bloques a: **En proceso > Pendiente de publicar > Publicado > Actualizado pendiente de publicar** (y después el resto en orden alfabético).
+- En el encabezado de cada bloque de estado se añadió un **KPI dentro de un círculo** con el número de SCORMs de ese estado.
+- Se añadieron botones **Deshacer** y **Rehacer** visibles en la propia **Vista por estado** para revertir y reaplicar cambios manuales de estado (drag & drop).
+- Se actualizaron estilos visuales para los nuevos controles y badge circular de KPI.
+- Se actualizó la versión visible de la APP a **v1.17.0** y el versionado de `package.json` a `1.17.0`.
+
+### Versionado
+- Versión anterior: `1.16.0`
+- Nueva versión consolidada: `1.17.0`
+
+---
+
 ## v1.16.0 - Login de acceso con usuario conectado y cambio de contraseña
 
 ### Cambios consolidados
