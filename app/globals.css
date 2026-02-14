@@ -411,6 +411,12 @@ input:focus {
   padding-bottom: 0.4rem;
 }
 
+.status-board-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
 .status-lane {
   min-width: 360px;
   max-width: 420px;
@@ -437,10 +443,30 @@ input:focus {
   margin: 0;
 }
 
+.status-lane header h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .status-lane header p {
   color: var(--muted);
   font-size: 0.9rem;
   margin-top: 0.2rem;
+}
+
+.status-kpi-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #eaf2ff;
+  border: 1px solid #bfd4f8;
+  color: #2f5f9f;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .status-lane-cards {

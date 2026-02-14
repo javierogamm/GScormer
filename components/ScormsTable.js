@@ -24,7 +24,7 @@ const publishColumns = [
 
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
-const STATUS_ORDER = ['En proceso', 'Publicado', 'Actualizado pendiente de publicar'];
+const STATUS_ORDER = ['En proceso', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar'];
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT'];
 const UPDATE_TYPES = [
   'Cambios menores',
@@ -1009,7 +1009,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.16.0</h2>
+        <h2>GScormer · v1.17.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1213,94 +1213,109 @@ export default function ScormsTable() {
       )}
 
       {!loading && canRenderTable && viewMode === 'status' && (
-        <section className="status-board">
-          {stateGroups.map((group) => (
-            <article
-              key={group.state}
-              className={`status-lane ${dragOverState === group.state ? 'drag-over' : ''}`}
-              onDragOver={(event) => {
-                event.preventDefault();
-                if (dragOverState !== group.state) {
-                  setDragOverState(group.state);
-                }
-              }}
-              onDragEnter={() => setDragOverState(group.state)}
-              onDragLeave={() => {
-                if (dragOverState === group.state) {
-                  setDragOverState('');
-                }
-              }}
-              onDrop={(event) => handleDropInState(event, group.state)}
-            >
-              <header>
-                <h4>{group.state}</h4>
-                <p>{group.rows.length} SCORMs</p>
-              </header>
+        <>
+          <div className="status-board-actions">
+            <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
+              Deshacer
+            </button>
+            <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
+              Rehacer
+            </button>
+          </div>
 
-              <div className="status-lane-cards">
-                {group.rows.map((row) => {
-                  const isSelected = selectedIds.includes(row.id);
-                  const isExpanded = expandedCardIds.includes(row.id);
+          <section className="status-board">
+            {stateGroups.map((group) => (
+              <article
+                key={group.state}
+                className={`status-lane ${dragOverState === group.state ? 'drag-over' : ''}`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  if (dragOverState !== group.state) {
+                    setDragOverState(group.state);
+                  }
+                }}
+                onDragEnter={() => setDragOverState(group.state)}
+                onDragLeave={() => {
+                  if (dragOverState === group.state) {
+                    setDragOverState('');
+                  }
+                }}
+                onDrop={(event) => handleDropInState(event, group.state)}
+              >
+                <header>
+                  <h4>
+                    {group.state}
+                    <span className="status-kpi-circle" aria-label={`${group.rows.length} SCORMs en ${group.state}`}>
+                      {group.rows.length}
+                    </span>
+                  </h4>
+                </header>
 
-                  return (
-                    <div
-                      key={row.id}
-                      className={`status-card ${isSelected ? 'selected' : ''}`}
-                      draggable
-                      onDragStart={(event) => handleDragStart(event, row.id)}
-                      onDragEnd={handleDragEnd}
-                      onClick={(event) => handleCardClick(event, row.id)}
-                    >
-                      <div className="status-card-main">
-                        <strong>{getOfficialName(row)}</strong>
-                        <span>{getInternationalizedCode(row)}</span>
-                      </div>
-                      <span className="category-chip" style={getCategoryColor(row.scorm_categoria)}>
-                        {row.scorm_categoria || 'Sin categoría'}
-                      </span>
+                <div className="status-lane-cards">
+                  {group.rows.map((row) => {
+                    const isSelected = selectedIds.includes(row.id);
+                    const isExpanded = expandedCardIds.includes(row.id);
 
-                      {isExpanded && (
-                        <div className="status-card-details">
-                          <p>
-                            <strong>Responsable:</strong> {row.scorm_responsable || '-'}
-                          </p>
-                          <p>
-                            <strong>Tipo:</strong> {row.scorm_tipo || '-'}
-                          </p>
-                          <p>
-                            <strong>Subcategoría:</strong> {row.scorm_subcategoria || '-'}
-                          </p>
-                          <p>
-                            <strong>Etiquetas:</strong> {row.scorm_etiquetas || '-'}
-                          </p>
-                          <div className="card-actions">
-                            <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
-                              Detalles
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary action-button"
-                              onClick={() => openUpdateModal(row)}
-                            >
-                              Actualizar SCORM
-                            </button>
-                          </div>
-                          {row.scorm_url ? (
-                            <a href={row.scorm_url} target="_blank" rel="noreferrer" className="table-link">
-                              Abrir enlace
-                            </a>
-                          ) : (
-                            <span className="muted">Sin URL</span>
-                          )}
+                    return (
+                      <div
+                        key={row.id}
+                        className={`status-card ${isSelected ? 'selected' : ''}`}
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, row.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={(event) => handleCardClick(event, row.id)}
+                      >
+                        <div className="status-card-main">
+                          <strong>{getOfficialName(row)}</strong>
+                          <span>{getInternationalizedCode(row)}</span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </article>
-          ))}
-        </section>
+                        <span className="category-chip" style={getCategoryColor(row.scorm_categoria)}>
+                          {row.scorm_categoria || 'Sin categoría'}
+                        </span>
+
+                        {isExpanded && (
+                          <div className="status-card-details">
+                            <p>
+                              <strong>Responsable:</strong> {row.scorm_responsable || '-'}
+                            </p>
+                            <p>
+                              <strong>Tipo:</strong> {row.scorm_tipo || '-'}
+                            </p>
+                            <p>
+                              <strong>Subcategoría:</strong> {row.scorm_subcategoria || '-'}
+                            </p>
+                            <p>
+                              <strong>Etiquetas:</strong> {row.scorm_etiquetas || '-'}
+                            </p>
+                            <div className="card-actions">
+                              <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
+                                Detalles
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary action-button"
+                                onClick={() => openUpdateModal(row)}
+                              >
+                                Actualizar SCORM
+                              </button>
+                            </div>
+                            {row.scorm_url ? (
+                              <a href={row.scorm_url} target="_blank" rel="noreferrer" className="table-link">
+                                Abrir enlace
+                              </a>
+                            ) : (
+                              <span className="muted">Sin URL</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            ))}
+          </section>
+        </>
       )}
 
       {!loading && canRenderTable && viewMode === 'translations' && (
