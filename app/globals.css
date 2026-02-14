@@ -353,6 +353,27 @@ select {
 .filters-panel-body {
   padding: 0.2rem 0.65rem 0.65rem;
 }
+.filter-panel-title-interactive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.filter-panel-title-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.filter-collapse-button {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.filters-panel-body-collapsed {
+  display: none;
+}
 
 .filters-grid-row {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -605,6 +626,24 @@ input:focus {
   margin-bottom: 0.3rem;
   font-size: 0.9rem;
   font-weight: 600;
+}
+.details-table-wrapper {
+  margin-top: 0.2rem;
+}
+
+.details-edit-table {
+  min-width: 100%;
+}
+
+.details-edit-table th,
+.details-edit-table td {
+  position: static;
+}
+
+.details-edit-table td:first-child {
+  width: 220px;
+  font-weight: 600;
+  background: #f7fbff;
 }
 
 .modal-footer {

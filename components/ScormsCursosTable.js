@@ -46,6 +46,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
   const [expandedRows, setExpandedRows] = useState([]);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -166,64 +167,73 @@ export default function ScormsCursosTable({ onBackToScorms }) {
       {statusMessage ? <p className="status ok">{statusMessage}</p> : null}
       {error ? <p className="status error">{error}</p> : null}
 
-      <details className="table-filters-toggle global-filters-toggle" open>
-        <summary>Panel de filtros ({Object.keys(filters).length} activos)</summary>
-        <div className="filters-grid compact">
+      <section className="table-filters-toggle global-filters-toggle">
+        <div className="filter-panel-title filter-panel-title-interactive">
+          <div className="filter-panel-title-main">
+            <strong>Filtros</strong>
+            {Object.values(filters).flat().length > 0 ? <span className="filter-counter">{Object.values(filters).flat().length}</span> : null}
+          </div>
+          <button type="button" className="secondary filter-collapse-button" onClick={() => setFiltersCollapsed((previous) => !previous)}>
+            {filtersCollapsed ? 'Expandir' : 'Colapsar'}
+          </button>
+        </div>
+
+        <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
+          <div className="filters-grid compact">
           {columns.map((column) => {
             const appliedFilters = filters[column.key] || [];
 
             return (
-              <div key={column.key} className="filter-dropdown">
-                <details>
-                  <summary>
-                    {column.label}
-                    {appliedFilters.length > 0 ? <span className="filter-counter">{appliedFilters.length}</span> : null}
-                  </summary>
-                  <div className="filter-dropdown-content">
-                    <div className="filter-controls">
-                      <input
-                        type="text"
-                        value={filterInputs[column.key] || ''}
-                        onChange={(event) => handleFilterInputChange(column.key, event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            addFilter(column.key);
-                          }
-                        }}
-                        placeholder={`Añadir filtro en ${column.label}`}
-                      />
-                      <button type="button" className="secondary" onClick={() => addFilter(column.key)}>
-                        Añadir
-                      </button>
-                    </div>
-
-                    {appliedFilters.length > 0 ? (
-                      <>
-                        <div className="filter-tags">
-                          {appliedFilters.map((value) => (
-                            <button
-                              key={`${column.key}-${value}`}
-                              type="button"
-                              className="filter-tag"
-                              onClick={() => removeFilter(column.key, value)}
-                            >
-                              {value} ✕
-                            </button>
-                          ))}
-                        </div>
-                        <button type="button" className="clear-filters" onClick={() => clearFiltersForColumn(column.key)}>
-                          Quitar filtros
-                        </button>
-                      </>
-                    ) : null}
+              <div key={column.key} className="filter-dropdown filter-card">
+                <div className="filter-card-header">
+                  <span>{column.label}</span>
+                  {appliedFilters.length > 0 ? <span className="filter-counter">{appliedFilters.length}</span> : null}
+                </div>
+                <div className="filter-dropdown-content">
+                  <div className="filter-controls">
+                    <input
+                      type="text"
+                      value={filterInputs[column.key] || ''}
+                      onChange={(event) => handleFilterInputChange(column.key, event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addFilter(column.key);
+                        }
+                      }}
+                      placeholder={`Añadir filtro en ${column.label}`}
+                    />
+                    <button type="button" className="secondary" onClick={() => addFilter(column.key)}>
+                      Añadir
+                    </button>
                   </div>
-                </details>
+
+                  {appliedFilters.length > 0 ? (
+                    <>
+                      <div className="filter-tags">
+                        {appliedFilters.map((value) => (
+                          <button
+                            key={`${column.key}-${value}`}
+                            type="button"
+                            className="filter-tag"
+                            onClick={() => removeFilter(column.key, value)}
+                          >
+                            {value} ✕
+                          </button>
+                        ))}
+                      </div>
+                      <button type="button" className="clear-filters" onClick={() => clearFiltersForColumn(column.key)}>
+                        Quitar filtros
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
             );
           })}
+          </div>
         </div>
-      </details>
+      </section>
 
       <div className="table-wrapper">
         <table className="cursos-table compact-rows">
