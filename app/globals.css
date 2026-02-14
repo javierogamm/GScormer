@@ -675,3 +675,39 @@ textarea:focus {
 .expanded-detail-row td {
   background: #f7fbff !important;
 }
+
+.auth-page {
+  min-height: calc(100vh - 2rem);
+  display: grid;
+  place-items: center;
+}
+
+.auth-card {
+  width: min(420px, 100%);
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: #3e5475;
+}
+
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.user-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #2ac56d;
+  box-shadow: 0 0 0 2px rgba(42, 197, 109, 0.25);
+}

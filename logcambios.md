@@ -1,5 +1,22 @@
 # Log de cambios
 
+## v1.16.0 - Login de acceso con usuario conectado y cambio de contraseña
+
+### Cambios consolidados
+- Se creó la migración `20260214_create_scorms_users.sql` para incorporar la tabla `public.scorms_users` usada para gestionar accesos de la APP (`name`, `pass`, `admin`).
+- Se añadió una pantalla de **login obligatoria** al entrar a la APP, validando `name` + `pass` contra `scorms_users` antes de permitir acceso al contenido.
+- Se incorporó persistencia de sesión local para mantener el usuario autenticado tras recarga del navegador.
+- Con sesión iniciada, en la esquina superior derecha se añadió un botón compacto con el **nombre del usuario** y un **punto verde** de conexión.
+- Al pulsar el botón de usuario se abre un modal que permite **cambiar la contraseña** del usuario autenticado; el nuevo valor se sobrescribe en `scorms_users.pass`.
+- Se añadió acción de **Cerrar sesión** desde el modal de usuario.
+- Se actualizó la versión visible de la APP a **v1.16.0** y el versionado de `package.json` a `1.16.0`.
+
+### Versionado
+- Versión anterior: `1.15.1`
+- Nueva versión consolidada: `1.16.0`
+
+---
+
 ## v1.15.1 - Ajustes de navegación y detalle compacto en SCORMs Cursos
 
 ### Cambios consolidados
