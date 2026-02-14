@@ -212,6 +212,7 @@ export default function ScormsTable() {
   const [detailDraft, setDetailDraft] = useState(null);
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState('table');
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedCardIds, setExpandedCardIds] = useState([]);
@@ -1040,7 +1041,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.18.0</h2>
+        <h2>GScormer · v1.19.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1082,12 +1083,17 @@ export default function ScormsTable() {
 
       {!loading && canRenderTable && (
         <section className="table-filters-toggle global-filters-toggle">
-          <div className="filter-panel-title">
-            <strong>Filtros</strong>
-            {Object.values(filters).flat().length > 0 && <span className="filter-counter">{Object.values(filters).flat().length}</span>}
+          <div className="filter-panel-title filter-panel-title-interactive">
+            <div className="filter-panel-title-main">
+              <strong>Filtros</strong>
+              {Object.values(filters).flat().length > 0 && <span className="filter-counter">{Object.values(filters).flat().length}</span>}
+            </div>
+            <button type="button" className="secondary filter-collapse-button" onClick={() => setFiltersCollapsed((previous) => !previous)}>
+              {filtersCollapsed ? 'Expandir' : 'Colapsar'}
+            </button>
           </div>
 
-          <div className="filters-panel-body">
+          <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
             {orderedFilterColumns.map((filterRow, rowIndex) => (
               <div key={`filter-row-${rowIndex}`} className="filters-grid compact filters-grid-row">
                 {filterRow.map((column) => {
@@ -1613,17 +1619,29 @@ export default function ScormsTable() {
               </button>
             </header>
 
-            <div className="details-grid">
-              {columns.map((column) => (
-                <label key={`detail-${column.key}`}>
-                  <span>{column.label}</span>
-                  <input
-                    type="text"
-                    value={detailDraft[column.key] || ''}
-                    onChange={(event) => updateDetailDraft(column.key, event.target.value)}
-                  />
-                </label>
-              ))}
+            <div className="table-wrapper details-table-wrapper">
+              <table className="details-edit-table">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {columns.map((column) => (
+                    <tr key={`detail-${column.key}`}>
+                      <td>{column.label}</td>
+                      <td>
+                        <input
+                          type="text"
+                          value={detailDraft[column.key] || ''}
+                          onChange={(event) => updateDetailDraft(column.key, event.target.value)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             <footer className="modal-footer">

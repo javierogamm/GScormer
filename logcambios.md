@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.19.0 - Filtros colapsables unificados y detalle SCORM en tabla
+
+### Cambios consolidados
+- Se convirtió el panel global de **Filtros** en un bloque **colapsable/expandible** en la vista principal de SCORMs, manteniendo el recuento de filtros activos y toda la funcionalidad existente.
+- Se consolidó el mismo patrón visual y funcional de filtros en la vista **SCORMs Cursos** (panel completo con tarjetas de filtro visibles + botón Colapsar/Expandir).
+- El modal de **Detalles SCORM** se rediseñó a formato **tabla (Campo / Valor)**, manteniendo la editabilidad de todos los campos y los botones de acción ya existentes.
+- Se actualizaron estilos globales para soportar el nuevo encabezado interactivo de filtros, el estado colapsado y el formato tabular del detalle editable.
+- Se actualizó la versión visible de la APP a **v1.19.0** y el versionado de `package.json` a `1.19.0`.
+
+### Versionado
+- Versión anterior: `1.18.0`
+- Nueva versión consolidada: `1.19.0`
+
+---
+
 ## v1.18.0 - Rediseño y reordenación del panel de filtros
 
 ### Cambios consolidados
