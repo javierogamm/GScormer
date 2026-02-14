@@ -16,6 +16,17 @@ const columns = [
   { key: 'scorm_etiquetas', label: 'Etiquetas', editable: true },
 ];
 
+const FILTER_LAYOUT_ROWS = [
+  ['scorm_code', 'scorm_name'],
+  ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_idioma'],
+];
+
+const FILTER_SELECT_KEYS = ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_idioma'];
+
+const FILTER_LABELS = {
+  scorm_categoria: 'Clasificación',
+};
+
 const publishColumns = [
   ...columns.filter((column) => !['scorm_subcategoria', 'scorm_etiquetas'].includes(column.key)),
   { key: 'publication_update_type', label: 'Tipo de actualización', editable: false },
@@ -303,6 +314,26 @@ export default function ScormsTable() {
   }, [rows, filters]);
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
+
+  const filterOptionsByColumn = useMemo(() => {
+    return FILTER_SELECT_KEYS.reduce((acc, key) => {
+      const uniqueValues = [...new Set(rows.map((row) => String(row[key] || '').trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+      acc[key] = uniqueValues;
+      return acc;
+    }, {});
+  }, [rows]);
+
+  const orderedFilterColumns = useMemo(() => {
+    const layoutKeys = FILTER_LAYOUT_ROWS.flat();
+    const remainingColumns = columns.filter((column) => !layoutKeys.includes(column.key));
+
+    return [
+      ...FILTER_LAYOUT_ROWS.map((rowKeys) => rowKeys.map((key) => columns.find((column) => column.key === key)).filter(Boolean)),
+      remainingColumns,
+    ];
+  }, []);
 
   const availableLanguages = useMemo(() => {
     const discovered = new Set(
@@ -1009,7 +1040,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.17.0</h2>
+        <h2>GScormer · v1.18.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1050,65 +1081,97 @@ export default function ScormsTable() {
       )}
 
       {!loading && canRenderTable && (
-        <details className="table-filters-toggle global-filters-toggle">
-          <summary>
-            Filtros
+        <section className="table-filters-toggle global-filters-toggle">
+          <div className="filter-panel-title">
+            <strong>Filtros</strong>
             {Object.values(filters).flat().length > 0 && <span className="filter-counter">{Object.values(filters).flat().length}</span>}
-          </summary>
-          <div className="filters-grid compact">
-            {columns.map((column) => (
-              <details key={column.key} className="filter-dropdown">
-                <summary>
-                  {column.label}
-                  {(filters[column.key] || []).length > 0 && (
-                    <span className="filter-counter">{(filters[column.key] || []).length}</span>
-                  )}
-                </summary>
-                <div className="filter-dropdown-content">
-                  <div className="filter-controls">
-                    <input
-                      type="text"
-                      placeholder={`Añadir filtro en ${column.label}`}
-                      value={filterInputs[column.key] || ''}
-                      onChange={(event) =>
-                        setFilterInputs((previous) => ({
-                          ...previous,
-                          [column.key]: event.target.value,
-                        }))
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addFieldFilter(column.key);
-                        }
-                      }}
-                    />
-                    <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
-                      Añadir
-                    </button>
-                  </div>
-                  <div className="filter-tags">
-                    {(filters[column.key] || []).map((value) => (
-                      <button
-                        key={`${column.key}-${value}`}
-                        type="button"
-                        className="filter-tag"
-                        onClick={() => removeFieldFilter(column.key, value)}
-                      >
-                        {value} ✕
-                      </button>
-                    ))}
-                    {(filters[column.key] || []).length > 0 && (
-                      <button type="button" className="clear-filters" onClick={() => clearFieldFilters(column.key)}>
-                        Quitar filtros
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </details>
+          </div>
+
+          <div className="filters-panel-body">
+            {orderedFilterColumns.map((filterRow, rowIndex) => (
+              <div key={`filter-row-${rowIndex}`} className="filters-grid compact filters-grid-row">
+                {filterRow.map((column) => {
+                  const label = FILTER_LABELS[column.key] || column.label;
+                  const usesSelect = FILTER_SELECT_KEYS.includes(column.key);
+
+                  return (
+                    <div key={column.key} className="filter-dropdown filter-card">
+                      <div className="filter-card-header">
+                        <span>{label}</span>
+                        {(filters[column.key] || []).length > 0 && (
+                          <span className="filter-counter">{(filters[column.key] || []).length}</span>
+                        )}
+                      </div>
+
+                      <div className="filter-dropdown-content">
+                        <div className="filter-controls">
+                          {usesSelect ? (
+                            <select
+                              value={filterInputs[column.key] || ''}
+                              onChange={(event) =>
+                                setFilterInputs((previous) => ({
+                                  ...previous,
+                                  [column.key]: event.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">Selecciona un valor</option>
+                              {(filterOptionsByColumn[column.key] || []).map((option) => (
+                                <option key={`${column.key}-${option}`} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder={`Añadir filtro en ${label}`}
+                              value={filterInputs[column.key] || ''}
+                              onChange={(event) =>
+                                setFilterInputs((previous) => ({
+                                  ...previous,
+                                  [column.key]: event.target.value,
+                                }))
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  addFieldFilter(column.key);
+                                }
+                              }}
+                            />
+                          )}
+
+                          <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
+                            Añadir
+                          </button>
+                        </div>
+
+                        <div className="filter-tags">
+                          {(filters[column.key] || []).map((value) => (
+                            <button
+                              key={`${column.key}-${value}`}
+                              type="button"
+                              className="filter-tag"
+                              onClick={() => removeFieldFilter(column.key, value)}
+                            >
+                              {value} ✕
+                            </button>
+                          ))}
+                          {(filters[column.key] || []).length > 0 && (
+                            <button type="button" className="clear-filters" onClick={() => clearFieldFilters(column.key)}>
+                              Quitar filtros
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ))}
           </div>
-        </details>
+        </section>
       )}
 
       {!loading && canRenderTable && viewMode === 'table' && (
