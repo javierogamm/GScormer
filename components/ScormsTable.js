@@ -212,7 +212,7 @@ export default function ScormsTable() {
   const [detailDraft, setDetailDraft] = useState(null);
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [viewMode, setViewMode] = useState('table');
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedCardIds, setExpandedCardIds] = useState([]);

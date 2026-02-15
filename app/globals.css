@@ -806,6 +806,28 @@ textarea:focus {
   font-size: 0.82rem;
 }
 
+
+.cursos-table .col-curso_nombre {
+  min-width: 380px;
+  font-weight: 700;
+}
+
+.readonly-field span {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.readonly-field p {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #d8e4f7;
+  border-radius: 8px;
+  background: #f7fbff;
+  color: #2d4566;
+}
+
 .cursos-table .first-col-detail {
   min-width: 110px;
 }

@@ -30,7 +30,7 @@ const columns = [
   { key: 'link_inscripcion', label: 'Link inscripción' },
 ];
 
-const compactColumns = ['categoria', 'subcategoria', 'tipologia', 'materia', 'curso_codigo', 'curso_nombre', 'existe'];
+const compactColumns = ['curso_codigo', 'curso_nombre'];
 const detailColumns = columns.filter((column) => !compactColumns.includes(column.key));
 
 const isUrl = (value) => {
@@ -72,7 +72,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
   const [expandedRows, setExpandedRows] = useState([]);
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [scormsModalRow, setScormsModalRow] = useState(null);
 
   const fetchData = useCallback(async () => {
@@ -162,13 +162,6 @@ export default function ScormsCursosTable({ onBackToScorms }) {
     return Array.from(dedupedMatches.values());
   }, [scormsByCode, scormsModalRow]);
 
-  const activeScormReferences = useMemo(() => {
-    if (!scormsModalRow) {
-      return [];
-    }
-
-    return extractScormReferencesFromContenido(scormsModalRow.contenido);
-  }, [scormsModalRow]);
 
   const toggleExpandRow = (rowId) => {
     setExpandedRows((previous) =>
@@ -325,12 +318,12 @@ export default function ScormsCursosTable({ onBackToScorms }) {
         <table className="cursos-table compact-rows">
           <thead>
             <tr>
-              <th>Detalle</th>
               <th>SCORMs</th>
               {compactColumns.map((columnKey) => {
                 const column = columns.find((item) => item.key === columnKey);
                 return <th key={column.key}>{column.label}</th>;
               })}
+              <th>Detalle</th>
             </tr>
           </thead>
           <tbody>
@@ -339,11 +332,6 @@ export default function ScormsCursosTable({ onBackToScorms }) {
 
               return [
                 <tr key={`row-${row.id}`}>
-                  <td className="first-col-detail">
-                    <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
-                      {isExpanded ? 'Colapsar' : 'Expandir'}
-                    </button>
-                  </td>
                   <td>
                     <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
                       Scorms
@@ -364,6 +352,11 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                       </td>
                     );
                   })}
+                  <td className="first-col-detail">
+                    <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
+                      {isExpanded ? 'Colapsar' : 'Expandir'}
+                    </button>
+                  </td>
                 </tr>,
                 isExpanded ? (
                   <tr key={`detail-${row.id}`} className="expanded-detail-row">
@@ -393,9 +386,6 @@ export default function ScormsCursosTable({ onBackToScorms }) {
             <div className="modal-header">
               <div>
                 <h3>SCORMs asociados</h3>
-                <p>
-                  Curso <strong>{String(scormsModalRow.curso_codigo || '-')}</strong> · Contenido: {String(scormsModalRow.contenido || '-')}.
-                </p>
               </div>
               <button type="button" className="secondary" onClick={() => setScormsModalRow(null)}>
                 Cerrar
@@ -407,7 +397,9 @@ export default function ScormsCursosTable({ onBackToScorms }) {
             ) : (
               <div className="scorms-accordion-list">
                 {activeScormMatches.map((scorm) => {
-                  const detailEntries = Object.entries(scorm).filter(([key]) => !['scorm_code', 'scorm_name', 'scorm_responsable', 'scorm_url'].includes(key));
+                  const detailEntries = Object.entries(scorm).filter(
+                    ([key]) => !['id', 'created_at', 'scorm_code', 'scorm_name', 'scorm_responsable', 'scorm_url'].includes(key),
+                  );
 
                   return (
                     <details key={scorm.id} className="scorms-accordion-item">
@@ -418,7 +410,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                           <span>{String(scorm.scorm_responsable || '-')}</span>
                           {isUrl(scorm.scorm_url) ? (
                             <a href={scorm.scorm_url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-                              {scorm.scorm_url}
+                              Link RISE
                             </a>
                           ) : (
                             <span>{String(scorm.scorm_url || '-')}</span>
@@ -428,27 +420,16 @@ export default function ScormsCursosTable({ onBackToScorms }) {
 
                       <div className="details-grid scorm-modal-details-grid">
                         {detailEntries.map(([key, value]) => (
-                          <label key={`${scorm.id}-${key}`}>
+                          <div key={`${scorm.id}-${key}`} className="readonly-field">
                             <span>{formatFieldLabel(key)}</span>
-                            <input readOnly value={String(value || '')} />
-                          </label>
+                            <p>{String(value || '-')}</p>
+                          </div>
                         ))}
                       </div>
                     </details>
                   );
                 })}
               </div>
-            )}
-
-            {activeScormReferences.length > 0 ? (
-              <p className="status">
-                Referencias detectadas:{' '}
-                {activeScormReferences
-                  .map((reference) => (reference.language ? `${reference.language}-${reference.code}` : reference.code))
-                  .join(', ')}
-              </p>
-            ) : (
-              <p className="status">No se detectaron referencias con el patrón SCR#### en el campo contenido.</p>
             )}
           </section>
         </div>

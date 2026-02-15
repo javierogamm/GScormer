@@ -1,5 +1,26 @@
 # Log de cambios
 
+## v1.21.0 - Filtros colapsados por defecto y ajuste del modal de SCORMs en Cursos
+
+### Cambios consolidados
+- Se configuró el comportamiento global de paneles de filtros para que arranquen **colapsados por defecto** en todas las vistas principales (`SCORMs` y `SCORMs Cursos`).
+- En la tabla compacta de **SCORMs Cursos** se redistribuyeron las columnas para priorizar la operación solicitada:
+  - columna 1: botón **Scorms**,
+  - columna 2: **Curso código**,
+  - columna 3: **Curso nombre** (en negrita y con mayor anchura),
+  - última columna: acción **Detalle**.
+- En el modal de SCORMs dentro de cursos se eliminó el bloque textual superior con el contenido del curso, dejando la experiencia centrada en el acordeón.
+- En el resumen del acordeón se cambió la visualización del enlace a etiqueta fija **"Link RISE"** con hipervínculo.
+- En el detalle expandido del acordeón se ocultaron los campos **ID** y **CREATED AT**.
+- Los campos del detalle del acordeón se dejaron en modo de **solo lectura no editable** con representación visual tipo texto.
+- Se actualizó la versión visible de la APP en `package.json` a `1.21.0`.
+
+### Versionado
+- Versión anterior: `1.20.0`
+- Nueva versión consolidada: `1.21.0`
+
+---
+
 ## v1.20.0 - Vinculación Cursos ↔ SCORM Master con modal de acordeón
 
 ### Cambios consolidados
