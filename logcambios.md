@@ -1,5 +1,22 @@
 # Log de cambios
 
+## v1.20.0 - Vinculación Cursos ↔ SCORM Master con modal de acordeón
+
+### Cambios consolidados
+- Se conectó la vista **SCORMs Cursos** con la tabla `scorms_master`, cargando ambos datasets en paralelo para resolver referencias de contenido de curso contra SCORMs master.
+- Se añadió una nueva columna de acción **Scorms** en cada fila de cursos; al pulsarla se abre un modal dedicado por curso.
+- En el modal se incorporó un acordeón de SCORMs detectados en `contenido` mediante patrón `SCR####` con prefijo de idioma opcional (`ES-`, `CAT-`, `PT-`, etc.), aplicando filtro de idioma cuando viene informado en el contenido.
+- El primer nivel del acordeón muestra: **`scorm_code`** (en negrita), `scorm_name`, `scorm_responsable` y `scorm_url` navegable.
+- Al expandir cada elemento se muestran el resto de campos disponibles del registro en `scorms_master` en formato de detalle de solo lectura.
+- Se añadieron estilos globales para el acordeón y la presentación en rejilla de los campos dentro del modal.
+- Se actualizó la versión visible de la APP en `package.json` a `1.20.0`.
+
+### Versionado
+- Versión anterior: `1.19.0`
+- Nueva versión consolidada: `1.20.0`
+
+---
+
 ## v1.19.0 - Filtros colapsables unificados y detalle SCORM en tabla
 
 ### Cambios consolidados
