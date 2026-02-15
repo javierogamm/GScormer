@@ -38,8 +38,34 @@ const isUrl = (value) => {
   return normalized.startsWith('http://') || normalized.startsWith('https://');
 };
 
+const SCORM_CODE_REGEX = /(?:\b([a-z]{2,3})\s*[-_]\s*)?\b(SCR\d{4})\b/gi;
+
+const formatFieldLabel = (key) => {
+  return String(key || '')
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const extractScormReferencesFromContenido = (contenido) => {
+  const references = [];
+  const source = String(contenido || '');
+  SCORM_CODE_REGEX.lastIndex = 0;
+  let match = SCORM_CODE_REGEX.exec(source);
+
+  while (match) {
+    references.push({
+      language: String(match[1] || '').trim().toUpperCase(),
+      code: String(match[2] || '').trim().toUpperCase(),
+    });
+    match = SCORM_CODE_REGEX.exec(source);
+  }
+
+  return references;
+};
+
 export default function ScormsCursosTable({ onBackToScorms }) {
   const [rows, setRows] = useState([]);
+  const [masterRows, setMasterRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -47,19 +73,30 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   const [filters, setFilters] = useState({});
   const [expandedRows, setExpandedRows] = useState([]);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [scormsModalRow, setScormsModalRow] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
 
-    const response = await supabase.from('scorms_cursos').select('*').order('id', { ascending: true });
+    const [cursosResponse, masterResponse] = await Promise.all([
+      supabase.from('scorms_cursos').select('*').order('id', { ascending: true }),
+      supabase.from('scorms_master').select('*').order('id', { ascending: true }),
+    ]);
 
-    if (response.error) {
+    if (cursosResponse.error) {
       setRows([]);
-      setError(`No se pudieron cargar los cursos: ${response.error.message}`);
+      setError(`No se pudieron cargar los cursos: ${cursosResponse.error.message}`);
     } else {
-      setRows(response.data || []);
-      setStatusMessage(`Cursos cargados: ${(response.data || []).length}`);
+      setRows(cursosResponse.data || []);
+      setStatusMessage(`Cursos cargados: ${(cursosResponse.data || []).length}`);
+    }
+
+    if (masterResponse.error) {
+      setMasterRows([]);
+      setError((previous) => previous || `No se pudieron cargar los SCORMs master: ${masterResponse.error.message}`);
+    } else {
+      setMasterRows(masterResponse.data || []);
     }
 
     setLoading(false);
@@ -83,6 +120,55 @@ export default function ScormsCursosTable({ onBackToScorms }) {
       });
     });
   }, [rows, filters]);
+
+  const scormsByCode = useMemo(() => {
+    return masterRows.reduce((acc, row) => {
+      const code = String(row.scorm_code || '').trim().toUpperCase();
+
+      if (!code) {
+        return acc;
+      }
+
+      if (!acc[code]) {
+        acc[code] = [];
+      }
+
+      acc[code].push(row);
+      return acc;
+    }, {});
+  }, [masterRows]);
+
+  const activeScormMatches = useMemo(() => {
+    if (!scormsModalRow) {
+      return [];
+    }
+
+    const references = extractScormReferencesFromContenido(scormsModalRow.contenido);
+    const dedupedMatches = new Map();
+
+    references.forEach((reference) => {
+      const masterMatches = scormsByCode[reference.code] || [];
+
+      masterMatches.forEach((match) => {
+        const language = String(match.scorm_idioma || '').trim().toUpperCase();
+        if (reference.language && language && reference.language !== language) {
+          return;
+        }
+
+        dedupedMatches.set(match.id, match);
+      });
+    });
+
+    return Array.from(dedupedMatches.values());
+  }, [scormsByCode, scormsModalRow]);
+
+  const activeScormReferences = useMemo(() => {
+    if (!scormsModalRow) {
+      return [];
+    }
+
+    return extractScormReferencesFromContenido(scormsModalRow.contenido);
+  }, [scormsModalRow]);
 
   const toggleExpandRow = (rowId) => {
     setExpandedRows((previous) =>
@@ -240,6 +326,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
           <thead>
             <tr>
               <th>Detalle</th>
+              <th>SCORMs</th>
               {compactColumns.map((columnKey) => {
                 const column = columns.find((item) => item.key === columnKey);
                 return <th key={column.key}>{column.label}</th>;
@@ -255,6 +342,11 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                   <td className="first-col-detail">
                     <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
                       {isExpanded ? 'Colapsar' : 'Expandir'}
+                    </button>
+                  </td>
+                  <td>
+                    <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
+                      Scorms
                     </button>
                   </td>
                   {compactColumns.map((columnKey) => {
@@ -275,7 +367,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                 </tr>,
                 isExpanded ? (
                   <tr key={`detail-${row.id}`} className="expanded-detail-row">
-                    <td colSpan={compactColumns.length + 1}>
+                    <td colSpan={compactColumns.length + 2}>
                       <div className="details-grid">
                         {detailColumns.map((column) => (
                           <label key={`detail-${row.id}-${column.key}`}>
@@ -294,6 +386,73 @@ export default function ScormsCursosTable({ onBackToScorms }) {
       </div>
 
       {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
+
+      {scormsModalRow ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setScormsModalRow(null)}>
+          <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>SCORMs asociados</h3>
+                <p>
+                  Curso <strong>{String(scormsModalRow.curso_codigo || '-')}</strong> · Contenido: {String(scormsModalRow.contenido || '-')}.
+                </p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setScormsModalRow(null)}>
+                Cerrar
+              </button>
+            </div>
+
+            {activeScormMatches.length === 0 ? (
+              <p className="status">No se encontraron SCORMs master para las referencias detectadas en contenido.</p>
+            ) : (
+              <div className="scorms-accordion-list">
+                {activeScormMatches.map((scorm) => {
+                  const detailEntries = Object.entries(scorm).filter(([key]) => !['scorm_code', 'scorm_name', 'scorm_responsable', 'scorm_url'].includes(key));
+
+                  return (
+                    <details key={scorm.id} className="scorms-accordion-item">
+                      <summary>
+                        <span className="scorm-summary-grid">
+                          <strong>{String(scorm.scorm_code || '-')}</strong>
+                          <span>{String(scorm.scorm_name || '-')}</span>
+                          <span>{String(scorm.scorm_responsable || '-')}</span>
+                          {isUrl(scorm.scorm_url) ? (
+                            <a href={scorm.scorm_url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                              {scorm.scorm_url}
+                            </a>
+                          ) : (
+                            <span>{String(scorm.scorm_url || '-')}</span>
+                          )}
+                        </span>
+                      </summary>
+
+                      <div className="details-grid scorm-modal-details-grid">
+                        {detailEntries.map(([key, value]) => (
+                          <label key={`${scorm.id}-${key}`}>
+                            <span>{formatFieldLabel(key)}</span>
+                            <input readOnly value={String(value || '')} />
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeScormReferences.length > 0 ? (
+              <p className="status">
+                Referencias detectadas:{' '}
+                {activeScormReferences
+                  .map((reference) => (reference.language ? `${reference.language}-${reference.code}` : reference.code))
+                  .join(', ')}
+              </p>
+            ) : (
+              <p className="status">No se detectaron referencias con el patrón SCR#### en el campo contenido.</p>
+            )}
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

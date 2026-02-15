@@ -627,6 +627,50 @@ input:focus {
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+.scorms-accordion-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.scorms-accordion-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fafdff;
+}
+
+.scorms-accordion-item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.7rem;
+  background: #eef5ff;
+}
+
+.scorms-accordion-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.scorm-summary-grid {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: 140px minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(220px, 1fr);
+  align-items: center;
+}
+
+.scorm-summary-grid a {
+  color: #2f6fb9;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.scorm-summary-grid a:hover {
+  text-decoration: underline;
+}
+
+.scorm-modal-details-grid {
+  padding: 0.8rem;
+}
 .details-table-wrapper {
   margin-top: 0.2rem;
 }
