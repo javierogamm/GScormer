@@ -30,7 +30,7 @@ const columns = [
   { key: 'link_inscripcion', label: 'Link inscripción' },
 ];
 
-const compactColumns = ['curso_codigo', 'curso_nombre'];
+const compactColumns = ['curso_codigo', 'curso_nombre', 'tipologia', 'materia', 'pa_nombre', 'curso_instructor', 'curso_url'];
 const detailColumns = columns.filter((column) => !compactColumns.includes(column.key));
 
 const isUrl = (value) => {
@@ -342,7 +342,11 @@ export default function ScormsCursosTable({ onBackToScorms }) {
 
                     return (
                       <td key={`${row.id}-${columnKey}`} className={columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''}>
-                        {isUrl(value) ? (
+                        {columnKey === 'curso_url' && isUrl(value) ? (
+                          <a className="table-link" href={value} target="_blank" rel="noreferrer">
+                            LINK
+                          </a>
+                        ) : isUrl(value) ? (
                           <a className="table-link" href={value} target="_blank" rel="noreferrer">
                             Abrir enlace
                           </a>

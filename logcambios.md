@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.22.0 - Nuevas columnas visibles en vista de Cursos
+
+### Cambios consolidados
+- En la tabla compacta de **SCORMs Cursos** se añadieron las columnas visibles solicitadas: **Tipología**, **Materia**, **PA Nombre**, **Curso instructor** y **URL curso**.
+- Se mantuvo **Detalle** como la última columna a la derecha.
+- Se conservó **Curso nombre** como la columna más ancha para priorizar la legibilidad del título del curso.
+- En la columna **URL curso** el enlace ahora se muestra con la palabra fija **"LINK"** cuando existe una URL válida.
+- Se actualizó la versión visible de la APP en `package.json` a `1.22.0`.
+
+### Versionado
+- Versión anterior: `1.21.0`
+- Nueva versión consolidada: `1.22.0`
+
+---
+
 ## v1.21.0 - Filtros colapsados por defecto y ajuste del modal de SCORMs en Cursos
 
 ### Cambios consolidados
