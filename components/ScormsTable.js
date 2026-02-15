@@ -520,6 +520,30 @@ export default function ScormsTable() {
     }));
   };
 
+  const toggleCellFilter = (field, rawValue) => {
+    const nextValue = String(rawValue || '').trim();
+    if (!nextValue || nextValue === '-') {
+      return;
+    }
+
+    setFilters((previous) => {
+      const previousValues = previous[field] || [];
+      const alreadyExists = previousValues.some((value) => value.toLowerCase() === nextValue.toLowerCase());
+
+      if (alreadyExists) {
+        return {
+          ...previous,
+          [field]: previousValues.filter((value) => value.toLowerCase() !== nextValue.toLowerCase()),
+        };
+      }
+
+      return {
+        ...previous,
+        [field]: [...previousValues, nextValue],
+      };
+    });
+  };
+
   const openDetails = (row) => {
     setActiveRow(row);
     setDetailDraft({ ...row });
@@ -1041,7 +1065,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.19.0</h2>
+        <h2>GScormer · v1.23.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1237,29 +1261,52 @@ export default function ScormsTable() {
                       onChange={() => toggleSelection(row.id)}
                     />
                   </td>
-                  {columns.map((column) => (
-                    <td key={`${row.id}-${column.key}`} className={`col-${column.key}`}>
-                      {column.key === 'scorm_url' ? (
-                        row[column.key] ? (
-                          <a href={row[column.key]} target="_blank" rel="noreferrer" className="table-link">
-                            Abrir enlace
-                          </a>
+                  {columns.map((column) => {
+                    const displayValue =
+                      column.key === 'scorm_name'
+                        ? getOfficialName(row)
+                        : column.key === 'scorm_code'
+                          ? getInternationalizedCode(row)
+                          : row[column.key] || '-';
+                    const hasActiveValueFilter = (filters[column.key] || []).some(
+                      (filterValue) => filterValue.toLowerCase() === String(displayValue || '').trim().toLowerCase()
+                    );
+
+                    return (
+                      <td
+                        key={`${row.id}-${column.key}`}
+                        className={`col-${column.key} cell-selectable ${hasActiveValueFilter ? 'cell-selected' : ''}`}
+                        onClick={() => toggleCellFilter(column.key, displayValue)}
+                        title="Click para filtrar por este valor"
+                      >
+                        {column.key === 'scorm_url' ? (
+                          row[column.key] ? (
+                            <a
+                              href={row[column.key]}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="table-link"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              Abrir enlace
+                            </a>
+                          ) : (
+                            <span className="muted">Sin URL</span>
+                          )
+                        ) : column.key === 'scorm_categoria' ? (
+                          <span className="category-chip" style={getCategoryColor(row[column.key])}>
+                            {row[column.key] || 'Sin categoría'}
+                          </span>
+                        ) : column.key === 'scorm_name' ? (
+                          <span>{getOfficialName(row)}</span>
+                        ) : column.key === 'scorm_code' ? (
+                          <span>{getInternationalizedCode(row)}</span>
                         ) : (
-                          <span className="muted">Sin URL</span>
-                        )
-                      ) : column.key === 'scorm_categoria' ? (
-                        <span className="category-chip" style={getCategoryColor(row[column.key])}>
-                          {row[column.key] || 'Sin categoría'}
-                        </span>
-                      ) : column.key === 'scorm_name' ? (
-                        <span>{getOfficialName(row)}</span>
-                      ) : column.key === 'scorm_code' ? (
-                        <span>{getInternationalizedCode(row)}</span>
-                      ) : (
-                        <span>{row[column.key] || '-'}</span>
-                      )}
-                    </td>
-                  ))}
+                          <span>{row[column.key] || '-'}</span>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td>
                     <div className="row-actions">
                       <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
