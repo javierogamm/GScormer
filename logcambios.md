@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.23.0 - Selección por clic en tablas Master y Cursos (estilo Qlik)
+
+### Cambios consolidados
+- Se añadió funcionalidad **select on click** en la tabla de **SCORMs Master**: al hacer clic en una celda de datos, se aplica (o quita) automáticamente un filtro con el valor de esa celda en su misma columna.
+- Se añadió la misma funcionalidad **select on click** en la tabla de **SCORMs Cursos** sobre las columnas visibles de la vista compacta.
+- Los valores ya seleccionados quedan resaltados visualmente dentro de la tabla para identificar de forma inmediata qué selecciones están activas.
+- Se añadió estilo visual de celdas seleccionables (`hover` + estado seleccionado) para mejorar la experiencia de uso tipo Qlik.
+- Se actualizó la versión visible de la APP en cabecera y el versionado de `package.json` a `1.23.0`.
+
+### Versionado
+- Versión anterior: `1.22.0`
+- Nueva versión consolidada: `1.23.0`
+
+---
+
 ## v1.22.0 - Nuevas columnas visibles en vista de Cursos
 
 ### Cambios consolidados

@@ -224,6 +224,37 @@ export default function ScormsCursosTable({ onBackToScorms }) {
     });
   };
 
+  const toggleCellFilter = (columnKey, rawValue) => {
+    const normalizedValue = String(rawValue || '').trim();
+
+    if (!normalizedValue || normalizedValue === '-') {
+      return;
+    }
+
+    setFilters((previous) => {
+      const existingValues = previous[columnKey] || [];
+      const alreadyExists = existingValues.some((value) => value.toLowerCase() === normalizedValue.toLowerCase());
+
+      if (alreadyExists) {
+        const nextValues = existingValues.filter((value) => value.toLowerCase() !== normalizedValue.toLowerCase());
+        if (nextValues.length === 0) {
+          const { [columnKey]: _removed, ...rest } = previous;
+          return rest;
+        }
+
+        return {
+          ...previous,
+          [columnKey]: nextValues,
+        };
+      }
+
+      return {
+        ...previous,
+        [columnKey]: [...existingValues, normalizedValue],
+      };
+    });
+  };
+
   return (
     <section className="card card-wide">
       <div className="card-header">
@@ -339,15 +370,23 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                   </td>
                   {compactColumns.map((columnKey) => {
                     const value = row[columnKey];
+                    const hasActiveValueFilter = (filters[columnKey] || []).some(
+                      (filterValue) => filterValue.toLowerCase() === String(value || '').trim().toLowerCase(),
+                    );
 
                     return (
-                      <td key={`${row.id}-${columnKey}`} className={columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''}>
+                      <td
+                        key={`${row.id}-${columnKey}`}
+                        className={`${columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''} cell-selectable ${hasActiveValueFilter ? 'cell-selected' : ''}`}
+                        onClick={() => toggleCellFilter(columnKey, value)}
+                        title="Click para filtrar por este valor"
+                      >
                         {columnKey === 'curso_url' && isUrl(value) ? (
-                          <a className="table-link" href={value} target="_blank" rel="noreferrer">
+                          <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                             LINK
                           </a>
                         ) : isUrl(value) ? (
-                          <a className="table-link" href={value} target="_blank" rel="noreferrer">
+                          <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                             Abrir enlace
                           </a>
                         ) : (
