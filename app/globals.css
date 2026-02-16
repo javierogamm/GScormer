@@ -704,6 +704,38 @@ input:focus {
 }
 
 
+.course-level-1 > summary {
+  background: #e5f0ff;
+}
+
+.course-level-2 {
+  border-color: #d9e6f5;
+  background: #fcfdff;
+}
+
+.course-level-2 > summary {
+  background: #f4f8fd;
+  color: #2f4258;
+  font-weight: 400;
+}
+
+.course-level-3 {
+  border-color: #e3ecf7;
+  background: #ffffff;
+}
+
+.course-level-3 > summary {
+  background: #f8fbff;
+  color: #4b5f76;
+  font-weight: 400;
+}
+
+.course-level-2 .course-summary-grid,
+.course-level-3 .course-summary-grid {
+  font-weight: 400;
+}
+
+
 .individuales-view {
   display: grid;
   gap: 0.7rem;

@@ -1203,7 +1203,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.27.3</h2>
+        <h2>GScormer · v1.27.4</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -2076,7 +2076,7 @@ export default function ScormsTable() {
                   );
 
                   return (
-                    <details key={individualGroup.key} className="scorms-accordion-item">
+                    <details key={individualGroup.key} className="scorms-accordion-item course-level-1">
                       <summary>
                         <span className="course-summary-grid">
                           <strong>{level1CourseName}</strong>
@@ -2098,20 +2098,20 @@ export default function ScormsTable() {
                           ];
 
                           return (
-                            <details key={`${individualGroup.key}-${courseGroup.key}`} className="scorms-accordion-item">
+                            <details key={`${individualGroup.key}-${courseGroup.key}`} className="scorms-accordion-item course-level-2">
                               <summary>
                                 <span className="course-summary-grid">
-                                  <strong>{level2CourseName}</strong>
+                                  <span>{level2CourseName}</span>
                                   <span>{courseGroup.title}</span>
                                   <span>{courseGroup.rows.length} registro(s)</span>
                                   <span>Nivel 2 · Cursos</span>
                                 </span>
                               </summary>
 
-                              <details className="scorms-accordion-item" open>
+                              <details className="scorms-accordion-item course-level-3" open>
                                 <summary>
                                   <span className="course-summary-grid">
-                                    <strong>Detalles</strong>
+                                    <span>Detalles</span>
                                     <span>{level2CourseName}</span>
                                     <span>Tabla de campos</span>
                                     <span>Nivel 3</span>
