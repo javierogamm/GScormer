@@ -1,5 +1,19 @@
 # Log de cambios
 
+## v1.29.0 - Reenganche de agente y filtros aproximados en Mis scorms/Mis cursos
+
+### Cambios consolidados
+- Se añadió el botón **Identificar agente** en el modal de usuario para enganchar/reenganchar en caliente el agente asociado al usuario conectado, refrescando sesión y `localStorage` sin cerrar sesión.
+- En **Mis scorms**, el matching de responsable/agente ahora intenta primero coincidencia exacta normalizada y, si no existe, aplica coincidencia aproximada por `contiene` para soportar casos como `Miguel Ángel` vs `Miguel Ángel Larraga`.
+- En la vista **SCORMs Cursos**, se añadió el botón **Mis cursos** con el mismo criterio de matching aproximado sobre `curso_instructor` (exacto y fallback por contiene).
+- Se centralizó la versión en `lib/appVersion.js`, se actualizó la versión visible de la APP a **v1.29.0** y el `package.json` a `1.29.0`.
+
+### Versionado
+- Versión anterior: `1.28.3`
+- Nueva versión consolidada: `1.29.0`
+
+---
+
 ## v1.28.3 - Visualización de agent sin alterar login
 
 ### Cambios consolidados
