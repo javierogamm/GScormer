@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const columns = [
+  { key: 'codigo_individual', label: 'Código individual' },
   { key: 'categoria', label: 'Categoría' },
   { key: 'subcategoria', label: 'Subcategoría' },
   { key: 'tipologia', label: 'Tipología' },
@@ -75,6 +76,7 @@ const extractScormReferencesFromContenido = (contenido) => {
 };
 
 export default function ScormsCursosTable({ onBackToScorms }) {
+  const [cursosSubView, setCursosSubView] = useState('general');
   const [rows, setRows] = useState([]);
   const [masterRows, setMasterRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   const [expandedRows, setExpandedRows] = useState([]);
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [scormsModalRow, setScormsModalRow] = useState(null);
+  const [detailModalRow, setDetailModalRow] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState({
@@ -98,6 +101,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
     curso_descripcion: '',
     link_inscripcion: '',
     observaciones: '',
+    codigo_individual: '',
   });
   const [scormSearchText, setScormSearchText] = useState('');
   const [selectedScormIds, setSelectedScormIds] = useState([]);
@@ -223,8 +227,35 @@ export default function ScormsCursosTable({ onBackToScorms }) {
       curso_descripcion: '',
       link_inscripcion: '',
       observaciones: '',
+      codigo_individual: '',
     });
   };
+
+  const individualCourseGroups = useMemo(() => {
+    const grouped = filteredRows.reduce((acc, row) => {
+      const key = String(row.codigo_individual || '').trim() || 'SIN_CODIGO_INDIVIDUAL';
+
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+
+      acc[key].push(row);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([codeKey, groupRows]) => {
+        const firstRow = groupRows[0] || {};
+        return {
+          codeKey,
+          codeLabel: codeKey === 'SIN_CODIGO_INDIVIDUAL' ? 'Sin código individual' : codeKey,
+          materia: String(firstRow.materia || '-'),
+          cursoNombre: String(firstRow.curso_nombre || '-'),
+          rows: groupRows,
+        };
+      })
+      .sort((left, right) => left.codeLabel.localeCompare(right.codeLabel, 'es', { sensitivity: 'base' }));
+  }, [filteredRows]);
 
   const submitCreateCurso = async () => {
     const cursoNombre = String(createDraft.curso_nombre || '').trim();
@@ -358,10 +389,24 @@ export default function ScormsCursosTable({ onBackToScorms }) {
     <section className="card card-wide">
       <div className="card-header">
         <div>
-          <h2>SCORMs Cursos · Vista general</h2>
+          <h2>SCORMs Cursos · {cursosSubView === 'general' ? 'Vista general' : 'Cursos individuales'}</h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
         <div className="header-actions">
+          <button
+            type="button"
+            className={cursosSubView === 'general' ? '' : 'secondary'}
+            onClick={() => setCursosSubView('general')}
+          >
+            Vista general
+          </button>
+          <button
+            type="button"
+            className={cursosSubView === 'individuales' ? '' : 'secondary'}
+            onClick={() => setCursosSubView('individuales')}
+          >
+            Cursos individuales
+          </button>
           <button type="button" onClick={() => setCreateModalOpen(true)}>
             Crear Curso
           </button>
@@ -457,83 +502,135 @@ export default function ScormsCursosTable({ onBackToScorms }) {
         </div>
       </section>
 
-      <div className="table-wrapper">
-        <table className="cursos-table compact-rows">
-          <thead>
-            <tr>
-              <th>SCORMs</th>
-              {compactColumns.map((columnKey) => {
-                const column = columns.find((item) => item.key === columnKey);
-                return <th key={column.key}>{column.label}</th>;
-              })}
-              <th>Detalle</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => {
-              const isExpanded = expandedRows.includes(row.id);
-
-              return [
-                <tr key={`row-${row.id}`}>
-                  <td>
-                    <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
-                      Scorms
-                    </button>
-                  </td>
+      {cursosSubView === 'general' ? (
+        <>
+          <div className="table-wrapper">
+            <table className="cursos-table compact-rows">
+              <thead>
+                <tr>
+                  <th>SCORMs</th>
                   {compactColumns.map((columnKey) => {
-                    const value = row[columnKey];
-                    const hasActiveValueFilter = (filters[columnKey] || []).some(
-                      (filterValue) => filterValue.toLowerCase() === String(value || '').trim().toLowerCase(),
-                    );
-
-                    return (
-                      <td
-                        key={`${row.id}-${columnKey}`}
-                        className={`${columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''} cell-selectable ${hasActiveValueFilter ? 'cell-selected' : ''}`}
-                        onClick={() => toggleCellFilter(columnKey, value)}
-                        title="Click para filtrar por este valor"
-                      >
-                        {columnKey === 'curso_url' && isUrl(value) ? (
-                          <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-                            LINK
-                          </a>
-                        ) : isUrl(value) ? (
-                          <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-                            Abrir enlace
-                          </a>
-                        ) : (
-                          String(value || '-')
-                        )}
-                      </td>
-                    );
+                    const column = columns.find((item) => item.key === columnKey);
+                    return <th key={column.key}>{column.label}</th>;
                   })}
-                  <td className="first-col-detail">
-                    <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
-                      {isExpanded ? 'Colapsar' : 'Expandir'}
-                    </button>
-                  </td>
-                </tr>,
-                isExpanded ? (
-                  <tr key={`detail-${row.id}`} className="expanded-detail-row">
-                    <td colSpan={compactColumns.length + 2}>
-                      <div className="details-grid">
-                        {detailColumns.map((column) => (
-                          <label key={`detail-${row.id}-${column.key}`}>
-                            <span>{column.label}</span>
-                            <input value={String(row[column.key] || '')} readOnly />
-                          </label>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ) : null,
-              ];
-            })}
-          </tbody>
-        </table>
-      </div>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row) => {
+                  const isExpanded = expandedRows.includes(row.id);
 
-      {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
+                  return [
+                    <tr key={`row-${row.id}`}>
+                      <td>
+                        <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
+                          Scorms
+                        </button>
+                      </td>
+                      {compactColumns.map((columnKey) => {
+                        const value = row[columnKey];
+                        const hasActiveValueFilter = (filters[columnKey] || []).some(
+                          (filterValue) => filterValue.toLowerCase() === String(value || '').trim().toLowerCase(),
+                        );
+
+                        return (
+                          <td
+                            key={`${row.id}-${columnKey}`}
+                            className={`${columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''} cell-selectable ${hasActiveValueFilter ? 'cell-selected' : ''}`}
+                            onClick={() => toggleCellFilter(columnKey, value)}
+                            title="Click para filtrar por este valor"
+                          >
+                            {columnKey === 'curso_url' && isUrl(value) ? (
+                              <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                                LINK
+                              </a>
+                            ) : isUrl(value) ? (
+                              <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                                Abrir enlace
+                              </a>
+                            ) : (
+                              String(value || '-')
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="first-col-detail">
+                        <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
+                          {isExpanded ? 'Colapsar' : 'Expandir'}
+                        </button>
+                      </td>
+                    </tr>,
+                    isExpanded ? (
+                      <tr key={`detail-${row.id}`} className="expanded-detail-row">
+                        <td colSpan={compactColumns.length + 2}>
+                          <div className="details-grid">
+                            {detailColumns.map((column) => (
+                              <label key={`detail-${row.id}-${column.key}`}>
+                                <span>{column.label}</span>
+                                <input value={String(row[column.key] || '')} readOnly />
+                              </label>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null,
+                  ];
+                })}
+              </tbody>
+            </table>
+          </div>
+          {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
+        </>
+      ) : (
+        <section className="individuales-view">
+          {individualCourseGroups.length === 0 ? <p className="status">No hay cursos individuales para los filtros aplicados.</p> : null}
+          <div className="scorms-accordion-list">
+            {individualCourseGroups.map((group) => (
+              <details key={group.codeKey} className="scorms-accordion-item individual-course-group">
+                <summary>
+                  <span className="individual-summary-grid">
+                    <strong>{group.codeLabel}</strong>
+                    <span>{group.cursoNombre}</span>
+                    <span>{group.materia}</span>
+                  </span>
+                </summary>
+                <div className="table-wrapper individual-inner-table-wrapper">
+                  <table className="cursos-table compact-rows individual-inner-table">
+                    <thead>
+                      <tr>
+                        <th>Curso código</th>
+                        <th>Curso nombre</th>
+                        <th>Tipología</th>
+                        <th>Detalle</th>
+                        <th>SCORMs</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((row) => (
+                        <tr key={`individual-row-${row.id}`}>
+                          <td>{String(row.curso_codigo || '-')}</td>
+                          <td>{String(row.curso_nombre || '-')}</td>
+                          <td>{String(row.tipologia || '-')}</td>
+                          <td>
+                            <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
+                              Detalles
+                            </button>
+                          </td>
+                          <td>
+                            <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
+                              Scorms
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
 
       {scormsModalRow ? (
         <div className="modal-overlay" role="presentation" onClick={() => setScormsModalRow(null)}>
@@ -672,6 +769,30 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                 {createSubmitting ? 'Creando...' : 'Crear Curso'}
               </button>
             </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {detailModalRow ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setDetailModalRow(null)}>
+          <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Detalle del curso</h3>
+              </div>
+              <button type="button" className="secondary" onClick={() => setDetailModalRow(null)}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="details-grid">
+              {columns.map((column) => (
+                <div key={`detail-modal-${column.key}`} className="readonly-field">
+                  <span>{column.label}</span>
+                  <p>{String(detailModalRow[column.key] || '-')}</p>
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       ) : null}

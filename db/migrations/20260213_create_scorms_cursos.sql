@@ -12,6 +12,7 @@ create table if not exists public.scorms_cursos (
   pr_orden numeric null,
   ramas text null,
   inscripcion text null,
+  codigo_individual text null,
   curso_codigo text null,
   curso_instructor text null,
   curso_inscripcion text null,
