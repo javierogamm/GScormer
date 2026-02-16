@@ -231,31 +231,63 @@ export default function ScormsCursosTable({ onBackToScorms }) {
     });
   };
 
-  const individualCourseGroups = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const key = String(row.codigo_individual || '').trim() || 'SIN_CODIGO_INDIVIDUAL';
+  const individualScormGroups = useMemo(() => {
+    const groupedByScorm = filteredRows.reduce((acc, row) => {
+      const references = extractScormReferencesFromContenido(row.contenido);
+      const uniqueScormCodes = Array.from(new Set(references.map((reference) => String(reference.code || '').trim().toUpperCase()).filter(Boolean)));
+      const fallbackCodes = uniqueScormCodes.length > 0 ? uniqueScormCodes : ['SIN_SCORM'];
 
-      if (!acc[key]) {
-        acc[key] = [];
-      }
+      fallbackCodes.forEach((scormCode) => {
+        if (!acc[scormCode]) {
+          acc[scormCode] = [];
+        }
 
-      acc[key].push(row);
+        acc[scormCode].push(row);
+      });
+
       return acc;
     }, {});
 
-    return Object.entries(grouped)
-      .map(([codeKey, groupRows]) => {
-        const firstRow = groupRows[0] || {};
+    return Object.entries(groupedByScorm)
+      .map(([scormCode, scormRows]) => {
+        const individualGroups = Object.entries(
+          scormRows.reduce((acc, row) => {
+            const key = String(row.codigo_individual || '').trim() || 'SIN_CODIGO_INDIVIDUAL';
+
+            if (!acc[key]) {
+              acc[key] = [];
+            }
+
+            acc[key].push(row);
+            return acc;
+          }, {}),
+        )
+          .map(([codeKey, groupRows]) => {
+            const firstRow = groupRows[0] || {};
+            return {
+              codeKey,
+              codeLabel: codeKey === 'SIN_CODIGO_INDIVIDUAL' ? 'Sin código individual' : codeKey,
+              materia: String(firstRow.materia || '-'),
+              cursoNombre: String(firstRow.curso_nombre || '-'),
+              rows: groupRows,
+            };
+          })
+          .sort((left, right) => left.codeLabel.localeCompare(right.codeLabel, 'es', { sensitivity: 'base' }));
+
+        const scormName =
+          scormCode === 'SIN_SCORM'
+            ? 'Sin SCORM referenciado'
+            : String((scormsByCode[scormCode] || [])[0]?.scorm_name || (scormsByCode[scormCode] || [])[0]?.scorm_nombre || '-');
+
         return {
-          codeKey,
-          codeLabel: codeKey === 'SIN_CODIGO_INDIVIDUAL' ? 'Sin código individual' : codeKey,
-          materia: String(firstRow.materia || '-'),
-          cursoNombre: String(firstRow.curso_nombre || '-'),
-          rows: groupRows,
+          scormCode,
+          scormLabel: scormCode === 'SIN_SCORM' ? 'Sin SCORM referenciado' : scormCode,
+          scormName,
+          individualGroups,
         };
       })
-      .sort((left, right) => left.codeLabel.localeCompare(right.codeLabel, 'es', { sensitivity: 'base' }));
-  }, [filteredRows]);
+      .sort((left, right) => left.scormLabel.localeCompare(right.scormLabel, 'es', { sensitivity: 'base' }));
+  }, [filteredRows, scormsByCode]);
 
   const submitCreateCurso = async () => {
     const cursoNombre = String(createDraft.curso_nombre || '').trim();
@@ -583,48 +615,61 @@ export default function ScormsCursosTable({ onBackToScorms }) {
         </>
       ) : (
         <section className="individuales-view">
-          {individualCourseGroups.length === 0 ? <p className="status">No hay cursos individuales para los filtros aplicados.</p> : null}
+          {individualScormGroups.length === 0 ? <p className="status">No hay cursos individuales para los filtros aplicados.</p> : null}
           <div className="scorms-accordion-list">
-            {individualCourseGroups.map((group) => (
-              <details key={group.codeKey} className="scorms-accordion-item individual-course-group">
+            {individualScormGroups.map((scormGroup) => (
+              <details key={scormGroup.scormCode} className="scorms-accordion-item">
                 <summary>
                   <span className="individual-summary-grid">
-                    <strong>{group.codeLabel}</strong>
-                    <span>{group.cursoNombre}</span>
-                    <span>{group.materia}</span>
+                    <strong>SCORMS · {scormGroup.scormLabel}</strong>
+                    <span>{scormGroup.scormName}</span>
+                    <span>{scormGroup.individualGroups.length} cursos individuales</span>
                   </span>
                 </summary>
-                <div className="table-wrapper individual-inner-table-wrapper">
-                  <table className="cursos-table compact-rows individual-inner-table">
-                    <thead>
-                      <tr>
-                        <th>Curso código</th>
-                        <th>Curso nombre</th>
-                        <th>Tipología</th>
-                        <th>Detalle</th>
-                        <th>SCORMs</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.rows.map((row) => (
-                        <tr key={`individual-row-${row.id}`}>
-                          <td>{String(row.curso_codigo || '-')}</td>
-                          <td>{String(row.curso_nombre || '-')}</td>
-                          <td>{String(row.tipologia || '-')}</td>
-                          <td>
-                            <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
-                              Detalles
-                            </button>
-                          </td>
-                          <td>
-                            <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
-                              Scorms
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="scorms-accordion-list">
+                  {scormGroup.individualGroups.map((group) => (
+                    <details key={`${scormGroup.scormCode}-${group.codeKey}`} className="scorms-accordion-item individual-course-group">
+                      <summary>
+                        <span className="individual-summary-grid">
+                          <strong>{group.codeLabel}</strong>
+                          <span>{group.cursoNombre}</span>
+                          <span>{group.materia}</span>
+                        </span>
+                      </summary>
+                      <div className="table-wrapper individual-inner-table-wrapper">
+                        <table className="cursos-table compact-rows individual-inner-table">
+                          <thead>
+                            <tr>
+                              <th>Curso código</th>
+                              <th>Curso nombre</th>
+                              <th>Tipología</th>
+                              <th>Detalle</th>
+                              <th>SCORMs</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.rows.map((row) => (
+                              <tr key={`individual-row-${row.id}`}>
+                                <td>{String(row.curso_codigo || '-')}</td>
+                                <td>{String(row.curso_nombre || '-')}</td>
+                                <td>{String(row.tipologia || '-')}</td>
+                                <td>
+                                  <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
+                                    Detalles
+                                  </button>
+                                </td>
+                                <td>
+                                  <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
+                                    Scorms
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  ))}
                 </div>
               </details>
             ))}
