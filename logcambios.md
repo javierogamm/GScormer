@@ -1,5 +1,19 @@
 # Log de cambios
 
+## v1.28.1 - Normalización de agente y ajuste de “Mis scorms"
+
+### Cambios consolidados
+- Se corrigió la correlación del filtro **Mis scorms** para que compare responsable/agente ignorando mayúsculas, tildes y espacios (incluyendo espacios internos), manteniendo soporte de múltiples responsables separados por `&`.
+- En la cabecera superior derecha, el badge de sesión ahora muestra el **nombre de agente** del usuario conectado (con fallback al nombre de usuario si no hay agente).
+- En el modal de sesión se añadió una línea informativa con el agente activo para hacer visible la identidad de agente durante la sesión.
+- Se actualizó la versión visible de la APP a **v1.28.1** y el versionado de `package.json` a `1.28.1`.
+
+### Versionado
+- Versión anterior: `1.28.0`
+- Nueva versión consolidada: `1.28.1`
+
+---
+
 ## v1.28.0 - Correlación de agentes y filtro “Mis scorms”
 
 ### Cambios consolidados

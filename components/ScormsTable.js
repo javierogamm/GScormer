@@ -264,13 +264,21 @@ const parseResponsables = (responsablesValue) => {
     .filter(Boolean);
 };
 
+const normalizeAgentLabel = (value) => {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+};
+
 const rowHasResponsibleAgent = (row, agentName) => {
-  const normalizedAgent = String(agentName || '').trim().toLowerCase();
+  const normalizedAgent = normalizeAgentLabel(agentName);
   if (!normalizedAgent) {
     return false;
   }
 
-  return parseResponsables(row.scorm_responsable).some((responsable) => responsable.toLowerCase() === normalizedAgent);
+  return parseResponsables(row.scorm_responsable).some((responsable) => normalizeAgentLabel(responsable) === normalizedAgent);
 };
 
 export default function ScormsTable({ userSession }) {
@@ -1225,7 +1233,7 @@ export default function ScormsTable({ userSession }) {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.28.0</h2>
+        <h2>GScormer · v1.28.1</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
