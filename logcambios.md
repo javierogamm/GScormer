@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.25.0 - Acordeón de filtros clicable en todas las vistas
+
+### Cambios consolidados
+- Se actualizó el panel global de **Filtros** en **SCORMs Master** para que funcione como acordeón desde toda la cabecera: ahora puede expandirse o contraerse haciendo clic en cualquier punto del encabezado del panel, no solo en el control lateral.
+- Se aplicó el mismo comportamiento de acordeón en la vista **SCORMs Cursos**, unificando la interacción en todas las vistas de tablas.
+- Se mejoró la accesibilidad del encabezado de filtros convirtiéndolo en un control navegable por teclado (`Tab`, `Enter` y `Espacio`) con estado expandido/colapsado.
+- Se ajustaron estilos visuales de la cabecera interactiva de filtros (cursor, ancho completo, foco visible y etiqueta de estado Expandir/Colapsar).
+- Se actualizó la versión de la APP en `package.json` a `1.25.0`.
+
+### Versionado
+- Versión anterior: `1.24.0`
+- Nueva versión consolidada: `1.25.0`
+
+---
+
 ## v1.24.0 - Relación bidireccional SCORMs↔Cursos y alta de cursos con buscador de SCORMs
 
 ### Cambios consolidados

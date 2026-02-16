@@ -373,6 +373,14 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.filter-panel-title-interactive:focus-visible {
+  outline: 2px solid #4c9ffe;
+  outline-offset: 2px;
 }
 
 .filter-panel-title-main {
@@ -381,9 +389,10 @@ select {
   gap: 0.4rem;
 }
 
-.filter-collapse-button {
-  padding: 0.3rem 0.55rem;
+.filter-collapse-label {
   font-size: 0.78rem;
+  color: #4c6486;
+  font-weight: 600;
 }
 
 .filters-panel-body-collapsed {
