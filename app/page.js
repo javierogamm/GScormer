@@ -77,6 +77,10 @@ export default function HomePage() {
     setLoginLoading(false);
   };
 
+
+  const displayAgentName = String(userSession?.agente || '').trim();
+  const userBadgeLabel = displayAgentName || userSession?.name || 'Sin agente';
+
   const handleLogout = () => {
     setUserSession(null);
     setPasswordModalOpen(false);
@@ -178,7 +182,7 @@ export default function HomePage() {
             </button>
             <button type="button" className="secondary user-badge" onClick={() => setPasswordModalOpen(true)}>
               <span className="user-dot" aria-hidden="true" />
-              <span>{userSession.name}</span>
+              <span>{userBadgeLabel}</span>
             </button>
           </div>
         </div>
@@ -194,7 +198,7 @@ export default function HomePage() {
         <div className="modal-overlay" role="presentation" onClick={() => setPasswordModalOpen(false)}>
           <section className="modal-content modal-content-narrow" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h3>{userSession.name}</h3>
-            <p className="status">Usuario conectado</p>
+            <p className="status">Usuario conectado · Agente: {userBadgeLabel}</p>
             <form className="auth-form" onSubmit={handleChangePassword}>
               <label>
                 Nueva contraseña
