@@ -46,6 +46,17 @@ const formatFieldLabel = (key) => {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
+const getScormReferenceLabel = (row) => {
+  const code = String(row.scorm_code || '').trim().toUpperCase();
+  const language = String(row.scorm_idioma || '').trim().toUpperCase();
+
+  if (!code) {
+    return '';
+  }
+
+  return language ? `${language}-${code}` : code;
+};
+
 const extractScormReferencesFromContenido = (contenido) => {
   const references = [];
   const source = String(contenido || '');
@@ -74,6 +85,22 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   const [expandedRows, setExpandedRows] = useState([]);
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [scormsModalRow, setScormsModalRow] = useState(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createDraft, setCreateDraft] = useState({
+    curso_nombre: '',
+    curso_codigo: '',
+    tipologia: '',
+    inscripcion: '',
+    materia: '',
+    curso_instructor: '',
+    curso_url: '',
+    curso_descripcion: '',
+    link_inscripcion: '',
+    observaciones: '',
+  });
+  const [scormSearchText, setScormSearchText] = useState('');
+  const [selectedScormIds, setSelectedScormIds] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -162,6 +189,78 @@ export default function ScormsCursosTable({ onBackToScorms }) {
     return Array.from(dedupedMatches.values());
   }, [scormsByCode, scormsModalRow]);
 
+  const filteredMasterScormRows = useMemo(() => {
+    const search = String(scormSearchText || '').trim().toLowerCase();
+
+    if (!search) {
+      return masterRows;
+    }
+
+    return masterRows.filter((row) =>
+      [row.scorm_code, row.scorm_name, row.scorm_responsable, row.scorm_categoria]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(search)),
+    );
+  }, [masterRows, scormSearchText]);
+
+  const toggleSelectedScorm = (scormId) => {
+    setSelectedScormIds((previous) => (previous.includes(scormId) ? previous.filter((id) => id !== scormId) : [...previous, scormId]));
+  };
+
+  const resetCreateCursoState = () => {
+    setCreateModalOpen(false);
+    setCreateSubmitting(false);
+    setScormSearchText('');
+    setSelectedScormIds([]);
+    setCreateDraft({
+      curso_nombre: '',
+      curso_codigo: '',
+      tipologia: '',
+      inscripcion: '',
+      materia: '',
+      curso_instructor: '',
+      curso_url: '',
+      curso_descripcion: '',
+      link_inscripcion: '',
+      observaciones: '',
+    });
+  };
+
+  const submitCreateCurso = async () => {
+    const cursoNombre = String(createDraft.curso_nombre || '').trim();
+
+    if (!cursoNombre) {
+      setError('El nombre del curso es obligatorio para crear un nuevo registro.');
+      return;
+    }
+
+    const contenidoScorm = selectedScormIds
+      .map((id) => masterRows.find((row) => row.id === id))
+      .filter(Boolean)
+      .map((row) => getScormReferenceLabel(row))
+      .filter(Boolean)
+      .join(', ');
+
+    const payload = {
+      ...createDraft,
+      contenido: contenidoScorm,
+    };
+
+    setCreateSubmitting(true);
+    setError('');
+
+    const response = await supabase.from('scorms_cursos').insert(payload).select('*').single();
+
+    if (response.error) {
+      setCreateSubmitting(false);
+      setError(`No se pudo crear el curso: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previous) => [...previous, response.data]);
+    setStatusMessage(`Curso creado: ${response.data.curso_nombre || 'Sin nombre'}`);
+    resetCreateCursoState();
+  };
 
   const toggleExpandRow = (rowId) => {
     setExpandedRows((previous) =>
@@ -263,6 +362,9 @@ export default function ScormsCursosTable({ onBackToScorms }) {
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
         <div className="header-actions">
+          <button type="button" onClick={() => setCreateModalOpen(true)}>
+            Crear Curso
+          </button>
           <button className="secondary" onClick={fetchData} disabled={loading}>
             {loading ? 'Cargando...' : 'Refrescar'}
           </button>
@@ -474,6 +576,92 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                 })}
               </div>
             )}
+          </section>
+        </div>
+      ) : null}
+
+      {createModalOpen ? (
+        <div className="modal-overlay" role="presentation" onClick={resetCreateCursoState}>
+          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Crear Curso</h3>
+                <p>Rellena los datos y relaciona SCORMs para guardar en la columna contenido.</p>
+              </div>
+              <button type="button" className="secondary" onClick={resetCreateCursoState} disabled={createSubmitting}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="details-grid">
+              {Object.keys(createDraft).map((key) => (
+                <label key={`create-curso-${key}`}>
+                  <span>{formatFieldLabel(key)}</span>
+                  <input
+                    type="text"
+                    value={String(createDraft[key] || '')}
+                    onChange={(event) =>
+                      setCreateDraft((previous) => ({
+                        ...previous,
+                        [key]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+
+            <section className="card-soft">
+              <h4>Relacionar SCORMs</h4>
+              <p className="status">Buscador por código, nombre, responsable y categoría.</p>
+              <input
+                type="text"
+                placeholder="Buscar SCORM..."
+                value={scormSearchText}
+                onChange={(event) => setScormSearchText(event.target.value)}
+              />
+
+              <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                <table className="compact-rows">
+                  <thead>
+                    <tr>
+                      <th>Sel.</th>
+                      <th>Código</th>
+                      <th>Nombre</th>
+                      <th>Responsable</th>
+                      <th>Categoría</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMasterScormRows.slice(0, 40).map((row) => (
+                      <tr key={`create-scorm-${row.id}`}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedScormIds.includes(row.id)}
+                            onChange={() => toggleSelectedScorm(row.id)}
+                          />
+                        </td>
+                        <td>{getScormReferenceLabel(row)}</td>
+                        <td>{String(row.scorm_name || '-')}</td>
+                        <td>{String(row.scorm_responsable || '-')}</td>
+                        <td>{String(row.scorm_categoria || '-')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="status">
+                Seleccionados: {selectedScormIds.length} · Se guardarán en <strong>contenido</strong> como referencias `IDIOMA-SCR####`.
+              </p>
+            </section>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitCreateCurso} disabled={createSubmitting}>
+                {createSubmitting ? 'Creando...' : 'Crear Curso'}
+              </button>
+            </footer>
           </section>
         </div>
       ) : null}

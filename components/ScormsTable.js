@@ -13,7 +13,7 @@ const columns = [
   { key: 'scorm_subcategoria', label: 'Subcategoría', editable: true },
   { key: 'scorm_url', label: 'URL', editable: true },
   { key: 'scorm_estado', label: 'Estado', editable: true },
-  { key: 'scorm_etiquetas', label: 'Etiquetas', editable: true },
+  { key: 'scorm_etiquetas', label: 'CURSOS', editable: false },
 ];
 
 const FILTER_LAYOUT_ROWS = [
@@ -44,6 +44,7 @@ const UPDATE_TYPES = [
   'Actualización de storyline',
 ];
 const PUBLISH_PENDING_STATES = ['Pendiente de publicar', 'Actualizado pendiente de publicar'];
+const SCORM_CODE_REGEX = /(?:\b([a-z]{2,3})\s*[-_]\s*)?\b(SCR\d{4})\b/gi;
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -203,6 +204,28 @@ const formatDateDDMMYYYY = (value) => {
   return new Date(dateMs).toLocaleDateString('es-ES');
 };
 
+const extractScormReferencesFromContenido = (contenido) => {
+  const references = [];
+  const source = String(contenido || '');
+  SCORM_CODE_REGEX.lastIndex = 0;
+  let match = SCORM_CODE_REGEX.exec(source);
+
+  while (match) {
+    references.push({
+      language: String(match[1] || '').trim().toUpperCase(),
+      code: String(match[2] || '').trim().toUpperCase(),
+    });
+    match = SCORM_CODE_REGEX.exec(source);
+  }
+
+  return references;
+};
+
+const formatFieldLabel = (key) =>
+  String(key || '')
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
 export default function ScormsTable() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -239,14 +262,17 @@ export default function ScormsTable() {
   const [publishPreset, setPublishPreset] = useState('todos');
   const [latestUpdateByCode, setLatestUpdateByCode] = useState({});
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
+  const [coursesRows, setCoursesRows] = useState([]);
+  const [coursesModalRow, setCoursesModalRow] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
 
-    const [masterResponse, updatesResponse] = await Promise.all([
+    const [masterResponse, updatesResponse, cursosResponse] = await Promise.all([
       supabase.from('scorms_master').select('*').order('id', { ascending: true }),
       supabase.from('scorms_actualizacion').select('scorm_codigo, cambio_tipo, fecha_modif, created_at'),
+      supabase.from('scorms_cursos').select('*').order('id', { ascending: true }),
     ]);
 
     if (masterResponse.error) {
@@ -284,6 +310,13 @@ export default function ScormsTable() {
       }, {});
 
       setLatestUpdateByCode(latestDatesByCode);
+    }
+
+    if (cursosResponse.error) {
+      setCoursesRows([]);
+      setError((previous) => previous || `No se pudieron cargar los cursos relacionados: ${cursosResponse.error.message}`);
+    } else {
+      setCoursesRows(cursosResponse.data || []);
     }
 
     setRows(masterResponse.data || []);
@@ -481,6 +514,48 @@ export default function ScormsTable() {
       return getInternationalizedCode(left).localeCompare(getInternationalizedCode(right));
     });
   }, [latestUpdateByCode, pendingPublishRows, publishDateSortDirection, publishPreset]);
+
+  const relatedCoursesByScormKey = useMemo(() => {
+    return coursesRows.reduce((acc, course) => {
+      const references = extractScormReferencesFromContenido(course.contenido);
+
+      references.forEach((reference) => {
+        const key = `${reference.code}|${reference.language || '*'}`;
+
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+
+        if (!acc[key].some((item) => item.id === course.id)) {
+          acc[key].push(course);
+        }
+      });
+
+      return acc;
+    }, {});
+  }, [coursesRows]);
+
+  const getRelatedCoursesForScorm = useCallback(
+    (row) => {
+      const code = String(row.scorm_code || '').trim().toUpperCase();
+      const language = normalizeLanguage(row.scorm_idioma);
+
+      if (!code) {
+        return [];
+      }
+
+      const exactLanguage = relatedCoursesByScormKey[`${code}|${language}`] || [];
+      const genericLanguage = relatedCoursesByScormKey[`${code}|*`] || [];
+      const deduped = new Map();
+
+      [...exactLanguage, ...genericLanguage].forEach((course) => {
+        deduped.set(course.id, course);
+      });
+
+      return Array.from(deduped.values());
+    },
+    [relatedCoursesByScormKey],
+  );
 
   const addFieldFilter = (field) => {
     const nextValue = (filterInputs[field] || '').trim();
@@ -1276,8 +1351,12 @@ export default function ScormsTable() {
                       <td
                         key={`${row.id}-${column.key}`}
                         className={`col-${column.key} cell-selectable ${hasActiveValueFilter ? 'cell-selected' : ''}`}
-                        onClick={() => toggleCellFilter(column.key, displayValue)}
-                        title="Click para filtrar por este valor"
+                        onClick={() => {
+                          if (column.key !== 'scorm_etiquetas') {
+                            toggleCellFilter(column.key, displayValue);
+                          }
+                        }}
+                        title={column.key === 'scorm_etiquetas' ? 'Abrir cursos relacionados' : 'Click para filtrar por este valor'}
                       >
                         {column.key === 'scorm_url' ? (
                           row[column.key] ? (
@@ -1301,6 +1380,17 @@ export default function ScormsTable() {
                           <span>{getOfficialName(row)}</span>
                         ) : column.key === 'scorm_code' ? (
                           <span>{getInternationalizedCode(row)}</span>
+                        ) : column.key === 'scorm_etiquetas' ? (
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setCoursesModalRow(row);
+                            }}
+                          >
+                            Cursos ({getRelatedCoursesForScorm(row).length})
+                          </button>
                         ) : (
                           <span>{row[column.key] || '-'}</span>
                         )}
@@ -1401,7 +1491,7 @@ export default function ScormsTable() {
                               <strong>Subcategoría:</strong> {row.scorm_subcategoria || '-'}
                             </p>
                             <p>
-                              <strong>Etiquetas:</strong> {row.scorm_etiquetas || '-'}
+                              <strong>Cursos relacionados:</strong> {getRelatedCoursesForScorm(row).length}
                             </p>
                             <div className="card-actions">
                               <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
@@ -1675,7 +1765,7 @@ export default function ScormsTable() {
                   </tr>
                 </thead>
                 <tbody>
-                  {columns.map((column) => (
+                  {columns.filter((column) => column.editable).map((column) => (
                     <tr key={`detail-${column.key}`}>
                       <td>{column.label}</td>
                       <td>
@@ -1848,7 +1938,7 @@ export default function ScormsTable() {
             </header>
 
             <div className="details-grid">
-              {columns.map((column) => (
+              {columns.filter((column) => column.editable).map((column) => (
                 <label key={`create-${column.key}`}>
                   <span>{column.label}</span>
                   <input
@@ -1868,6 +1958,67 @@ export default function ScormsTable() {
           </div>
         </div>
       )}
+
+      {coursesModalRow ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setCoursesModalRow(null)}>
+          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <header className="modal-header">
+              <div>
+                <h3>Cursos relacionados al SCORM</h3>
+                <p>
+                  {getOfficialName(coursesModalRow)} · {getInternationalizedCode(coursesModalRow)}
+                </p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setCoursesModalRow(null)}>
+                Cerrar
+              </button>
+            </header>
+
+            {getRelatedCoursesForScorm(coursesModalRow).length === 0 ? (
+              <p className="status">No hay cursos relacionados para este SCORM.</p>
+            ) : (
+              <div className="scorms-accordion-list">
+                {getRelatedCoursesForScorm(coursesModalRow).map((course) => {
+                  const detailEntries = Object.entries(course).filter(
+                    ([key]) => !['id', 'created_at', 'curso_nombre', 'tipologia', 'inscripcion'].includes(key),
+                  );
+
+                  return (
+                    <details key={course.id} className="scorms-accordion-item">
+                      <summary>
+                        <span className="course-summary-grid">
+                          <strong>{String(course.curso_nombre || '-')}</strong>
+                          <span>{String(course.tipologia || '-')}</span>
+                          <span>{String(course.inscripcion || '-')}</span>
+                        </span>
+                      </summary>
+
+                      <div className="table-wrapper details-table-wrapper">
+                        <table className="details-edit-table">
+                          <thead>
+                            <tr>
+                              <th>Campo</th>
+                              <th>Valor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {detailEntries.map(([key, value]) => (
+                              <tr key={`${course.id}-${key}`}>
+                                <td>{formatFieldLabel(key)}</td>
+                                <td>{String(value || '-')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

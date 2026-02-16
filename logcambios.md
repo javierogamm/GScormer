@@ -1,5 +1,25 @@
 # Log de cambios
 
+## v1.24.0 - Relación bidireccional SCORMs↔Cursos y alta de cursos con buscador de SCORMs
+
+### Cambios consolidados
+- En la vista **SCORMs Master** se sustituyó la columna **Etiquetas** por **CURSOS**, mostrando un botón por fila para abrir el detalle de cursos vinculados al SCORM.
+- Se incorporó la carga de `scorms_cursos` dentro de la vista master para resolver la relación inversa (SCORM → Cursos) leyendo referencias en `contenido`.
+- El botón de **CURSOS** abre un **modal grande** con acordeón de cursos relacionados al SCORM seleccionado.
+- En el primer nivel del acordeón se muestran: **curso_nombre**, **tipología** e **inscripción**.
+- Al expandir cada curso, el resto del detalle se presenta en formato de **tabla de dos columnas** (Campo / Valor).
+- En la vista **SCORMs Cursos** se añadió el botón **Crear Curso**, que abre un modal grande para informar datos del nuevo curso y guardarlo en `scorms_cursos`.
+- El modal de creación de curso permite **relacionar SCORMs** mediante buscador por **código, nombre, responsable y categoría**.
+- Los SCORMs seleccionados al crear el curso se persisten en la columna **contenido** como referencias `IDIOMA-SCR####`.
+- Se añadieron estilos para modal grande y para el resumen de acordeón de cursos.
+- Se actualizó la versión de la APP en `package.json` a `1.24.0`.
+
+### Versionado
+- Versión anterior: `1.23.0`
+- Nueva versión consolidada: `1.24.0`
+
+---
+
 ## v1.23.0 - Selección por clic en tablas Master y Cursos (estilo Qlik)
 
 ### Cambios consolidados
