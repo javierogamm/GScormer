@@ -1,5 +1,22 @@
 # Log de cambios
 
+## v1.27.2 - Cursos individuales en master con acordeón de 3 niveles
+
+### Cambios consolidados
+- En la vista **master** de SCORMs, el botón **Cursos** ahora representa y muestra el número de **cursos individuales** relacionados con cada SCORM.
+- En el modal de cursos del master se implementó un acordeón de **3 niveles**:
+  - **Nivel 1:** cursos individuales.
+  - **Nivel 2:** cursos agrupados dentro de cada curso individual.
+  - **Nivel 3:** detalle en modo tabla.
+- En la tabla de detalle (nivel 3) se excluyó la columna/campo **contenido(s)** según lo solicitado.
+- Se actualizó la versión visible de la APP a **v1.27.2** y el versionado de `package.json` a `1.27.2`.
+
+### Versionado
+- Versión anterior: `1.27.1`
+- Nueva versión consolidada: `1.27.2`
+
+---
+
 ## v1.27.1 - Botón SCORMS en nivel 1 de Cursos individuales
 
 ### Cambios consolidados
