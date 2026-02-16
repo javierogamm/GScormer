@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { APP_VERSION } from '../lib/appVersion';
 
 const columns = [
   { key: 'scorm_idioma', label: 'Idioma', editable: true },
@@ -278,7 +279,14 @@ const rowHasResponsibleAgent = (row, agentName) => {
     return false;
   }
 
-  return parseResponsables(row.scorm_responsable).some((responsable) => normalizeAgentLabel(responsable) === normalizedAgent);
+  const normalizedResponsables = parseResponsables(row.scorm_responsable).map((responsable) => normalizeAgentLabel(responsable));
+
+  const exactMatch = normalizedResponsables.some((responsable) => responsable === normalizedAgent);
+  if (exactMatch) {
+    return true;
+  }
+
+  return normalizedResponsables.some((responsable) => responsable.includes(normalizedAgent));
 };
 
 export default function ScormsTable({ userSession }) {
@@ -1233,7 +1241,7 @@ export default function ScormsTable({ userSession }) {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.28.3</h2>
+        <h2>GScormer · v{APP_VERSION}</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla

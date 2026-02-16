@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import ScormsTable from '../components/ScormsTable';
 import ScormsCursosTable from '../components/ScormsCursosTable';
 import { supabase } from '../lib/supabaseClient';
+import { APP_VERSION } from '../lib/appVersion';
 
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
 
@@ -19,6 +20,7 @@ export default function HomePage() {
   const [newPassConfirm, setNewPassConfirm] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordStatus, setPasswordStatus] = useState('');
+  const [identifyAgentLoading, setIdentifyAgentLoading] = useState(false);
 
   useEffect(() => {
     const storedSession = globalThis?.localStorage?.getItem(SESSION_STORAGE_KEY);
@@ -80,6 +82,41 @@ export default function HomePage() {
 
   const displayAgentName = String(userSession?.agente || '').trim();
   const userBadgeLabel = displayAgentName || 'Sin agente';
+
+  const handleIdentifyAgent = async () => {
+    if (!userSession?.id) {
+      setPasswordStatus('No hay sesión activa para identificar el agente.');
+      return;
+    }
+
+    setIdentifyAgentLoading(true);
+    setPasswordStatus('');
+
+    const response = await supabase
+      .from('scorms_users')
+      .select('id, name, agent, agente')
+      .eq('id', userSession.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (response.error || !response.data) {
+      setPasswordStatus('No se pudo identificar/reenganchar el agente del usuario.');
+      setIdentifyAgentLoading(false);
+      return;
+    }
+
+    const linkedAgent = String(response.data.agent || response.data.agente || '').trim();
+    const nextSession = {
+      ...userSession,
+      name: response.data.name || userSession.name,
+      agente: linkedAgent,
+    };
+
+    setUserSession(nextSession);
+    globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+    setPasswordStatus(linkedAgent ? `Agente identificado: ${linkedAgent}` : 'Usuario reenganchado, pero sin agente asignado.');
+    setIdentifyAgentLoading(false);
+  };
 
   const handleLogout = () => {
     setUserSession(null);
@@ -165,6 +202,7 @@ export default function HomePage() {
         <div className="card-header">
           <div>
             <h1>GScormer</h1>
+            <p className="status">Versión {APP_VERSION}</p>
             <p className="status">Selecciona la vista a gestionar.</p>
           </div>
           <div className="header-actions app-switcher">
@@ -191,7 +229,7 @@ export default function HomePage() {
       {activeView === 'scorms' ? (
         <ScormsTable userSession={userSession} />
       ) : (
-        <ScormsCursosTable onBackToScorms={() => setActiveView('scorms')} />
+        <ScormsCursosTable userSession={userSession} onBackToScorms={() => setActiveView('scorms')} />
       )}
 
       {passwordModalOpen && (
@@ -220,6 +258,9 @@ export default function HomePage() {
               </label>
               {passwordStatus && <p className={passwordStatus.includes('correctamente') ? 'status ok' : 'status error'}>{passwordStatus}</p>}
               <div className="header-actions">
+                <button type="button" className="secondary" onClick={handleIdentifyAgent} disabled={identifyAgentLoading}>
+                  {identifyAgentLoading ? 'Identificando...' : 'Identificar agente'}
+                </button>
                 <button type="submit" disabled={passwordLoading}>
                   {passwordLoading ? 'Guardando...' : 'Guardar contraseña'}
                 </button>
