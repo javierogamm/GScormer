@@ -53,7 +53,7 @@ export default function HomePage() {
 
     const response = await supabase
       .from('scorms_users')
-      .select('id, name')
+      .select('id, name, agente')
       .eq('name', trimmedName)
       .eq('pass', trimmedPass)
       .limit(1)
@@ -68,6 +68,7 @@ export default function HomePage() {
     const nextSession = {
       id: response.data.id,
       name: response.data.name,
+      agente: response.data.agente || '',
     };
 
     setUserSession(nextSession);
@@ -184,7 +185,7 @@ export default function HomePage() {
       </section>
 
       {activeView === 'scorms' ? (
-        <ScormsTable />
+        <ScormsTable userSession={userSession} />
       ) : (
         <ScormsCursosTable onBackToScorms={() => setActiveView('scorms')} />
       )}
