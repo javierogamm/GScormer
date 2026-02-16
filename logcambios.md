@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.27.3 - Curso nombre visible en todos los niveles del modal de cursos (Master)
+
+### Cambios consolidados
+- En el modal de **Cursos individuales** de la vista **SCORMs Master**, se añadió `curso_nombre` en los **3 niveles** del acordeón para mejorar trazabilidad visual.
+- En el **Nivel 1**, `curso_nombre` ahora se muestra como primer dato del resumen del grupo, alineado con el criterio ya aplicado en la subvista de cursos individuales.
+- En el **Nivel 2**, el resumen de cada grupo de cursos ahora prioriza `curso_nombre` y mantiene el identificador del grupo como dato complementario.
+- En el **Nivel 3**, el bloque de detalles incorpora `curso_nombre` en el resumen y la tabla de campos reordena las filas para mostrar `curso_nombre` en primer lugar.
+- Se actualizó la versión visible de la APP a **v1.27.3** y el versionado de `package.json` a `1.27.3`.
+
+### Versionado
+- Versión anterior: `1.27.2`
+- Nueva versión consolidada: `1.27.3`
+
+---
+
 ## v1.27.2 - Cursos individuales en master con acordeón de 3 niveles
 
 ### Cambios consolidados
