@@ -380,14 +380,24 @@ export default function ScormsCursosTable({ onBackToScorms }) {
       {error ? <p className="status error">{error}</p> : null}
 
       <section className="table-filters-toggle global-filters-toggle">
-        <div className="filter-panel-title filter-panel-title-interactive">
+        <div
+          className="filter-panel-title filter-panel-title-interactive"
+          role="button"
+          tabIndex={0}
+          onClick={() => setFiltersCollapsed((previous) => !previous)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setFiltersCollapsed((previous) => !previous);
+            }
+          }}
+          aria-expanded={!filtersCollapsed}
+        >
           <div className="filter-panel-title-main">
             <strong>Filtros</strong>
             {Object.values(filters).flat().length > 0 ? <span className="filter-counter">{Object.values(filters).flat().length}</span> : null}
           </div>
-          <button type="button" className="secondary filter-collapse-button" onClick={() => setFiltersCollapsed((previous) => !previous)}>
-            {filtersCollapsed ? 'Expandir' : 'Colapsar'}
-          </button>
+          <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
         </div>
 
         <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
