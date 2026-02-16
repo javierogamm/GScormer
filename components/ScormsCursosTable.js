@@ -86,7 +86,7 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   const [filters, setFilters] = useState({});
   const [expandedRows, setExpandedRows] = useState([]);
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
-  const [scormsModalRow, setScormsModalRow] = useState(null);
+  const [scormsModalRows, setScormsModalRows] = useState([]);
   const [detailModalRow, setDetailModalRow] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
@@ -170,28 +170,31 @@ export default function ScormsCursosTable({ onBackToScorms }) {
   }, [masterRows]);
 
   const activeScormMatches = useMemo(() => {
-    if (!scormsModalRow) {
+    if (scormsModalRows.length === 0) {
       return [];
     }
 
-    const references = extractScormReferencesFromContenido(scormsModalRow.contenido);
     const dedupedMatches = new Map();
 
-    references.forEach((reference) => {
-      const masterMatches = scormsByCode[reference.code] || [];
+    scormsModalRows.forEach((modalRow) => {
+      const references = extractScormReferencesFromContenido(modalRow.contenido);
 
-      masterMatches.forEach((match) => {
-        const language = String(match.scorm_idioma || '').trim().toUpperCase();
-        if (reference.language && language && reference.language !== language) {
-          return;
-        }
+      references.forEach((reference) => {
+        const masterMatches = scormsByCode[reference.code] || [];
 
-        dedupedMatches.set(match.id, match);
+        masterMatches.forEach((match) => {
+          const language = String(match.scorm_idioma || '').trim().toUpperCase();
+          if (reference.language && language && reference.language !== language) {
+            return;
+          }
+
+          dedupedMatches.set(match.id, match);
+        });
       });
     });
 
     return Array.from(dedupedMatches.values());
-  }, [scormsByCode, scormsModalRow]);
+  }, [scormsByCode, scormsModalRows]);
 
   const filteredMasterScormRows = useMemo(() => {
     const search = String(scormSearchText || '').trim().toLowerCase();
@@ -523,9 +526,9 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                   return [
                     <tr key={`row-${row.id}`}>
                       <td>
-                        <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
-                          Scorms
-                        </button>
+                            <button type="button" className="secondary" onClick={() => setScormsModalRows([row])}>
+                              Scorms
+                            </button>
                       </td>
                       {compactColumns.map((columnKey) => {
                         const value = row[columnKey];
@@ -588,10 +591,23 @@ export default function ScormsCursosTable({ onBackToScorms }) {
             {individualCourseGroups.map((group) => (
               <details key={group.codeKey} className="scorms-accordion-item individual-course-group">
                 <summary>
-                  <span className="individual-summary-grid">
-                    <strong>{group.codeLabel}</strong>
-                    <span>{group.cursoNombre}</span>
-                    <span>{group.materia}</span>
+                  <span className="individual-summary-actions">
+                    <span className="individual-summary-grid">
+                      <strong>{group.codeLabel}</strong>
+                      <span>{group.cursoNombre}</span>
+                      <span>{group.materia}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setScormsModalRows(group.rows);
+                      }}
+                    >
+                      Scorms
+                    </button>
                   </span>
                 </summary>
                 <div className="table-wrapper individual-inner-table-wrapper">
@@ -602,7 +618,6 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                         <th>Curso nombre</th>
                         <th>Tipología</th>
                         <th>Detalle</th>
-                        <th>SCORMs</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -616,11 +631,6 @@ export default function ScormsCursosTable({ onBackToScorms }) {
                               Detalles
                             </button>
                           </td>
-                          <td>
-                            <button type="button" className="secondary" onClick={() => setScormsModalRow(row)}>
-                              Scorms
-                            </button>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -632,14 +642,14 @@ export default function ScormsCursosTable({ onBackToScorms }) {
         </section>
       )}
 
-      {scormsModalRow ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setScormsModalRow(null)}>
+      {scormsModalRows.length > 0 ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setScormsModalRows([])}>
           <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h3>SCORMs asociados</h3>
               </div>
-              <button type="button" className="secondary" onClick={() => setScormsModalRow(null)}>
+              <button type="button" className="secondary" onClick={() => setScormsModalRows([])}>
                 Cerrar
               </button>
             </div>
