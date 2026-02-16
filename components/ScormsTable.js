@@ -226,6 +226,37 @@ const formatFieldLabel = (key) =>
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const getIndividualCourseIdentity = (course) => {
+  const codigoIndividual = String(course.codigo_individual || '').trim();
+  if (codigoIndividual) {
+    return {
+      key: `individual-${codigoIndividual.toUpperCase()}`,
+      label: codigoIndividual,
+    };
+  }
+
+  const codigoCurso = String(course.curso_codigo || '').trim();
+  if (codigoCurso) {
+    return {
+      key: `curso-${codigoCurso.toUpperCase()}`,
+      label: codigoCurso,
+    };
+  }
+
+  const nombreCurso = String(course.curso_nombre || '').trim();
+  if (nombreCurso) {
+    return {
+      key: `nombre-${nombreCurso.toUpperCase()}`,
+      label: nombreCurso,
+    };
+  }
+
+  return {
+    key: `fila-${course.id}`,
+    label: `Sin código individual (${course.id})`,
+  };
+};
+
 export default function ScormsTable() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -555,6 +586,38 @@ export default function ScormsTable() {
       return Array.from(deduped.values());
     },
     [relatedCoursesByScormKey],
+  );
+
+  const getIndividualCourseGroupsForScorm = useCallback(
+    (row) => {
+      const grouped = getRelatedCoursesForScorm(row).reduce((acc, course) => {
+        const identity = getIndividualCourseIdentity(course);
+
+        if (!acc[identity.key]) {
+          acc[identity.key] = {
+            ...identity,
+            rows: [],
+          };
+        }
+
+        acc[identity.key].rows.push(course);
+
+        return acc;
+      }, {});
+
+      return Object.values(grouped).sort((left, right) => left.label.localeCompare(right.label, 'es', { sensitivity: 'base' }));
+    },
+    [getRelatedCoursesForScorm],
+  );
+
+  const getIndividualCourseCountForScorm = useCallback(
+    (row) => getIndividualCourseGroupsForScorm(row).length,
+    [getIndividualCourseGroupsForScorm],
+  );
+
+  const modalIndividualCourseGroups = useMemo(
+    () => (coursesModalRow ? getIndividualCourseGroupsForScorm(coursesModalRow) : []),
+    [coursesModalRow, getIndividualCourseGroupsForScorm],
   );
 
   const addFieldFilter = (field) => {
@@ -1140,7 +1203,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.27.1</h2>
+        <h2>GScormer · v1.27.2</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1399,7 +1462,7 @@ export default function ScormsTable() {
                               setCoursesModalRow(row);
                             }}
                           >
-                            Cursos ({getRelatedCoursesForScorm(row).length})
+                            Cursos individuales ({getIndividualCourseCountForScorm(row)})
                           </button>
                         ) : (
                           <span>{row[column.key] || '-'}</span>
@@ -1984,42 +2047,91 @@ export default function ScormsTable() {
               </button>
             </header>
 
-            {getRelatedCoursesForScorm(coursesModalRow).length === 0 ? (
-              <p className="status">No hay cursos relacionados para este SCORM.</p>
+            {modalIndividualCourseGroups.length === 0 ? (
+              <p className="status">No hay cursos individuales relacionados para este SCORM.</p>
             ) : (
               <div className="scorms-accordion-list">
-                {getRelatedCoursesForScorm(coursesModalRow).map((course) => {
-                  const detailEntries = Object.entries(course).filter(
-                    ([key]) => !['id', 'created_at', 'curso_nombre', 'tipologia', 'inscripcion'].includes(key),
+                {modalIndividualCourseGroups.map((individualGroup) => {
+                  const coursesByCode = individualGroup.rows.reduce((acc, course) => {
+                    const courseCode = String(course.curso_codigo || '').trim();
+                    const courseName = String(course.curso_nombre || '').trim();
+                    const key = courseCode || courseName || `curso-${course.id}`;
+
+                    if (!acc[key]) {
+                      acc[key] = {
+                        key,
+                        title: courseCode || courseName || `Curso ${course.id}`,
+                        rows: [],
+                      };
+                    }
+
+                    acc[key].rows.push(course);
+                    return acc;
+                  }, {});
+
+                  const nestedCourses = Object.values(coursesByCode).sort((left, right) =>
+                    left.title.localeCompare(right.title, 'es', { sensitivity: 'base' }),
                   );
 
                   return (
-                    <details key={course.id} className="scorms-accordion-item">
+                    <details key={individualGroup.key} className="scorms-accordion-item">
                       <summary>
                         <span className="course-summary-grid">
-                          <strong>{String(course.curso_nombre || '-')}</strong>
-                          <span>{String(course.tipologia || '-')}</span>
-                          <span>{String(course.inscripcion || '-')}</span>
+                          <strong>{individualGroup.label}</strong>
+                          <span>{individualGroup.rows.length} curso(s)</span>
+                          <span>Nivel 1 · Curso individual</span>
                         </span>
                       </summary>
 
-                      <div className="table-wrapper details-table-wrapper">
-                        <table className="details-edit-table">
-                          <thead>
-                            <tr>
-                              <th>Campo</th>
-                              <th>Valor</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {detailEntries.map(([key, value]) => (
-                              <tr key={`${course.id}-${key}`}>
-                                <td>{formatFieldLabel(key)}</td>
-                                <td>{String(value || '-')}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="scorms-accordion-list">
+                        {nestedCourses.map((courseGroup) => (
+                          <details key={`${individualGroup.key}-${courseGroup.key}`} className="scorms-accordion-item">
+                            <summary>
+                              <span className="course-summary-grid">
+                                <strong>{courseGroup.title}</strong>
+                                <span>{courseGroup.rows.length} registro(s)</span>
+                                <span>Nivel 2 · Cursos</span>
+                              </span>
+                            </summary>
+
+                            <details className="scorms-accordion-item" open>
+                              <summary>
+                                <span className="course-summary-grid">
+                                  <strong>Detalles</strong>
+                                  <span>Tabla de campos</span>
+                                  <span>Nivel 3</span>
+                                </span>
+                              </summary>
+
+                              <div className="table-wrapper details-table-wrapper">
+                                <table className="details-edit-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Campo</th>
+                                      {courseGroup.rows.map((course) => (
+                                        <th key={`${courseGroup.key}-header-${course.id}`}>
+                                          {String(course.curso_nombre || course.curso_codigo || `Registro ${course.id}`)}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {Object.entries(courseGroup.rows[0] || {})
+                                      .filter(([key]) => !['contenido', 'contenidos'].includes(key))
+                                      .map(([key]) => (
+                                        <tr key={`${courseGroup.key}-${key}`}>
+                                          <td>{formatFieldLabel(key)}</td>
+                                          {courseGroup.rows.map((course) => (
+                                            <td key={`${course.id}-${key}`}>{String(course[key] || '-')}</td>
+                                          ))}
+                                        </tr>
+                                      ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </details>
+                          </details>
+                        ))}
                       </div>
                     </details>
                   );
