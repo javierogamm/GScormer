@@ -53,7 +53,7 @@ export default function HomePage() {
 
     const response = await supabase
       .from('scorms_users')
-      .select('id, name, agente')
+      .select('*')
       .eq('name', trimmedName)
       .eq('pass', trimmedPass)
       .limit(1)
@@ -68,7 +68,7 @@ export default function HomePage() {
     const nextSession = {
       id: response.data.id,
       name: response.data.name,
-      agente: response.data.agente || '',
+      agente: String(response.data.agent || response.data.agente || '').trim(),
     };
 
     setUserSession(nextSession);
@@ -79,7 +79,7 @@ export default function HomePage() {
 
 
   const displayAgentName = String(userSession?.agente || '').trim();
-  const userBadgeLabel = displayAgentName || userSession?.name || 'Sin agente';
+  const userBadgeLabel = displayAgentName || 'Sin agente';
 
   const handleLogout = () => {
     setUserSession(null);
@@ -198,7 +198,7 @@ export default function HomePage() {
         <div className="modal-overlay" role="presentation" onClick={() => setPasswordModalOpen(false)}>
           <section className="modal-content modal-content-narrow" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h3>{userSession.name}</h3>
-            <p className="status">Usuario conectado · Agente: {userBadgeLabel}</p>
+            <p className="status">Usuario conectado · Agente: {displayAgentName || 'Sin agente asignado'}</p>
             <form className="auth-form" onSubmit={handleChangePassword}>
               <label>
                 Nueva contraseña
