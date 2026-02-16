@@ -703,6 +703,34 @@ input:focus {
   align-items: center;
 }
 
+
+.individuales-view {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.individual-course-group {
+  background: #ffffff;
+}
+
+.individual-summary-grid {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(340px, 1.6fr) minmax(200px, 1fr);
+  align-items: center;
+}
+
+.individual-inner-table-wrapper {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.individual-inner-table {
+  min-width: 760px;
+}
+
 .scorm-modal-details-grid {
   padding: 0.8rem;
 }

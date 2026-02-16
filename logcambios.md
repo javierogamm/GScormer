@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.26.0 - Código individual y subvista de Cursos individuales
+
+### Cambios consolidados
+- Se añadió la nueva columna `codigo_individual` en la estructura de `scorms_cursos` mediante migración incremental y se actualizó el script de creación base para nuevos entornos.
+- Se incorporó una nueva subvista **Cursos individuales** dentro de **SCORMs Cursos**.
+- La subvista muestra un acordeón por **Código individual** y enseña en cabecera: **Código individual**, **Curso nombre** (primer valor del grupo) y **Materia**.
+- Al expandir cada grupo se listan todos los cursos asociados al mismo código individual con columnas: **curso_codigo**, **curso_nombre**, **tipología**, botón **Detalles** y botón **SCORMs**.
+- Se añadió un modal de **Detalle del curso** para mostrar la información completa del curso seleccionado desde la subvista de cursos individuales.
+- Se actualizó la versión visible de la APP a **v1.26.0** y el versionado de `package.json` a `1.26.0`.
+
+### Versionado
+- Versión anterior: `1.25.0`
+- Nueva versión consolidada: `1.26.0`
+
+---
+
 ## v1.25.0 - Acordeón de filtros clicable en todas las vistas
 
 ### Cambios consolidados
