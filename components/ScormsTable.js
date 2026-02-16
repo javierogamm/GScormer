@@ -1233,7 +1233,7 @@ export default function ScormsTable({ userSession }) {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.28.1</h2>
+        <h2>GScormer · v1.28.3</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla

@@ -1,5 +1,36 @@
 # Log de cambios
 
+## v1.28.3 - Visualización de agent sin alterar login
+
+### Cambios consolidados
+- Se mantuvo el login con su funcionamiento original por `name` + `pass`, sin cambios en el origen de autenticación del usuario.
+- Se ajustó la sesión para guardar y mostrar correctamente el valor de agente del usuario tomando `scorms_users.agent` (con compatibilidad también para `agente` si existe).
+- El badge de sesión y el modal de usuario muestran explícitamente el valor del agente conectado.
+- El botón **Mis scorms** conserva su filtro por responsable usando `userSession.agente`, por lo que ahora aplica el agente real cargado en login sin cambiar la lógica del botón.
+- Se actualizó la versión visible de la APP a **v1.28.3** y el versionado de `package.json` a `1.28.3`.
+
+### Versionado
+- Versión anterior: `1.28.2`
+- Nueva versión consolidada: `1.28.3`
+
+---
+
+## v1.28.2 - Login con nick/agent y filtro Mis scorms por agente real
+
+### Cambios consolidados
+- Se reforzó el login para autenticar por `name` o por `nick`, usando la misma contraseña de `scorms_users`.
+- Se ajustó la sesión para capturar el agente desde ambas columnas compatibles (`agente` o `agent`) y mostrarlo correctamente al iniciar sesión.
+- Se añadió persistencia normalizada de sesión para que usuarios con sesiones antiguas también recuperen el agente correcto sin reloguear.
+- Se mejoró el badge/ventana de sesión para priorizar la visualización del `nick` del usuario y mostrar el agente asignado de forma explícita.
+- Con esto, el botón **Mis scorms** aplica el filtro por responsable usando el agente real cargado desde login.
+- Se actualizó la versión visible de la APP a **v1.28.2** y el versionado de `package.json` a `1.28.2`.
+
+### Versionado
+- Versión anterior: `1.28.1`
+- Nueva versión consolidada: `1.28.2`
+
+---
+
 ## v1.28.1 - Normalización de agente y ajuste de “Mis scorms"
 
 ### Cambios consolidados
