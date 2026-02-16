@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.27.1 - Botón SCORMS en nivel 1 de Cursos individuales
+
+### Cambios consolidados
+- Se deshizo el cambio de agrupación por SCORM como nivel superior del acordeón en la subvista **Cursos individuales**.
+- Se recuperó la estructura original por **Código individual** en el nivel 1 del acordeón.
+- Se movió el botón **Scorms** al resumen del **nivel 1** (a la derecha), eliminándolo de las filas internas del nivel 2.
+- El botón **Scorms** del nivel 1 abre el mismo modal existente y ahora consolida todos los SCORMs detectados en todas las filas del grupo expandido.
+- Se actualizó la versión visible de la APP a **v1.27.1** y el versionado de `package.json` a `1.27.1`.
+
+### Versionado
+- Versión anterior: `1.27.0`
+- Nueva versión consolidada: `1.27.1`
+
+---
+
 ## v1.27.0 - Nodo superior SCORMS en Cursos individuales
 
 ### Cambios consolidados
