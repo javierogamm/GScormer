@@ -257,7 +257,23 @@ const getIndividualCourseIdentity = (course) => {
   };
 };
 
-export default function ScormsTable() {
+const parseResponsables = (responsablesValue) => {
+  return String(responsablesValue || '')
+    .split('&')
+    .map((value) => value.trim())
+    .filter(Boolean);
+};
+
+const rowHasResponsibleAgent = (row, agentName) => {
+  const normalizedAgent = String(agentName || '').trim().toLowerCase();
+  if (!normalizedAgent) {
+    return false;
+  }
+
+  return parseResponsables(row.scorm_responsable).some((responsable) => responsable.toLowerCase() === normalizedAgent);
+};
+
+export default function ScormsTable({ userSession }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
@@ -295,6 +311,7 @@ export default function ScormsTable() {
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
   const [coursesRows, setCoursesRows] = useState([]);
   const [coursesModalRow, setCoursesModalRow] = useState(null);
+  const [myScormsOnly, setMyScormsOnly] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -361,6 +378,11 @@ export default function ScormsTable() {
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
+      const matchesMyScorms = !myScormsOnly || rowHasResponsibleAgent(row, userSession?.agente);
+      if (!matchesMyScorms) {
+        return false;
+      }
+
       return columns.every((column) => {
         const fieldFilters = filters[column.key] || [];
         if (fieldFilters.length === 0) {
@@ -376,7 +398,7 @@ export default function ScormsTable() {
         return fieldFilters.some((filterValue) => value.includes(filterValue.toLowerCase()));
       });
     });
-  }, [rows, filters]);
+  }, [filters, myScormsOnly, rows, userSession?.agente]);
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
 
@@ -1203,7 +1225,7 @@ export default function ScormsTable() {
   return (
     <section className="card card-wide">
       <header className="card-header">
-        <h2>GScormer · v1.27.4</h2>
+        <h2>GScormer · v1.28.0</h2>
         <div className="header-actions">
           <button type="button" className="secondary" onClick={() => setViewMode('table')} disabled={viewMode === 'table'}>
             Tabla
@@ -1231,8 +1253,21 @@ export default function ScormsTable() {
           <button type="button" className="secondary" onClick={fetchData}>
             Recargar
           </button>
+          <button
+            type="button"
+            className={`secondary ${myScormsOnly ? 'active-preset' : ''}`}
+            onClick={() => setMyScormsOnly((previous) => !previous)}
+            disabled={!String(userSession?.agente || '').trim()}
+            title={String(userSession?.agente || '').trim() ? `Filtrar por agente: ${userSession.agente}` : 'Tu usuario no tiene agente asignado'}
+          >
+            Mis scorms
+          </button>
         </div>
       </header>
+
+      {myScormsOnly && String(userSession?.agente || '').trim() && (
+        <p className="status">Filtro activo por responsable/agente: {userSession.agente}</p>
+      )}
 
       {statusMessage && <p className="status ok">{statusMessage}</p>}
       {error && <p className="status error">{error}</p>}
@@ -1842,11 +1877,20 @@ export default function ScormsTable() {
                     <tr key={`detail-${column.key}`}>
                       <td>{column.label}</td>
                       <td>
-                        <input
-                          type="text"
-                          value={detailDraft[column.key] || ''}
-                          onChange={(event) => updateDetailDraft(column.key, event.target.value)}
-                        />
+                        {column.key === 'scorm_responsable' ? (
+                          <input
+                            type="text"
+                            value={detailDraft[column.key] || ''}
+                            placeholder="Responsables separados por &"
+                            onChange={(event) => updateDetailDraft(column.key, event.target.value)}
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={detailDraft[column.key] || ''}
+                            onChange={(event) => updateDetailDraft(column.key, event.target.value)}
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -2017,6 +2061,7 @@ export default function ScormsTable() {
                   <input
                     type="text"
                     value={createDraft[column.key] || ''}
+                    placeholder={column.key === 'scorm_responsable' ? 'Responsables separados por &' : ''}
                     onChange={(event) => updateCreateDraft(column.key, event.target.value)}
                   />
                 </label>

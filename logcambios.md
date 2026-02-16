@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.28.0 - Correlación de agentes y filtro “Mis scorms”
+
+### Cambios consolidados
+- Se incorporó la correlación de **agentes** desde `scorms_users.agente` para la sesión de usuario al iniciar sesión.
+- En la vista **SCORMs Master** se añadió el botón **Mis scorms** que activa/desactiva un filtro por responsable según el agente del usuario conectado.
+- El filtro **Mis scorms** contempla múltiples responsables en `scorm_responsable` separados por `&` (comparación exacta por nombre de agente, ignorando mayúsculas/minúsculas y espacios laterales).
+- Se añadieron ayudas visuales en los formularios de creación/edición para indicar el formato de múltiples responsables separados por `&`.
+- Se añadió una migración incremental para incluir la columna `agente` en `scorms_users`.
+- Se actualizó la versión visible de la APP a **v1.28.0** y el versionado de `package.json` a `1.28.0`.
+
+### Versionado
+- Versión anterior: `1.27.4`
+- Nueva versión consolidada: `1.28.0`
+
+---
+
 ## v1.27.4 - Diferenciación visual de niveles en modal de cursos (Master)
 
 ### Cambios consolidados
