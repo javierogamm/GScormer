@@ -273,20 +273,22 @@ const normalizeAgentLabel = (value) => {
     .toLowerCase();
 };
 
-const rowHasResponsibleAgent = (row, agentName) => {
-  const normalizedAgent = normalizeAgentLabel(agentName);
-  if (!normalizedAgent) {
+const rowHasResponsibleAgents = (row, agentNames = []) => {
+  const normalizedAgents = agentNames.map((agentName) => normalizeAgentLabel(agentName)).filter(Boolean);
+  if (normalizedAgents.length === 0) {
     return false;
   }
 
   const normalizedResponsables = parseResponsables(row.scorm_responsable).map((responsable) => normalizeAgentLabel(responsable));
 
-  const exactMatch = normalizedResponsables.some((responsable) => responsable === normalizedAgent);
-  if (exactMatch) {
-    return true;
-  }
+  return normalizedAgents.some((normalizedAgent) => {
+    const exactMatch = normalizedResponsables.some((responsable) => responsable === normalizedAgent);
+    if (exactMatch) {
+      return true;
+    }
 
-  return normalizedResponsables.some((responsable) => responsable.includes(normalizedAgent));
+    return normalizedResponsables.some((responsable) => responsable.includes(normalizedAgent));
+  });
 };
 
 export default function ScormsTable({ userSession }) {
@@ -328,6 +330,7 @@ export default function ScormsTable({ userSession }) {
   const [coursesRows, setCoursesRows] = useState([]);
   const [coursesModalRow, setCoursesModalRow] = useState(null);
   const [myScormsOnly, setMyScormsOnly] = useState(false);
+  const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -394,7 +397,7 @@ export default function ScormsTable({ userSession }) {
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
-      const matchesMyScorms = !myScormsOnly || rowHasResponsibleAgent(row, userSession?.agente);
+      const matchesMyScorms = !myScormsOnly || rowHasResponsibleAgents(row, scopedResponsibleAgents);
       if (!matchesMyScorms) {
         return false;
       }
@@ -414,7 +417,7 @@ export default function ScormsTable({ userSession }) {
         return fieldFilters.some((filterValue) => value.includes(filterValue.toLowerCase()));
       });
     });
-  }, [filters, myScormsOnly, rows, userSession?.agente]);
+  }, [filters, myScormsOnly, rows, scopedResponsibleAgents]);
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
 
@@ -1273,16 +1276,20 @@ export default function ScormsTable({ userSession }) {
             type="button"
             className={`secondary ${myScormsOnly ? 'active-preset' : ''}`}
             onClick={() => setMyScormsOnly((previous) => !previous)}
-            disabled={!String(userSession?.agente || '').trim()}
-            title={String(userSession?.agente || '').trim() ? `Filtrar por agente: ${userSession.agente}` : 'Tu usuario no tiene agente asignado'}
+            disabled={scopedResponsibleAgents.length === 0}
+            title={
+              scopedResponsibleAgents.length > 0
+                ? `Filtrar por responsables asociados (${scopedResponsibleAgents.length})`
+                : 'Tu usuario no tiene responsables asociados'
+            }
           >
             Mis scorms
           </button>
         </div>
       </header>
 
-      {myScormsOnly && String(userSession?.agente || '').trim() && (
-        <p className="status">Filtro activo por responsable/agente: {userSession.agente}</p>
+      {myScormsOnly && scopedResponsibleAgents.length > 0 && (
+        <p className="status">Filtro activo por responsables: {scopedResponsibleAgents.join(', ')}</p>
       )}
 
       {statusMessage && <p className="status ok">{statusMessage}</p>}

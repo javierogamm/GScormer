@@ -1,5 +1,23 @@
 # Log de cambios
 
+## v1.30.0 - Asociación múltiple de usuario a responsables/instructores
+
+### Cambios consolidados
+- Se añadió en cabecera el botón **Asociar mi usuario a agente**, que abre un modal editable en cualquier momento para gestionar la asociación del usuario conectado.
+- El nuevo modal incluye una tabla de dos columnas con checkboxes: **Responsables de SCORM** (desde `scorms_master.scorm_responsable`) e **Instructores de cursos** (desde `scorms_cursos.curso_instructor`).
+- Se implementó guardado de asociaciones en la fila del usuario (`scorms_users.agent`) usando un formato JSON con dos listas (`responsables` e `instructores`), manteniendo compatibilidad con el formato legacy en texto plano.
+- Se actualizó la sesión/localStorage para persistir y reutilizar las asociaciones activas del usuario.
+- Se adaptó el filtro **Mis scorms** para aplicar cualquier valor asociado en la lista de responsables del usuario.
+- Se adaptó el filtro **Mis cursos** para aplicar cualquier valor asociado en la lista de instructores del usuario.
+- Se añadieron estilos para el modal de asociación y listas con scroll para facilitar edición de múltiples valores.
+- Se actualizó la versión visible de la APP a **v1.30.0** y el versionado de `package.json` a `1.30.0`.
+
+### Versionado
+- Versión anterior: `1.29.0`
+- Nueva versión consolidada: `1.30.0`
+
+---
+
 ## v1.29.0 - Reenganche de agente y filtros aproximados en Mis scorms/Mis cursos
 
 ### Cambios consolidados

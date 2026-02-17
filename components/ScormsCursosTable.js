@@ -73,20 +73,23 @@ const splitInstructorValues = (instructorValue) => {
     .filter(Boolean);
 };
 
-const rowHasInstructorAgent = (row, agentName) => {
-  const normalizedAgent = normalizeAgentLabel(agentName);
-  if (!normalizedAgent) {
+const rowHasInstructorAgents = (row, agentNames = []) => {
+  const normalizedAgents = agentNames.map((agentName) => normalizeAgentLabel(agentName)).filter(Boolean);
+  if (normalizedAgents.length === 0) {
     return false;
   }
 
   const normalizedInstructors = splitInstructorValues(row.curso_instructor).map((instructor) => normalizeAgentLabel(instructor));
-  const exactMatch = normalizedInstructors.some((instructor) => instructor === normalizedAgent);
 
-  if (exactMatch) {
-    return true;
-  }
+  return normalizedAgents.some((normalizedAgent) => {
+    const exactMatch = normalizedInstructors.some((instructor) => instructor === normalizedAgent);
 
-  return normalizedInstructors.some((instructor) => instructor.includes(normalizedAgent));
+    if (exactMatch) {
+      return true;
+    }
+
+    return normalizedInstructors.some((instructor) => instructor.includes(normalizedAgent));
+  });
 };
 
 const extractScormReferencesFromContenido = (contenido) => {
@@ -137,6 +140,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [scormSearchText, setScormSearchText] = useState('');
   const [selectedScormIds, setSelectedScormIds] = useState([]);
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
+  const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -173,7 +177,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     const activeFilterEntries = Object.entries(filters).filter(([, values]) => values.length > 0);
 
     return rows.filter((row) => {
-      const matchesMyCourses = !myCoursesOnly || rowHasInstructorAgent(row, userSession?.agente);
+      const matchesMyCourses = !myCoursesOnly || rowHasInstructorAgents(row, scopedInstructorAgents);
       if (!matchesMyCourses) {
         return false;
       }
@@ -183,7 +187,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
         return values.every((value) => rowValue.includes(value.toLowerCase()));
       });
     });
-  }, [rows, filters, myCoursesOnly, userSession?.agente]);
+  }, [rows, filters, myCoursesOnly, scopedInstructorAgents]);
 
   const scormsByCode = useMemo(() => {
     return masterRows.reduce((acc, row) => {
@@ -447,8 +451,12 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             type="button"
             className={`secondary ${myCoursesOnly ? 'active-preset' : ''}`}
             onClick={() => setMyCoursesOnly((previous) => !previous)}
-            disabled={!String(userSession?.agente || '').trim()}
-            title={String(userSession?.agente || '').trim() ? `Filtrar por instructor: ${userSession.agente}` : 'Tu usuario no tiene agente asignado'}
+            disabled={scopedInstructorAgents.length === 0}
+            title={
+              scopedInstructorAgents.length > 0
+                ? `Filtrar por instructores asociados (${scopedInstructorAgents.length})`
+                : 'Tu usuario no tiene instructores asociados'
+            }
           >
             Mis cursos
           </button>
@@ -466,8 +474,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
         </div>
       </div>
 
-      {myCoursesOnly && String(userSession?.agente || '').trim() ? (
-        <p className="status">Filtro activo por instructor/agente: {userSession.agente}</p>
+      {myCoursesOnly && scopedInstructorAgents.length > 0 ? (
+        <p className="status">Filtro activo por instructores: {scopedInstructorAgents.join(', ')}</p>
       ) : null}
 
       {statusMessage ? <p className="status ok">{statusMessage}</p> : null}
