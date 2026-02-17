@@ -7,6 +7,63 @@ import { supabase } from '../lib/supabaseClient';
 import { APP_VERSION } from '../lib/appVersion';
 
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
+const AGENT_SPLIT_REGEX = /[&,;|]/;
+
+const parseAgentList = (value) =>
+  String(value || '')
+    .split(AGENT_SPLIT_REGEX)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const dedupeValues = (values = []) => {
+  const uniqueByNormalized = new Map();
+
+  values.forEach((value) => {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const normalized = trimmed.toLocaleLowerCase('es-ES');
+    if (!uniqueByNormalized.has(normalized)) {
+      uniqueByNormalized.set(normalized, trimmed);
+    }
+  });
+
+  return [...uniqueByNormalized.values()];
+};
+
+const parseAgentConfig = (agentValue) => {
+  const raw = String(agentValue || '').trim();
+
+  if (!raw) {
+    return { responsables: [], instructores: [] };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (parsed && typeof parsed === 'object') {
+      const responsables = dedupeValues(Array.isArray(parsed.responsables) ? parsed.responsables : []);
+      const instructores = dedupeValues(Array.isArray(parsed.instructores) ? parsed.instructores : []);
+      return { responsables, instructores };
+    }
+  } catch (_error) {
+    // Compatibilidad con formato legacy en texto plano.
+  }
+
+  const legacyValues = dedupeValues(parseAgentList(raw));
+  return { responsables: legacyValues, instructores: legacyValues };
+};
+
+const stringifyAgentConfig = (config) => {
+  const normalized = {
+    responsables: dedupeValues(config?.responsables || []),
+    instructores: dedupeValues(config?.instructores || []),
+  };
+
+  return JSON.stringify(normalized);
+};
 
 export default function HomePage() {
   const [activeView, setActiveView] = useState('scorms');
@@ -21,6 +78,14 @@ export default function HomePage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordStatus, setPasswordStatus] = useState('');
   const [identifyAgentLoading, setIdentifyAgentLoading] = useState(false);
+  const [agentModalOpen, setAgentModalOpen] = useState(false);
+  const [agentOptionsLoading, setAgentOptionsLoading] = useState(false);
+  const [agentSaveLoading, setAgentSaveLoading] = useState(false);
+  const [agentStatus, setAgentStatus] = useState('');
+  const [responsableOptions, setResponsableOptions] = useState([]);
+  const [instructorOptions, setInstructorOptions] = useState([]);
+  const [selectedResponsables, setSelectedResponsables] = useState([]);
+  const [selectedInstructores, setSelectedInstructores] = useState([]);
 
   useEffect(() => {
     const storedSession = globalThis?.localStorage?.getItem(SESSION_STORAGE_KEY);
@@ -32,7 +97,15 @@ export default function HomePage() {
     try {
       const parsed = JSON.parse(storedSession);
       if (parsed?.id && parsed?.name) {
-        setUserSession(parsed);
+        const parsedConfig = parseAgentConfig(parsed.agent || parsed.agente);
+        setUserSession({
+          ...parsed,
+          agent: parsed.agent || parsed.agente || '',
+          agente: parsedConfig.responsables.join(', '),
+          agentFilters: parsedConfig,
+        });
+        setSelectedResponsables(parsedConfig.responsables);
+        setSelectedInstructores(parsedConfig.instructores);
       }
     } catch (_error) {
       globalThis?.localStorage?.removeItem(SESSION_STORAGE_KEY);
@@ -67,21 +140,27 @@ export default function HomePage() {
       return;
     }
 
+    const agentRawValue = String(response.data.agent || response.data.agente || '').trim();
+    const parsedConfig = parseAgentConfig(agentRawValue);
+
     const nextSession = {
       id: response.data.id,
       name: response.data.name,
-      agente: String(response.data.agent || response.data.agente || '').trim(),
+      agent: agentRawValue,
+      agente: parsedConfig.responsables.join(', '),
+      agentFilters: parsedConfig,
     };
 
     setUserSession(nextSession);
+    setSelectedResponsables(parsedConfig.responsables);
+    setSelectedInstructores(parsedConfig.instructores);
     globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
     setLoginPass('');
     setLoginLoading(false);
   };
 
-
-  const displayAgentName = String(userSession?.agente || '').trim();
-  const userBadgeLabel = displayAgentName || 'Sin agente';
+  const selectedAgentsCount = selectedResponsables.length + selectedInstructores.length;
+  const userBadgeLabel = `${userSession?.name || 'Usuario'} · ${selectedAgentsCount} asociaciones`;
 
   const handleIdentifyAgent = async () => {
     if (!userSession?.id) {
@@ -106,24 +185,109 @@ export default function HomePage() {
     }
 
     const linkedAgent = String(response.data.agent || response.data.agente || '').trim();
+    const parsedConfig = parseAgentConfig(linkedAgent);
     const nextSession = {
       ...userSession,
       name: response.data.name || userSession.name,
-      agente: linkedAgent,
+      agent: linkedAgent,
+      agente: parsedConfig.responsables.join(', '),
+      agentFilters: parsedConfig,
+    };
+
+    setUserSession(nextSession);
+    setSelectedResponsables(parsedConfig.responsables);
+    setSelectedInstructores(parsedConfig.instructores);
+    globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+    setPasswordStatus(linkedAgent ? 'Asociaciones recargadas desde base de datos.' : 'Usuario reenganchado, pero sin asociaciones guardadas.');
+    setIdentifyAgentLoading(false);
+  };
+
+  const loadAgentOptions = async () => {
+    setAgentOptionsLoading(true);
+    setAgentStatus('');
+
+    const [masterResponse, cursosResponse] = await Promise.all([
+      supabase.from('scorms_master').select('scorm_responsable'),
+      supabase.from('scorms_cursos').select('curso_instructor'),
+    ]);
+
+    if (masterResponse.error || cursosResponse.error) {
+      setAgentStatus('No se pudieron cargar responsables/instructores.');
+      setAgentOptionsLoading(false);
+      return;
+    }
+
+    const responsables = dedupeValues(
+      (masterResponse.data || []).flatMap((row) => parseAgentList(row.scorm_responsable))
+    ).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    const instructores = dedupeValues(
+      (cursosResponse.data || []).flatMap((row) => parseAgentList(row.curso_instructor))
+    ).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+    setResponsableOptions(responsables);
+    setInstructorOptions(instructores);
+    setAgentOptionsLoading(false);
+  };
+
+  const openAgentModal = async () => {
+    setAgentModalOpen(true);
+    await loadAgentOptions();
+  };
+
+  const toggleAgentSelection = (value, selectedValues, setter) => {
+    setter(
+      selectedValues.includes(value)
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value]
+    );
+  };
+
+  const handleSaveAgentAssociations = async () => {
+    if (!userSession?.id) {
+      setAgentStatus('No hay sesión activa.');
+      return;
+    }
+
+    setAgentSaveLoading(true);
+    setAgentStatus('');
+
+    const config = {
+      responsables: selectedResponsables,
+      instructores: selectedInstructores,
+    };
+    const serializedAgent = stringifyAgentConfig(config);
+
+    const response = await supabase.from('scorms_users').update({ agent: serializedAgent }).eq('id', userSession.id);
+
+    if (response.error) {
+      setAgentStatus(`No se pudo guardar: ${response.error.message}`);
+      setAgentSaveLoading(false);
+      return;
+    }
+
+    const nextSession = {
+      ...userSession,
+      agent: serializedAgent,
+      agente: selectedResponsables.join(', '),
+      agentFilters: config,
     };
 
     setUserSession(nextSession);
     globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
-    setPasswordStatus(linkedAgent ? `Agente identificado: ${linkedAgent}` : 'Usuario reenganchado, pero sin agente asignado.');
-    setIdentifyAgentLoading(false);
+    setAgentStatus('Asociaciones guardadas correctamente.');
+    setAgentSaveLoading(false);
   };
 
   const handleLogout = () => {
     setUserSession(null);
     setPasswordModalOpen(false);
+    setAgentModalOpen(false);
     setPasswordStatus('');
+    setAgentStatus('');
     setNewPass('');
     setNewPassConfirm('');
+    setSelectedResponsables([]);
+    setSelectedInstructores([]);
     globalThis?.localStorage?.removeItem(SESSION_STORAGE_KEY);
   };
 
@@ -218,6 +382,9 @@ export default function HomePage() {
             >
               SCORMs Cursos
             </button>
+            <button type="button" className="secondary" onClick={openAgentModal}>
+              Asociar mi usuario a agente
+            </button>
             <button type="button" className="secondary user-badge" onClick={() => setPasswordModalOpen(true)}>
               <span className="user-dot" aria-hidden="true" />
               <span>{userBadgeLabel}</span>
@@ -236,7 +403,7 @@ export default function HomePage() {
         <div className="modal-overlay" role="presentation" onClick={() => setPasswordModalOpen(false)}>
           <section className="modal-content modal-content-narrow" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h3>{userSession.name}</h3>
-            <p className="status">Usuario conectado · Agente: {displayAgentName || 'Sin agente asignado'}</p>
+            <p className="status">Usuario conectado · Asociaciones: {selectedAgentsCount}</p>
             <form className="auth-form" onSubmit={handleChangePassword}>
               <label>
                 Nueva contraseña
@@ -272,6 +439,53 @@ export default function HomePage() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {agentModalOpen && (
+        <div className="modal-overlay" role="presentation" onClick={() => setAgentModalOpen(false)}>
+          <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h3>Asociar mi usuario a agente</h3>
+            <p className="status">Selecciona responsables e instructores para el usuario {userSession?.name}.</p>
+            {agentOptionsLoading ? <p className="status">Cargando valores...</p> : null}
+            <div className="agent-association-grid">
+              <div className="agent-column">
+                <h4>Responsables de SCORM</h4>
+                {responsableOptions.map((value) => (
+                  <label key={`responsable-${value}`} className="agent-check-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedResponsables.includes(value)}
+                      onChange={() => toggleAgentSelection(value, selectedResponsables, setSelectedResponsables)}
+                    />
+                    <span>{value}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="agent-column">
+                <h4>Instructores de cursos</h4>
+                {instructorOptions.map((value) => (
+                  <label key={`instructor-${value}`} className="agent-check-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedInstructores.includes(value)}
+                      onChange={() => toggleAgentSelection(value, selectedInstructores, setSelectedInstructores)}
+                    />
+                    <span>{value}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {agentStatus ? <p className={agentStatus.includes('correctamente') ? 'status ok' : 'status error'}>{agentStatus}</p> : null}
+            <div className="header-actions">
+              <button type="button" onClick={handleSaveAgentAssociations} disabled={agentSaveLoading}>
+                {agentSaveLoading ? 'Guardando...' : 'Guardar asociaciones'}
+              </button>
+              <button type="button" className="secondary" onClick={() => setAgentModalOpen(false)}>
+                Cerrar
+              </button>
+            </div>
           </section>
         </div>
       )}

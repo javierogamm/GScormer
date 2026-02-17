@@ -979,3 +979,35 @@ textarea:focus {
   background: #2ac56d;
   box-shadow: 0 0 0 2px rgba(42, 197, 109, 0.25);
 }
+
+
+.agent-association-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin: 0.8rem 0;
+}
+
+.agent-column {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: #f9fcff;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.agent-column h4 {
+  margin: 0 0 0.6rem;
+}
+
+.agent-check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+
+.agent-check-row input {
+  width: auto;
+}
