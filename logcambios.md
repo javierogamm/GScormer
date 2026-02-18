@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.32.0 - Nueva columna scorm_test en filtros y tabla principal
+
+### Cambios consolidados
+- Se añadió la columna `scorm_test` en la configuración de columnas de la vista **SCORMs Master**, posicionada a la derecha de **Estado** en la tabla por defecto.
+- La columna `scorm_test` ahora aparece también en el panel de filtros globales y en los filtros tipo selector, para poder filtrar directamente por sus valores.
+- Se adaptó la visualización de `scorm_test` en la tabla: cuando el valor es **Sí/Si** se muestra con **check verde** (`✅`), y para cualquier otro valor se muestra el texto con **aspa roja** (`❌`).
+- Se mantuvo el filtrado contextual por clic en celda para `scorm_test`, de forma que al pulsar el valor en la tabla se añade/quita el filtro correspondiente.
+- Se incrementó ligeramente el ancho mínimo global de tablas para dar cabida a la nueva columna sin comprometer la legibilidad.
+- Se actualizaron las versiones de la APP en `lib/appVersion.js` y `package.json` a **1.32.0**.
+
+### Versionado
+- Versión anterior: `1.31.0`
+- Nueva versión consolidada: `1.32.0`
+
+---
+
 ## v1.31.0 - Añadir traducción masiva en vista Traducciones
 
 ### Cambios consolidados

@@ -14,15 +14,16 @@ const columns = [
   { key: 'scorm_subcategoria', label: 'Subcategoría', editable: true },
   { key: 'scorm_url', label: 'URL', editable: true },
   { key: 'scorm_estado', label: 'Estado', editable: true },
+  { key: 'scorm_test', label: 'Test', editable: true },
   { key: 'scorm_etiquetas', label: 'CURSOS', editable: false },
 ];
 
 const FILTER_LAYOUT_ROWS = [
   ['scorm_code', 'scorm_name'],
-  ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_idioma'],
+  ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_test', 'scorm_idioma'],
 ];
 
-const FILTER_SELECT_KEYS = ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_idioma'];
+const FILTER_SELECT_KEYS = ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_test', 'scorm_idioma'];
 
 const FILTER_LABELS = {
   scorm_categoria: 'Clasificación',
@@ -210,6 +211,23 @@ const formatDateDDMMYYYY = (value) => {
   }
 
   return new Date(dateMs).toLocaleDateString('es-ES');
+};
+
+const getScormTestDisplay = (value) => {
+  const normalizedValue = String(value || '').trim();
+  const isPositive = normalizedValue.toLowerCase() === 'sí' || normalizedValue.toLowerCase() === 'si';
+
+  if (!normalizedValue) {
+    return {
+      value: '-',
+      isPositive: false,
+    };
+  }
+
+  return {
+    value: normalizedValue,
+    isPositive,
+  };
 };
 
 const extractScormReferencesFromContenido = (contenido) => {
@@ -1635,11 +1653,14 @@ export default function ScormsTable({ userSession }) {
                     />
                   </td>
                   {columns.map((column) => {
+                    const scormTestDisplay = column.key === 'scorm_test' ? getScormTestDisplay(row[column.key]) : null;
                     const displayValue =
                       column.key === 'scorm_name'
                         ? getOfficialName(row)
                         : column.key === 'scorm_code'
                           ? getInternationalizedCode(row)
+                          : column.key === 'scorm_test'
+                            ? scormTestDisplay.value
                           : row[column.key] || '-';
                     const hasActiveValueFilter = (filters[column.key] || []).some(
                       (filterValue) => filterValue.toLowerCase() === String(displayValue || '').trim().toLowerCase()
@@ -1689,6 +1710,10 @@ export default function ScormsTable({ userSession }) {
                           >
                             Cursos individuales ({getIndividualCourseCountForScorm(row)})
                           </button>
+                        ) : column.key === 'scorm_test' ? (
+                          <span className={`test-indicator ${scormTestDisplay.isPositive ? 'ok' : 'error'}`}>
+                            {scormTestDisplay.value} {scormTestDisplay.isPositive ? '✅' : '❌'}
+                          </span>
                         ) : (
                           <span>{row[column.key] || '-'}</span>
                         )}
