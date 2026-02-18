@@ -1,5 +1,23 @@
 # Log de cambios
 
+## v1.31.0 - Añadir traducción masiva en vista Traducciones
+
+### Cambios consolidados
+- En la vista **Traducciones** se añadió selección múltiple por checkbox para SCORMs con base en **ES**, incluyendo selección global de los visibles.
+- Se incorporó la acción **Añadir traducción**, que abre un modal para crear traducciones de uno o varios SCORMs seleccionados.
+- El modal permite elegir idioma destino y capturar el nombre traducido de cada curso antes de crear los registros.
+- La creación de traducciones genera nuevos SCORMs en `scorms_master` con el mismo `scorm_code` del original y `scorm_idioma` del idioma destino (prefijo internacionalizado en formato `IDIOMA-CODIGO`).
+- Se añadió control de duplicados para evitar crear una traducción si ya existe el mismo `scorm_code` en el idioma destino.
+- Se ampliaron los idiomas por defecto de la tabla de traducciones para incluir **GAL (Gallego)** e **IT (Italiano)**, además de etiquetas de idioma en los selectores.
+- Se añadieron estilos de apoyo para las nuevas acciones de traducción en cabecera.
+- Se actualizó la versión visible de la APP a **v1.31.0** y el versionado de `package.json` a `1.31.0`.
+
+### Versionado
+- Versión anterior: `1.30.0`
+- Nueva versión consolidada: `1.31.0`
+
+---
+
 ## v1.30.0 - Asociación múltiple de usuario a responsables/instructores
 
 ### Cambios consolidados
