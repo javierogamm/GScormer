@@ -1611,10 +1611,10 @@ export default function ScormsTable({ userSession }) {
                 Actualizar selección ({selectedIds.length})
               </button>
               <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
-                Deshacer
+                ← DESHACER
               </button>
               <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
-                Rehacer
+                REHACER →
               </button>
             </div>
 
@@ -1745,10 +1745,10 @@ export default function ScormsTable({ userSession }) {
         <>
           <div className="status-board-actions">
             <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
-              Deshacer
+              ← DESHACER
             </button>
             <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
-              Rehacer
+              REHACER →
             </button>
           </div>
 
@@ -2032,6 +2032,15 @@ export default function ScormsTable({ userSession }) {
               <span className="preset-kpi-badge" title="SCORMs actualizados pendientes de publicar">
                 {publishUpdatesCount}
               </span>
+            </button>
+          </div>
+
+          <div className="status-board-actions">
+            <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
+              ← DESHACER
+            </button>
+            <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
+              REHACER →
             </button>
           </div>
 

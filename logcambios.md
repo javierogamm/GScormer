@@ -1,5 +1,24 @@
 # Log de cambios
 
+
+## v1.33.0 - Publicación pendiente para cursos + deshacer/rehacer reforzado
+
+### Cambios consolidados
+- Se añadió la columna `curso_estado` al modelo de `scorms_cursos` (migración incremental), incluyendo relleno inicial a `En proceso` para registros existentes sin valor.
+- Se actualizó la migración base de creación de `scorms_cursos` para incluir `curso_estado` en nuevos despliegues.
+- En la vista **SCORMs Cursos** se añadió la nueva subvista **Publicación pendiente**, con KPI en botón, resaltado por color y tabla centrada en cursos con estado `Pendiente de publicar`.
+- En la tabla de pendientes de cursos se añadió acción **PUBLICAR** para cambiar `curso_estado` a `Publicado`.
+- Se incorporaron acciones **← DESHACER** y **REHACER →** en la publicación pendiente de cursos para revertir/reaplicar cambios de estado publicados en sesión.
+- Se añadió `curso_estado` a columnas visibles/filtrables de **SCORMs Cursos** y se establece por defecto a `En proceso` al crear un curso nuevo.
+- En **SCORMs Master**, los botones de deshacer/rehacer ahora se muestran con flechas (`← DESHACER` / `REHACER →`) y se añadió el bloque de deshacer/rehacer en la vista **Pendientes de publicar**.
+- Se actualizó la versión visible de la APP a **v1.33.0** y el versionado de `package.json` a `1.33.0`.
+
+### Versionado
+- Versión anterior: `1.32.0`
+- Nueva versión consolidada: `1.33.0`
+
+---
+
 ## v1.32.0 - Nueva columna scorm_test en filtros y tabla principal
 
 ### Cambios consolidados
