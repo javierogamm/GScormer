@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const columns = [
+  { key: 'curso_estado', label: 'Estado curso' },
   { key: 'codigo_individual', label: 'Código individual' },
   { key: 'categoria', label: 'Categoría' },
   { key: 'subcategoria', label: 'Subcategoría' },
@@ -31,8 +32,11 @@ const columns = [
   { key: 'link_inscripcion', label: 'Link inscripción' },
 ];
 
-const compactColumns = ['curso_codigo', 'curso_nombre', 'tipologia', 'materia', 'pa_nombre', 'curso_instructor', 'curso_url'];
-const detailColumns = columns.filter((column) => !compactColumns.includes(column.key));
+const compactColumns = ['curso_estado', 'curso_codigo', 'curso_nombre', 'tipologia', 'materia', 'pa_nombre', 'curso_instructor', 'curso_url'];
+const detailColumns = columns.filter((column) => column.key === 'curso_estado' || !compactColumns.includes(column.key));
+const COURSE_STATUS_PENDING = 'Pendiente de publicar';
+const COURSE_STATUS_PUBLISHED = 'Publicado';
+const COURSE_STATUS_IN_PROGRESS = 'En proceso';
 
 const isUrl = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -125,6 +129,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState({
+    curso_estado: COURSE_STATUS_IN_PROGRESS,
     curso_nombre: '',
     curso_codigo: '',
     tipologia: '',
@@ -140,6 +145,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [scormSearchText, setScormSearchText] = useState('');
   const [selectedScormIds, setSelectedScormIds] = useState([]);
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
+  const [moveHistory, setMoveHistory] = useState([]);
+  const [redoHistory, setRedoHistory] = useState([]);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
 
   const fetchData = useCallback(async () => {
@@ -257,6 +264,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     setScormSearchText('');
     setSelectedScormIds([]);
     setCreateDraft({
+      curso_estado: COURSE_STATUS_IN_PROGRESS,
       curso_nombre: '',
       curso_codigo: '',
       tipologia: '',
@@ -296,6 +304,119 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       })
       .sort((left, right) => left.codeLabel.localeCompare(right.codeLabel, 'es', { sensitivity: 'base' }));
   }, [filteredRows]);
+
+
+  const pendingPublishRows = useMemo(
+    () => filteredRows.filter((row) => String(row.curso_estado || '').trim() === COURSE_STATUS_PENDING),
+    [filteredRows],
+  );
+
+  const publishCoursesCount = pendingPublishRows.length;
+
+  const changeCourseStatus = async (row, nextStatus, successMessage) => {
+    const currentStatus = String(row.curso_estado || '').trim() || COURSE_STATUS_IN_PROGRESS;
+
+    if (currentStatus === nextStatus) {
+      return;
+    }
+
+    const response = await supabase.from('scorms_cursos').update({ curso_estado: nextStatus }).eq('id', row.id);
+
+    if (response.error) {
+      setError(`No se pudo actualizar el estado del curso: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((item) =>
+        item.id === row.id
+          ? {
+              ...item,
+              curso_estado: nextStatus,
+            }
+          : item,
+      ),
+    );
+
+    setMoveHistory((previous) => [...previous, { rowId: row.id, from: currentStatus, to: nextStatus }]);
+    setRedoHistory([]);
+    setStatusMessage(successMessage);
+    setError('');
+  };
+
+  const setCoursePendingPublication = async (row) => {
+    await changeCourseStatus(
+      row,
+      COURSE_STATUS_PENDING,
+      `Curso movido a pendiente de publicar: ${row.curso_nombre || row.curso_codigo || `ID ${row.id}`}`,
+    );
+  };
+
+  const publishCourse = async (row) => {
+    await changeCourseStatus(
+      row,
+      COURSE_STATUS_PUBLISHED,
+      `Curso publicado: ${row.curso_nombre || row.curso_codigo || `ID ${row.id}`}`,
+    );
+  };
+
+  const handleUndo = async () => {
+    const moveToRestore = moveHistory[moveHistory.length - 1];
+    if (!moveToRestore) {
+      return;
+    }
+
+    const response = await supabase.from('scorms_cursos').update({ curso_estado: moveToRestore.from }).eq('id', moveToRestore.rowId);
+
+    if (response.error) {
+      setError(`No se pudo deshacer el cambio de estado: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((item) =>
+        item.id === moveToRestore.rowId
+          ? {
+              ...item,
+              curso_estado: moveToRestore.from,
+            }
+          : item,
+      ),
+    );
+    setMoveHistory((previous) => previous.slice(0, -1));
+    setRedoHistory((previous) => [...previous, moveToRestore]);
+    setStatusMessage('Deshacer aplicado correctamente.');
+    setError('');
+  };
+
+  const handleRedo = async () => {
+    const moveToRestore = redoHistory[redoHistory.length - 1];
+    if (!moveToRestore) {
+      return;
+    }
+
+    const response = await supabase.from('scorms_cursos').update({ curso_estado: moveToRestore.to }).eq('id', moveToRestore.rowId);
+
+    if (response.error) {
+      setError(`No se pudo rehacer el cambio de estado: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((item) =>
+        item.id === moveToRestore.rowId
+          ? {
+              ...item,
+              curso_estado: moveToRestore.to,
+            }
+          : item,
+      ),
+    );
+    setRedoHistory((previous) => previous.slice(0, -1));
+    setMoveHistory((previous) => [...previous, moveToRestore]);
+    setStatusMessage('Rehacer aplicado correctamente.');
+    setError('');
+  };
 
   const submitCreateCurso = async () => {
     const cursoNombre = String(createDraft.curso_nombre || '').trim();
@@ -429,7 +550,14 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     <section className="card card-wide">
       <div className="card-header">
         <div>
-          <h2>SCORMs Cursos · {cursosSubView === 'general' ? 'Vista general' : 'Cursos individuales'}</h2>
+          <h2>
+            SCORMs Cursos ·{' '}
+            {cursosSubView === 'general'
+              ? 'Vista general'
+              : cursosSubView === 'individuales'
+                ? 'Cursos individuales'
+                : 'Publicación pendiente'}
+          </h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
         <div className="header-actions">
@@ -446,6 +574,16 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             onClick={() => setCursosSubView('individuales')}
           >
             Cursos individuales
+          </button>
+          <button
+            type="button"
+            className={`${cursosSubView === 'publicacion' ? '' : 'secondary'} ${publishCoursesCount > 0 ? 'pending-highlight' : ''}`}
+            onClick={() => setCursosSubView('publicacion')}
+          >
+            Publicación pendiente
+            <span className="preset-kpi-badge" title="Cursos pendientes de publicar">
+              {publishCoursesCount}
+            </span>
           </button>
           <button
             type="button"
@@ -612,9 +750,16 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                         );
                       })}
                       <td className="first-col-detail">
-                        <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
-                          {isExpanded ? 'Colapsar' : 'Expandir'}
-                        </button>
+                        <div className="row-actions">
+                          {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                            <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
+                              Pasar a pendiente de publicar
+                            </button>
+                          ) : null}
+                          <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
+                            {isExpanded ? 'Colapsar' : 'Expandir'}
+                          </button>
+                        </div>
                       </td>
                     </tr>,
                     isExpanded ? (
@@ -638,7 +783,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           </div>
           {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
         </>
-      ) : (
+      ) : cursosSubView === 'individuales' ? (
         <section className="individuales-view">
           {individualCourseGroups.length === 0 ? <p className="status">No hay cursos individuales para los filtros aplicados.</p> : null}
           <div className="scorms-accordion-list">
@@ -671,6 +816,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                         <th>Curso código</th>
                         <th>Curso nombre</th>
                         <th>Tipología</th>
+                        <th>Estado</th>
                         <th>Detalle</th>
                       </tr>
                     </thead>
@@ -680,10 +826,18 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                           <td>{String(row.curso_codigo || '-')}</td>
                           <td>{String(row.curso_nombre || '-')}</td>
                           <td>{String(row.tipologia || '-')}</td>
+                          <td>{String(row.curso_estado || '-')}</td>
                           <td>
-                            <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
-                              Detalles
-                            </button>
+                            <div className="row-actions">
+                              {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
+                                  Pasar a pendiente de publicar
+                                </button>
+                              ) : null}
+                              <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
+                                Detalles
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -693,6 +847,66 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
               </details>
             ))}
           </div>
+        </section>
+      ) : (
+        <section className="publish-view">
+          <div className="status-board-actions">
+            <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
+              ← DESHACER
+            </button>
+            <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
+              REHACER →
+            </button>
+          </div>
+
+          {pendingPublishRows.length === 0 ? (
+            <p className="status">No hay cursos en estado &quot;Pendiente de publicar&quot; para los filtros actuales.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    {compactColumns.map((columnKey) => {
+                      const column = columns.find((item) => item.key === columnKey);
+                      return <th key={`publish-head-${column.key}`}>{column.label}</th>;
+                    })}
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingPublishRows.map((row) => (
+                    <tr key={`publish-row-${row.id}`}>
+                      {compactColumns.map((columnKey) => {
+                        const value = row[columnKey];
+
+                        return (
+                          <td key={`publish-${row.id}-${columnKey}`}>
+                            {columnKey === 'curso_url' && isUrl(value) ? (
+                              <a className="table-link" href={value} target="_blank" rel="noreferrer">
+                                LINK
+                              </a>
+                            ) : (
+                              String(value || '-')
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="secondary action-button" onClick={() => setDetailModalRow(row)}>
+                            Detalles
+                          </button>
+                          <button type="button" className="publish-button action-button" onClick={() => publishCourse(row)}>
+                            PUBLICAR
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
 
