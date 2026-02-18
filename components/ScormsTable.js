@@ -1378,6 +1378,12 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
+    const previousState = getRowState(row);
+    if (previousState === 'Publicado') {
+      setStatusMessage(`SCORM ${getInternationalizedCode(row)} ya está publicado.`);
+      return;
+    }
+
     setError('');
     setStatusMessage('');
 
@@ -1418,6 +1424,16 @@ export default function ScormsTable({ userSession }) {
           }
         : previous
     );
+
+    setMoveHistory((previous) => [
+      ...previous,
+      {
+        rowIds: [row.id],
+        fromStates: { [row.id]: previousState },
+        toState: 'Publicado',
+      },
+    ]);
+    setRedoHistory([]);
 
     setStatusMessage(`SCORM ${getInternationalizedCode(row)} publicado correctamente.`);
   };

@@ -1,6 +1,22 @@
 # Log de cambios
 
 
+## v1.33.2 - Corrección DESHACER en publicación de SCORMs
+
+### Cambios consolidados
+- Se corrigió el flujo de publicación de SCORM en `ScormsTable` para que al pulsar **PUBLICAR SCORM** se registre correctamente el movimiento en `moveHistory` con su estado anterior.
+- Ahora el botón **DESHACER** en la vista de SCORMs puede revertir publicaciones realizadas desde la vista **Pendientes de publicar**, restaurando el estado previo real del SCORM.
+- Se limpia `redoHistory` al publicar un SCORM para mantener consistencia del historial.
+- Se añadió control para evitar registrar/publicar de nuevo cuando el SCORM ya está en estado `Publicado`.
+- Se actualizó la versión visible de la APP a **v1.33.2** y el versionado de `package.json` a `1.33.2`.
+
+### Versionado
+- Versión anterior: `1.33.1`
+- Nueva versión consolidada: `1.33.2`
+
+---
+
+
 ## v1.33.1 - Botón para pasar cursos En proceso a pendiente + estado en detalles
 
 ### Cambios consolidados
