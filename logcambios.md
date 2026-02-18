@@ -1,6 +1,23 @@
 # Log de cambios
 
 
+## v1.33.1 - Botón para pasar cursos En proceso a pendiente + estado en detalles
+
+### Cambios consolidados
+- Se añadió la acción **Pasar a pendiente de publicar** para cursos en estado `En proceso` en la vista general de **SCORMs Cursos**.
+- Se añadió la misma acción en la subvista **Cursos individuales** para permitir el cambio de estado también desde ese contexto.
+- Se reutilizó la lógica de cambio de estado para registrar historial (`moveHistory` / `redoHistory`) al pasar a `Pendiente de publicar` y mantener coherencia con deshacer/rehacer.
+- Se incorporó `curso_estado` en el bloque de **detalles** (expandido) de cursos para mostrar explícitamente el estado dentro del detalle.
+- En la tabla interna de **Cursos individuales** se añadió columna visible de estado para mejorar trazabilidad del flujo de publicación.
+- Se actualizó la versión visible de la APP a **v1.33.1** y el versionado de `package.json` a `1.33.1`.
+
+### Versionado
+- Versión anterior: `1.33.0`
+- Nueva versión consolidada: `1.33.1`
+
+---
+
+
 ## v1.33.0 - Publicación pendiente para cursos + deshacer/rehacer reforzado
 
 ### Cambios consolidados
