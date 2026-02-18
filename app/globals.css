@@ -272,6 +272,13 @@ button.secondary.pending-highlight:hover {
   gap: 0.45rem;
 }
 
+.translation-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
 select {
   border: 1px solid #c8daf2;
   border-radius: 8px;

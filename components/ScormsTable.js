@@ -37,7 +37,14 @@ const publishColumns = [
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
 const STATUS_ORDER = ['En proceso', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar'];
-const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT'];
+const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT', 'GAL', 'IT'];
+const LANGUAGE_LABELS = {
+  ES: 'Español',
+  CAT: 'Catalán',
+  PT: 'Portugués',
+  GAL: 'Gallego',
+  IT: 'Italiano',
+};
 const UPDATE_TYPES = [
   'Cambios menores',
   'Cambio de estructura',
@@ -310,6 +317,11 @@ export default function ScormsTable({ userSession }) {
   const [redoHistory, setRedoHistory] = useState([]);
   const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('ES');
+  const [translationModalOpen, setTranslationModalOpen] = useState(false);
+  const [translationSubmitting, setTranslationSubmitting] = useState(false);
+  const [translationLanguage, setTranslationLanguage] = useState('CAT');
+  const [selectedTranslationGroupIds, setSelectedTranslationGroupIds] = useState([]);
+  const [translationNameDrafts, setTranslationNameDrafts] = useState({});
   const [updateTargetRow, setUpdateTargetRow] = useState(null);
   const [updateTargetRows, setUpdateTargetRows] = useState([]);
   const [updateForm, setUpdateForm] = useState({
@@ -480,6 +492,7 @@ export default function ScormsTable({ userSession }) {
           groupId: groupKey,
           code: rowCode || 'Sin código',
           nameByLanguage: {},
+          rowByLanguage: {},
           languages: new Set(),
           fallbackName: getOfficialName(row),
           representativeRow: row,
@@ -490,6 +503,7 @@ export default function ScormsTable({ userSession }) {
       if (language) {
         acc[groupKey].languages.add(language);
         acc[groupKey].nameByLanguage[language] = getOfficialName(row);
+        acc[groupKey].rowByLanguage[language] = row;
       }
 
       return acc;
@@ -500,6 +514,7 @@ export default function ScormsTable({ userSession }) {
         ...group,
         preferredName:
           group.nameByLanguage.ES || group.nameByLanguage.CAT || group.nameByLanguage.PT || group.fallbackName,
+        esRow: group.rowByLanguage.ES || null,
         representativeRow: group.representativeRow,
       }))
       .filter((group) => {
@@ -523,6 +538,23 @@ export default function ScormsTable({ userSession }) {
       })
       .sort((left, right) => left.code.localeCompare(right.code));
   }, [availableLanguages, filteredRows, pendingLanguage, translationPreset]);
+
+  const translatableGroups = useMemo(() => translationRows.filter((group) => group.esRow), [translationRows]);
+
+  const selectedTranslatableGroups = useMemo(
+    () => translatableGroups.filter((group) => selectedTranslationGroupIds.includes(group.groupId)),
+    [selectedTranslationGroupIds, translatableGroups]
+  );
+
+  useEffect(() => {
+    const validGroupIds = new Set(translatableGroups.map((group) => group.groupId));
+
+    setSelectedTranslationGroupIds((previous) => previous.filter((groupId) => validGroupIds.has(groupId)));
+  }, [translatableGroups]);
+
+  useEffect(() => {
+    setTranslationNameDrafts({});
+  }, [translationLanguage]);
 
   const stateGroups = useMemo(() => {
     const groups = filteredRows.reduce((acc, row) => {
@@ -819,6 +851,57 @@ export default function ScormsTable({ userSession }) {
     }
 
     setCreateDraft(null);
+  };
+
+  const toggleTranslationGroupSelection = (groupId) => {
+    setSelectedTranslationGroupIds((previous) =>
+      previous.includes(groupId) ? previous.filter((id) => id !== groupId) : [...previous, groupId]
+    );
+  };
+
+  const toggleSelectAllTranslatableGroups = () => {
+    const visibleIds = translatableGroups.map((group) => group.groupId);
+    const areAllSelected = visibleIds.length > 0 && visibleIds.every((groupId) => selectedTranslationGroupIds.includes(groupId));
+
+    if (areAllSelected) {
+      setSelectedTranslationGroupIds((previous) => previous.filter((groupId) => !visibleIds.includes(groupId)));
+      return;
+    }
+
+    setSelectedTranslationGroupIds((previous) => [...new Set([...previous, ...visibleIds])]);
+  };
+
+  const openTranslationModal = () => {
+    if (selectedTranslatableGroups.length === 0) {
+      setError('Selecciona uno o varios SCORMs en ES para añadir su traducción.');
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+    setTranslationNameDrafts(() =>
+      selectedTranslatableGroups.reduce((acc, group) => {
+        acc[group.groupId] = group.nameByLanguage[translationLanguage] || group.nameByLanguage.ES || group.preferredName;
+        return acc;
+      }, {})
+    );
+    setTranslationModalOpen(true);
+  };
+
+  const closeTranslationModal = () => {
+    if (translationSubmitting) {
+      return;
+    }
+
+    setTranslationModalOpen(false);
+    setTranslationNameDrafts({});
+  };
+
+  const updateTranslationNameDraft = (groupId, value) => {
+    setTranslationNameDrafts((previous) => ({
+      ...previous,
+      [groupId]: value,
+    }));
   };
 
   const updateCreateDraft = (field, value) => {
@@ -1137,6 +1220,90 @@ export default function ScormsTable({ userSession }) {
       updateTargetRows.length === 1
         ? 'Actualización SCORM registrada y estado cambiado a "Actualizado pendiente de publicar".'
         : `${updateTargetRows.length} SCORMs actualizados y marcados como "Actualizado pendiente de publicar".`
+    );
+  };
+
+  const submitCreateTranslations = async () => {
+    if (selectedTranslatableGroups.length === 0) {
+      setError('Selecciona uno o varios SCORMs en ES para añadir su traducción.');
+      return;
+    }
+
+    const targetLanguage = normalizeLanguage(translationLanguage);
+
+    if (!targetLanguage || targetLanguage === 'ES') {
+      setError('Debes elegir un idioma de traducción distinto de ES.');
+      return;
+    }
+
+    const groupsMissingName = selectedTranslatableGroups.filter(
+      (group) => !String(translationNameDrafts[group.groupId] || '').trim()
+    );
+
+    if (groupsMissingName.length > 0) {
+      setError('Debes informar el nombre traducido de todos los SCORMs seleccionados.');
+      return;
+    }
+
+    const existingByCodeAndLanguage = new Set(
+      rows
+        .map((row) => `${normalizeLanguage(row.scorm_idioma)}|${String(row.scorm_code || '').trim().toUpperCase()}`)
+        .filter((value) => !value.endsWith('|'))
+    );
+
+    const duplicates = selectedTranslatableGroups.filter((group) =>
+      existingByCodeAndLanguage.has(`${targetLanguage}|${String(group.code || '').trim().toUpperCase()}`)
+    );
+
+    if (duplicates.length > 0) {
+      setError(
+        `Ya existen traducciones en ${targetLanguage} para: ${duplicates.map((group) => group.code).join(', ')}.`
+      );
+      return;
+    }
+
+    setTranslationSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const payload = selectedTranslatableGroups.map((group) => {
+      const esRow = group.esRow;
+      const translatedName = String(translationNameDrafts[group.groupId] || '').trim();
+
+      return {
+        scorm_idioma: targetLanguage,
+        scorm_code: String(esRow.scorm_code || '').trim().toUpperCase(),
+        scorm_name: translatedName,
+        scorm_responsable: esRow.scorm_responsable || null,
+        scorm_tipo: esRow.scorm_tipo || null,
+        scorm_categoria: esRow.scorm_categoria || null,
+        scorm_subcategoria: esRow.scorm_subcategoria || null,
+        scorm_url: esRow.scorm_url || null,
+        scorm_estado: esRow.scorm_estado || 'En proceso',
+        scorm_etiquetas: esRow.scorm_etiquetas || null,
+      };
+    });
+
+    const { data, error: insertError } = await supabase.from('scorms_master').insert(payload).select('*');
+
+    if (insertError) {
+      setTranslationSubmitting(false);
+      setError(`No se pudieron crear las traducciones: ${insertError.message}`);
+      return;
+    }
+
+    if (data?.length > 0) {
+      setRows((previous) => [...previous, ...data]);
+    }
+
+    setTranslationSubmitting(false);
+    setTranslationModalOpen(false);
+    setTranslationNameDrafts({});
+    setSelectedTranslationGroupIds([]);
+    setStatusMessage(
+      payload.length === 1
+        ? `Traducción ${targetLanguage}-${payload[0].scorm_code} creada correctamente.`
+        : `${payload.length} traducciones creadas correctamente en ${targetLanguage}.`
     );
   };
 
@@ -1702,6 +1869,29 @@ export default function ScormsTable({ userSession }) {
                 ))}
               </select>
             </div>
+            <div className="translation-actions">
+              <select
+                value={translationLanguage}
+                onChange={(event) => setTranslationLanguage(event.target.value)}
+                aria-label="Seleccionar idioma para nueva traducción"
+              >
+                {availableLanguages
+                  .filter((language) => language !== 'ES')
+                  .map((language) => (
+                    <option key={`target-language-${language}`} value={language}>
+                      {language} · {LANGUAGE_LABELS[language] || language}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                onClick={openTranslationModal}
+                disabled={selectedTranslatableGroups.length === 0}
+                title="Selecciona uno o varios SCORMs en ES"
+              >
+                Añadir traducción ({selectedTranslatableGroups.length})
+              </button>
+            </div>
           </div>
 
           {translationRows.length === 0 ? (
@@ -1711,6 +1901,17 @@ export default function ScormsTable({ userSession }) {
               <table>
                 <thead>
                   <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={
+                          translatableGroups.length > 0 &&
+                          translatableGroups.every((group) => selectedTranslationGroupIds.includes(group.groupId))
+                        }
+                        onChange={toggleSelectAllTranslatableGroups}
+                        aria-label="Seleccionar todos los SCORMs en ES visibles"
+                      />
+                    </th>
                     <th>Código</th>
                     <th>Nombre</th>
                     {availableLanguages.map((language) => (
@@ -1722,6 +1923,18 @@ export default function ScormsTable({ userSession }) {
                 <tbody>
                   {translationRows.map((group) => (
                     <tr key={`translation-${group.groupId}`}>
+                      <td>
+                        {group.esRow ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedTranslationGroupIds.includes(group.groupId)}
+                            onChange={() => toggleTranslationGroupSelection(group.groupId)}
+                            aria-label={`Seleccionar ${group.code} en ES`}
+                          />
+                        ) : (
+                          <span className="muted">-</span>
+                        )}
+                      </td>
                       <td>{group.code}</td>
                       <td className="col-scorm_name">{group.preferredName}</td>
                       {availableLanguages.map((language) => (
@@ -1865,6 +2078,83 @@ export default function ScormsTable({ userSession }) {
             </div>
           )}
         </section>
+      )}
+
+      {translationModalOpen && (
+        <div className="modal-overlay" role="presentation" onClick={closeTranslationModal}>
+          <div
+            className="modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nueva-traduccion-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="nueva-traduccion-titulo">Añadir traducción</h3>
+                <p>{selectedTranslatableGroups.length} SCORM(s) en ES seleccionado(s)</p>
+              </div>
+              <button type="button" className="secondary" onClick={closeTranslationModal} disabled={translationSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <div className="details-grid details-grid-single">
+              <label>
+                <span>Idioma de traducción</span>
+                <select
+                  value={translationLanguage}
+                  onChange={(event) => setTranslationLanguage(event.target.value)}
+                  disabled={translationSubmitting}
+                >
+                  {availableLanguages
+                    .filter((language) => language !== 'ES')
+                    .map((language) => (
+                      <option key={`translation-modal-language-${language}`} value={language}>
+                        {language} · {LANGUAGE_LABELS[language] || language}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="table-wrapper details-table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código destino</th>
+                    <th>Nombre traducido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedTranslatableGroups.map((group) => (
+                    <tr key={`translation-draft-${group.groupId}`}>
+                      <td>{`${translationLanguage}-${group.code}`}</td>
+                      <td>
+                        <input
+                          type="text"
+                          value={translationNameDrafts[group.groupId] || ''}
+                          onChange={(event) => updateTranslationNameDraft(group.groupId, event.target.value)}
+                          placeholder="Nombre traducido"
+                          disabled={translationSubmitting}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={closeTranslationModal} disabled={translationSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" onClick={submitCreateTranslations} disabled={translationSubmitting}>
+                {translationSubmitting ? 'Creando...' : 'Crear traducciones'}
+              </button>
+            </footer>
+          </div>
+        </div>
       )}
 
 
