@@ -1,6 +1,22 @@
 # Log de cambios
 
 
+## v1.38.0 - Permisos ADMIN reforzados para publicar y ver pendientes
+
+### Cambios consolidados
+- Se amplió la normalización del flag `admin` de `scorms_users` durante login, restauración de sesión y reenganche para reconocer valores booleanos y serializaciones comunes (`true`, `t`, `1`, `yes`, `si`, `sí`).
+- Con esta normalización, cuando el campo `admin` viene en `TRUE` (o formatos equivalentes), el usuario obtiene correctamente permisos de ADMIN para:
+  - Poner SCORM en estado **Publicado**.
+  - Acceder a la vista **Publicación pendiente**.
+- Se actualizó la versión visible de la APP a **v1.38.0** y el versionado de `package.json` a `1.38.0`.
+
+### Versionado
+- Versión anterior: `1.37.0`
+- Nueva versión consolidada: `1.38.0`
+
+---
+
+
 ## v1.37.0 - Restricción de publicación a ADMIN + nuevo campo alertador
 
 ### Cambios consolidados
