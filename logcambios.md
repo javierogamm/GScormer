@@ -1,6 +1,23 @@
 # Log de cambios
 
 
+## v1.34.0 - Subvista de Planes de aprendizaje y contador en cursos individuales
+
+### Cambios consolidados
+- Se añadió una nueva subvista **Planes de aprendizaje** dentro de **SCORMs Cursos** con botón dedicado en la cabecera.
+- La subvista agrupa en formato acordeón los cursos que forman parte de un PA (`pa_formaparte`), mostrando por plan: **código**, **nombre** y la etiqueta **LINK** con hipervínculo a `pa_url` cuando existe.
+- En cada resumen de plan se muestra entre paréntesis el número de cursos asociados a ese plan.
+- Al desplegar un plan, se listan sus cursos asociados en tabla interna con columnas de código, nombre, tipología, estado y acceso a detalles.
+- En la subvista **Cursos individuales**, el nombre del curso ahora muestra entre paréntesis cuántos cursos cuelgan de ese curso individual.
+- Se actualizó la versión visible de la APP a **v1.34.0** y el versionado de `package.json` a `1.34.0`.
+
+### Versionado
+- Versión anterior: `1.33.2`
+- Nueva versión consolidada: `1.34.0`
+
+---
+
+
 ## v1.33.2 - Corrección DESHACER en publicación de SCORMs
 
 ### Cambios consolidados
