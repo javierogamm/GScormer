@@ -126,6 +126,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [scormsModalRows, setScormsModalRows] = useState([]);
   const [detailModalRow, setDetailModalRow] = useState(null);
+  const [detailDraft, setDetailDraft] = useState(null);
+  const [detailSaving, setDetailSaving] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState({
@@ -180,21 +182,14 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     fetchData();
   }, [fetchData]);
 
-  const filteredRows = useMemo(() => {
-    const activeFilterEntries = Object.entries(filters).filter(([, values]) => values.length > 0);
-
-    return rows.filter((row) => {
-      const matchesMyCourses = !myCoursesOnly || rowHasInstructorAgents(row, scopedInstructorAgents);
-      if (!matchesMyCourses) {
-        return false;
-      }
-
-      return activeFilterEntries.every(([columnKey, values]) => {
-        const rowValue = String(row[columnKey] || '').toLowerCase();
-        return values.every((value) => rowValue.includes(value.toLowerCase()));
-      });
-    });
-  }, [rows, filters, myCoursesOnly, scopedInstructorAgents]);
+  const prioritizedFilterColumns = useMemo(() => {
+    const highlightedKeys = ['curso_codigo', 'curso_nombre'];
+    const highlighted = highlightedKeys
+      .map((key) => columns.find((column) => column.key === key))
+      .filter(Boolean);
+    const rest = columns.filter((column) => !highlightedKeys.includes(column.key));
+    return [...highlighted, { key: '__scorms__', label: 'SCORMS' }, ...rest];
+  }, []);
 
   const scormsByCode = useMemo(() => {
     return masterRows.reduce((acc, row) => {
@@ -212,6 +207,51 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       return acc;
     }, {});
   }, [masterRows]);
+
+
+  const getScormSearchableText = useCallback(
+    (row) => {
+      const references = extractScormReferencesFromContenido(row.contenido);
+      const chunks = [];
+
+      references.forEach((reference) => {
+        const masterMatches = scormsByCode[reference.code] || [];
+
+        masterMatches.forEach((match) => {
+          const language = String(match.scorm_idioma || '').trim().toUpperCase();
+          if (reference.language && language && reference.language !== language) {
+            return;
+          }
+
+          chunks.push(
+            [match.scorm_code, match.scorm_name, match.scorm_responsable, match.scorm_categoria, match.scorm_idioma]
+              .map((value) => String(value || '').toLowerCase())
+              .join(' '),
+          );
+        });
+      });
+
+      chunks.push(String(row.contenido || '').toLowerCase());
+      return chunks.join(' ');
+    },
+    [scormsByCode],
+  );
+
+  const filteredRows = useMemo(() => {
+    const activeFilterEntries = Object.entries(filters).filter(([, values]) => values.length > 0);
+
+    return rows.filter((row) => {
+      const matchesMyCourses = !myCoursesOnly || rowHasInstructorAgents(row, scopedInstructorAgents);
+      if (!matchesMyCourses) {
+        return false;
+      }
+
+      return activeFilterEntries.every(([columnKey, values]) => {
+        const rowValue = columnKey === '__scorms__' ? getScormSearchableText(row) : String(row[columnKey] || '').toLowerCase();
+        return values.every((value) => rowValue.includes(value.toLowerCase()));
+      });
+    });
+  }, [rows, filters, myCoursesOnly, scopedInstructorAgents, getScormSearchableText]);
 
   const activeScormMatches = useMemo(() => {
     if (scormsModalRows.length === 0) {
@@ -340,13 +380,59 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       return acc;
     }, {});
 
-    return Object.values(grouped).sort((left, right) => {
-      const leftKey = `${left.paCodigo} ${left.paNombre}`;
-      const rightKey = `${right.paCodigo} ${right.paNombre}`;
-      return leftKey.localeCompare(rightKey, 'es', { sensitivity: 'base' });
-    });
+    return Object.values(grouped)
+      .filter((group) => {
+        const normalizedName = String(group.paNombre || '').toLowerCase();
+        return !normalizedName.includes('00') && !normalizedName.includes('cursos sin plan de aprendizaje');
+      })
+      .sort((left, right) => {
+        const leftKey = `${left.paCodigo} ${left.paNombre}`;
+        const rightKey = `${right.paCodigo} ${right.paNombre}`;
+        return leftKey.localeCompare(rightKey, 'es', { sensitivity: 'base' });
+      });
   }, [filteredRows]);
 
+  const openDetailModal = (row) => {
+    setDetailModalRow(row);
+    setDetailDraft({ ...row });
+  };
+
+  const closeDetailModal = () => {
+    if (detailSaving) {
+      return;
+    }
+
+    setDetailModalRow(null);
+    setDetailDraft(null);
+  };
+
+  const saveDetailModal = async () => {
+    if (!detailModalRow || !detailDraft) {
+      return;
+    }
+
+    const payload = columns.reduce((acc, column) => {
+      acc[column.key] = detailDraft[column.key] ?? null;
+      return acc;
+    }, {});
+
+    setDetailSaving(true);
+    setError('');
+
+    const response = await supabase.from('scorms_cursos').update(payload).eq('id', detailModalRow.id).select('*').single();
+
+    if (response.error) {
+      setDetailSaving(false);
+      setError(`No se pudieron guardar los cambios del curso: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previousRows) => previousRows.map((row) => (row.id === detailModalRow.id ? response.data : row)));
+    setStatusMessage(`Curso actualizado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`}`);
+    setDetailSaving(false);
+    setDetailModalRow(response.data);
+    setDetailDraft({ ...response.data });
+  };
 
   const pendingPublishRows = useMemo(
     () => filteredRows.filter((row) => String(row.curso_estado || '').trim() === COURSE_STATUS_PENDING),
@@ -689,7 +775,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
 
         <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
           <div className="filters-grid compact">
-          {columns.map((column) => {
+          {prioritizedFilterColumns.map((column) => {
             const appliedFilters = filters[column.key] || [];
 
             return (
@@ -883,7 +969,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                                   Pasar a pendiente de publicar
                                 </button>
                               ) : null}
-                              <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
+                              <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
                                 Detalles
                               </button>
                             </div>
@@ -950,7 +1036,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                                   Pasar a pendiente de publicar
                                 </button>
                               ) : null}
-                              <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
+                              <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
                                 Detalles
                               </button>
                             </div>
@@ -1009,7 +1095,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                       })}
                       <td>
                         <div className="row-actions">
-                          <button type="button" className="secondary action-button" onClick={() => setDetailModalRow(row)}>
+                          <button type="button" className="secondary action-button" onClick={() => openDetailModal(row)}>
                             Detalles
                           </button>
                           <button type="button" className="publish-button action-button" onClick={() => publishCourse(row)}>
@@ -1167,26 +1253,41 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
         </div>
       ) : null}
 
-      {detailModalRow ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setDetailModalRow(null)}>
+      {detailModalRow && detailDraft ? (
+        <div className="modal-overlay" role="presentation" onClick={closeDetailModal}>
           <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h3>Detalle del curso</h3>
               </div>
-              <button type="button" className="secondary" onClick={() => setDetailModalRow(null)}>
+              <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
                 Cerrar
               </button>
             </div>
 
             <div className="details-grid">
               {columns.map((column) => (
-                <div key={`detail-modal-${column.key}`} className="readonly-field">
+                <label key={`detail-modal-${column.key}`}>
                   <span>{column.label}</span>
-                  <p>{String(detailModalRow[column.key] || '-')}</p>
-                </div>
+                  <input
+                    type="text"
+                    value={String(detailDraft[column.key] || '')}
+                    onChange={(event) =>
+                      setDetailDraft((previous) => ({
+                        ...previous,
+                        [column.key]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
               ))}
             </div>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
+                {detailSaving ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </footer>
           </section>
         </div>
       ) : null}
