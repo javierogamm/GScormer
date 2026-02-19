@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { exportRowsToExcel } from '../lib/excelExport';
 
 const columns = [
   { key: 'curso_estado', label: 'Estado curso' },
@@ -791,6 +792,22 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     });
   };
 
+  const handleExportCursosGeneralExcel = () => {
+    const exported = exportRowsToExcel({
+      rows: filteredRows,
+      preferredKeys: columns.map((column) => column.key),
+      sheetName: 'cursos_general',
+      fileName: `cursos_general_${new Date().toISOString().slice(0, 10)}.xls`,
+    });
+
+    if (!exported) {
+      setStatusMessage('No hay cursos en la vista general para exportar.');
+      return;
+    }
+
+    setStatusMessage(`Exportación Excel generada correctamente (${filteredRows.length} cursos).`);
+  };
+
   return (
     <section className="card card-wide">
       <div className="card-header">
@@ -859,6 +876,11 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           <button className="secondary" onClick={fetchData} disabled={loading}>
             {loading ? 'Cargando...' : 'Refrescar'}
           </button>
+          {cursosSubView === 'general' ? (
+            <button type="button" className="secondary" onClick={handleExportCursosGeneralExcel}>
+              Exportar Excel
+            </button>
+          ) : null}
           {onBackToScorms ? (
             <button className="secondary" onClick={onBackToScorms}>
               ← Volver a SCORMs

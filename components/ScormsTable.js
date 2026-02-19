@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { APP_VERSION } from '../lib/appVersion';
+import { exportRowsToExcel } from '../lib/excelExport';
 
 const columns = [
   { key: 'scorm_idioma', label: 'Idioma', editable: true },
@@ -1871,6 +1872,22 @@ export default function ScormsTable({ userSession }) {
     setPublishDateSortDirection((previous) => (previous === 'asc' ? 'desc' : 'asc'));
   };
 
+  const handleExportScormsGeneralExcel = () => {
+    const exported = exportRowsToExcel({
+      rows: filteredRows,
+      preferredKeys: columns.map((column) => column.key),
+      sheetName: 'scorms_general',
+      fileName: `scorms_general_${new Date().toISOString().slice(0, 10)}.xls`,
+    });
+
+    if (!exported) {
+      setStatusMessage('No hay SCORMs en la vista general para exportar.');
+      return;
+    }
+
+    setStatusMessage(`Exportación Excel generada correctamente (${filteredRows.length} SCORMs).`);
+  };
+
   return (
     <section className="card card-wide">
       <header className="card-header">
@@ -1914,6 +1931,11 @@ export default function ScormsTable({ userSession }) {
           <button type="button" className="secondary" onClick={fetchData}>
             Recargar
           </button>
+          {viewMode === 'table' && (
+            <button type="button" className="secondary" onClick={handleExportScormsGeneralExcel}>
+              Exportar Excel
+            </button>
+          )}
           <button
             type="button"
             className={`secondary ${myScormsOnly ? 'active-preset' : ''}`}
