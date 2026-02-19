@@ -1,5 +1,21 @@
 # Log de cambios
 
+## v1.46.0 - Exportación Excel en vistas generales de SCORMs y Cursos
+
+### Cambios consolidados
+- Se añadió el botón **Exportar Excel** en la vista general de **SCORMs** (modo tabla), exportando los registros filtrados actuales.
+- Se añadió el botón **Exportar Excel** en la vista general de **Cursos**, exportando los registros filtrados actuales.
+- La exportación incluye todas las columnas disponibles en los datos de cada tabla correspondiente (`scorms_master` y `scorms_cursos`), priorizando el orden funcional de columnas visibles y añadiendo el resto de campos detectados.
+- Se incorporó una utilidad común de exportación para generar archivos Excel (`.xls`) desde cliente, reutilizada por ambas vistas.
+- Se actualizó la versión visible de la APP a **v1.46.0** y el versionado de `package.json` a `1.46.0`.
+
+### Versionado
+- Versión anterior: `1.45.0`
+- Nueva versión consolidada: `1.46.0`
+
+---
+
+
 ## v1.45.0 - Corrección de enlaces externos en URLs sin protocolo
 
 ### Cambios consolidados
