@@ -385,6 +385,7 @@ export default function ScormsTable({ userSession }) {
   const [alertGeneratorModalOpen, setAlertGeneratorModalOpen] = useState(false);
   const [alertCodesDraft, setAlertCodesDraft] = useState('');
   const [alertNovedadDraft, setAlertNovedadDraft] = useState('');
+  const [alertUrlDraft, setAlertUrlDraft] = useState('');
   const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [myScormsOnly, setMyScormsOnly] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
@@ -1426,6 +1427,7 @@ export default function ScormsTable({ userSession }) {
     setAlertGeneratorModalOpen(false);
     setAlertCodesDraft('');
     setAlertNovedadDraft('');
+    setAlertUrlDraft('');
   };
 
   const submitGenerateAlerts = async () => {
@@ -1475,11 +1477,13 @@ export default function ScormsTable({ userSession }) {
     const nowIso = new Date().toISOString();
     const etiquetasRaw = tagCodes.join(',');
     const novedad = String(alertNovedadDraft || '').trim();
+    const novedadUrl = String(alertUrlDraft || '').trim();
     const scormCodes = [...new Set(rowsToAlert.map((row) => String(row.scorm_code || '').trim().toUpperCase()).filter(Boolean))];
     const payload = scormCodes.map((scormCode) => ({
         scorm_codigo: scormCode,
         alerta_fecha: nowIso,
         alerta_novedad: novedad || null,
+        url_novedad: novedadUrl || null,
         alerta_etiquetas: etiquetasRaw,
       }));
 
@@ -1495,6 +1499,7 @@ export default function ScormsTable({ userSession }) {
     setAlertGeneratorModalOpen(false);
     setAlertCodesDraft('');
     setAlertNovedadDraft('');
+    setAlertUrlDraft('');
     setStatusMessage(`${payload.length} alerta(s) generada(s). Recargando vista de alertas...`);
 
     globalThis.setTimeout(() => {
@@ -1517,32 +1522,6 @@ export default function ScormsTable({ userSession }) {
     if (deleteError) {
       setError(`No se pudo descartar la alerta del SCORM ${normalizedCode}: ${deleteError.message}`);
       return;
-    }
-
-    const affectedRows = rows.filter((row) => String(row.scorm_code || '').trim().toUpperCase() === normalizedCode);
-
-    if (affectedRows.length > 0) {
-      const affectedRowIds = affectedRows.map((row) => row.id);
-      const { error: clearMasterError } = await supabase
-        .from('scorms_master')
-        .update({ scorms_alerta: null })
-        .in('id', affectedRowIds);
-
-      if (clearMasterError) {
-        setError(`Se eliminó la alerta, pero no se pudo limpiar en SCORM master: ${clearMasterError.message}`);
-        return;
-      }
-
-      setRows((previousRows) =>
-        previousRows.map((row) =>
-          affectedRowIds.includes(row.id)
-            ? {
-                ...row,
-                scorms_alerta: null,
-              }
-            : row,
-        ),
-      );
     }
 
     setAlertRecords((previous) =>
@@ -1594,7 +1573,6 @@ export default function ScormsTable({ userSession }) {
       .from('scorms_master')
       .update({
         scorm_estado: 'Actualizado pendiente de publicar',
-        ...(shouldClearAlert ? { scorms_alerta: null } : {}),
       })
       .in(
         'id',
@@ -1629,7 +1607,7 @@ export default function ScormsTable({ userSession }) {
 
     const nextSnapshot = updateTargetRows.reduce((acc, row) => {
       acc[row.id] = {
-        scorms_alerta: shouldClearAlert ? null : getAlertDateValue(row),
+        scorms_alerta: getAlertDateValue(row),
         scorm_estado: 'Actualizado pendiente de publicar',
       };
       return acc;
@@ -2586,6 +2564,12 @@ export default function ScormsTable({ userSession }) {
                 Generar alertas
               </button>
             )}
+            <button type="button" className="secondary" disabled={alertActionsHistory.length === 0} onClick={handleUndoAlertAction}>
+              Deshacer alerta
+            </button>
+            <button type="button" className="secondary" disabled={alertRedoHistory.length === 0} onClick={handleRedoAlertAction}>
+              Rehacer alerta
+            </button>
           </div>
           {alertsByScormCode.length === 0 ? (
             <p className="status">No hay SCORMs con alertas registradas.</p>
@@ -2625,6 +2609,7 @@ export default function ScormsTable({ userSession }) {
                         <tr>
                           <th>Fecha alerta</th>
                           <th>Novedad</th>
+                          <th>URL novedad</th>
                           <th>Etiquetas</th>
                         </tr>
                       </thead>
@@ -2639,6 +2624,15 @@ export default function ScormsTable({ userSession }) {
                             <tr key={alertItemKey}>
                               <td>{formatDateDDMMYYYY(alertItem.alerta_fecha || alertItem.created_at)}</td>
                               <td>{String(alertItem.alerta_novedad || '').trim() || '-'}</td>
+                              <td>
+                                {String(alertItem.url_novedad || '').trim() ? (
+                                  <a href={alertItem.url_novedad} target="_blank" rel="noreferrer">
+                                    LINK
+                                  </a>
+                                ) : (
+                                  '-'
+                                )}
+                              </td>
                               <td>
                                 <button
                                   type="button"
@@ -2731,6 +2725,17 @@ export default function ScormsTable({ userSession }) {
                 value={alertNovedadDraft}
                 onChange={(event) => setAlertNovedadDraft(event.target.value)}
                 placeholder="Describe la novedad asociada a la alerta"
+                disabled={alertSubmitting}
+              />
+            </label>
+
+            <label>
+              <span>URL novedad</span>
+              <input
+                type="url"
+                value={alertUrlDraft}
+                onChange={(event) => setAlertUrlDraft(event.target.value)}
+                placeholder="https://..."
                 disabled={alertSubmitting}
               />
             </label>

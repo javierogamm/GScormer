@@ -2,6 +2,24 @@
 
 
 
+## v1.43.0 - Alertas desacopladas de master + URL de novedad + deshacer/rehacer visible
+
+### Cambios consolidados
+- Se ajustó **DESCARTAR ALERTA** para que elimine únicamente los registros de `scorms_alertas` por `scorm_codigo`, sin modificar `scorms_master`.
+- Se ajustó **ACTUALIZAR SCORM** cuando se lanza desde alertas para que descarte la alerta en `scorms_alertas` sin limpiar `scorms_alerta` en la tabla master.
+- Se habilitaron en la vista **Alertas actualizaciones** los botones **Deshacer alerta** y **Rehacer alerta**, reutilizando el historial funcional ya existente para acciones de alertas.
+- Se añadió la nueva columna `url_novedad` en `scorms_alertas` mediante migración.
+- En el modal **Generar alertas** se añadió el nuevo campo opcional **URL novedad** para persistir el enlace asociado a la alerta.
+- En el nivel 2 del acordeón de alertas se añadió la columna **URL novedad**, mostrando el texto **LINK** (con apertura en nueva pestaña) cuando la URL existe.
+- Se actualizó la versión visible de la APP a **v1.43.0** y el versionado de `package.json` a `1.43.0`.
+
+### Versionado
+- Versión anterior: `1.42.0`
+- Nueva versión consolidada: `1.43.0`
+
+---
+
+
 ## v1.42.0 - KPI de alertas por SCORM individual + acciones en acordeón nivel 1
 
 ### Cambios consolidados
