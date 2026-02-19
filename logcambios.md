@@ -1,6 +1,23 @@
 # Log de cambios
 
 
+
+## v1.39.0 - Alertas de actualizaciones y nuevas estructuras de BDD
+
+### Cambios consolidados
+- Se añadió una nueva migración SQL que crea la tabla `public.scorms_etiquetas` para soportar la relación N:N de etiquetas por clasificación de SCORM, con campos de código y nombre de etiqueta.
+- En la misma migración se incorporó la nueva columna `scorms_alerta` (`timestamptz`) en `public.scorms_master`.
+- Se creó la vista `public.alertas_actualizaciones`, que expone los registros de `scorms_master` con `scorms_alerta` informado y añade el alias `alerta_actualizacion_fecha`.
+- En la vista de **SCORMs** se añadió la subvista **Alertas actualizaciones**, que muestra únicamente SCORMs con `scorms_alerta` no nulo, junto con su fecha de alerta y acceso a detalle.
+- Se actualizó la versión visible de la APP a **v1.39.0** y el versionado de `package.json` a `1.39.0`.
+
+### Versionado
+- Versión anterior: `1.38.0`
+- Nueva versión consolidada: `1.39.0`
+
+---
+
+
 ## v1.38.0 - Permisos ADMIN reforzados para publicar y ver pendientes
 
 ### Cambios consolidados

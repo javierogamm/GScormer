@@ -35,6 +35,16 @@ const publishColumns = [
   { key: 'publication_date', label: 'Fecha', editable: false },
 ];
 
+const alertColumns = [
+  { key: 'scorm_idioma', label: 'Idioma' },
+  { key: 'scorm_code', label: 'Código' },
+  { key: 'scorm_name', label: 'Nombre' },
+  { key: 'scorm_responsable', label: 'Responsable' },
+  { key: 'scorm_categoria', label: 'Categoría' },
+  { key: 'scorm_estado', label: 'Estado' },
+  { key: 'scorms_alerta', label: 'Fecha alerta' },
+];
+
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
 const STATUS_ORDER = ['En proceso', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar'];
@@ -597,6 +607,29 @@ export default function ScormsTable({ userSession }) {
     () => filteredRows.filter((row) => PUBLISH_PENDING_STATES.includes(getRowState(row))),
     [filteredRows]
   );
+
+  const alertRows = useMemo(() => {
+    return filteredRows
+      .filter((row) => row.scorms_alerta)
+      .sort((left, right) => {
+        const leftMs = getDateMsFromCandidates([left.scorms_alerta]);
+        const rightMs = getDateMsFromCandidates([right.scorms_alerta]);
+
+        if (leftMs && rightMs && leftMs !== rightMs) {
+          return rightMs - leftMs;
+        }
+
+        if (leftMs && !rightMs) {
+          return -1;
+        }
+
+        if (!leftMs && rightMs) {
+          return 1;
+        }
+
+        return getInternationalizedCode(left).localeCompare(getInternationalizedCode(right));
+      });
+  }, [filteredRows]);
 
   const publishUpdatesCount = pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar').length;
   const publishPendingCount = pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar').length;
@@ -1497,6 +1530,15 @@ export default function ScormsTable({ userSession }) {
           >
             Traducciones
           </button>
+          <button
+            type="button"
+            className={`secondary ${alertRows.length > 0 ? 'pending-highlight' : ''}`}
+            onClick={() => setViewMode('alerts')}
+            disabled={viewMode === 'alerts'}
+          >
+            Alertas actualizaciones
+            <span className="kpi-badge">{alertRows.length}</span>
+          </button>
           <button type="button" className="secondary" onClick={fetchData}>
             Recargar
           </button>
@@ -2145,6 +2187,59 @@ export default function ScormsTable({ userSession }) {
                           </button>
                           <button type="button" className="publish-button action-button" onClick={() => publishScorm(row)}>
                             PUBLICAR SCORM
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!loading && canRenderTable && viewMode === 'alerts' && (
+        <section className="publish-view">
+          {alertRows.length === 0 ? (
+            <p className="status">No hay SCORMs con alerta de actualización.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    {alertColumns.map((column) => (
+                      <th key={`alert-head-${column.key}`} className={`col-${column.key}`}>
+                        {column.label}
+                      </th>
+                    ))}
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alertRows.map((row) => (
+                    <tr key={`alert-row-${row.id}`}>
+                      {alertColumns.map((column) => (
+                        <td key={`alert-${row.id}-${column.key}`} className={`col-${column.key}`}>
+                          {column.key === 'scorms_alerta' ? (
+                            <span>{formatDateDDMMYYYY(row.scorms_alerta)}</span>
+                          ) : column.key === 'scorm_categoria' ? (
+                            <span className="category-chip" style={getCategoryColor(row[column.key])}>
+                              {row[column.key] || 'Sin categoría'}
+                            </span>
+                          ) : column.key === 'scorm_name' ? (
+                            <span>{getOfficialName(row)}</span>
+                          ) : column.key === 'scorm_code' ? (
+                            <span>{getInternationalizedCode(row)}</span>
+                          ) : (
+                            <span>{row[column.key] || '-'}</span>
+                          )}
+                        </td>
+                      ))}
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
+                            Detalles
                           </button>
                         </div>
                       </td>
