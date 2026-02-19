@@ -642,10 +642,6 @@ export default function ScormsTable({ userSession }) {
     [filteredRows]
   );
 
-  const alertRows = useMemo(() => {
-    return filteredRows.filter((row) => getAlertDateValue(row));
-  }, [filteredRows]);
-
   const tagsByCode = useMemo(() => {
     return tagCatalogRows.reduce((acc, tagRow) => {
       const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
@@ -703,6 +699,7 @@ export default function ScormsTable({ userSession }) {
         return {
           scormCode,
           scormName: representativeRow ? getOfficialName(representativeRow) : 'Sin nombre',
+          relatedRows: matchedRows,
           lastAlertDate: latestAlert?.alerta_fecha || latestAlert?.created_at || null,
           alertCount: sortedAlerts.length,
           alerts: sortedAlerts,
@@ -717,6 +714,11 @@ export default function ScormsTable({ userSession }) {
         return left.scormCode.localeCompare(right.scormCode);
       });
   }, [alertRecords, filteredRows]);
+
+  const alertScormsIndividualCount = useMemo(
+    () => alertsByScormCode.reduce((acc, group) => acc + (group.relatedRows?.length || 0), 0),
+    [alertsByScormCode],
+  );
 
   const publishUpdatesCount = pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar').length;
   const publishPendingCount = pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar').length;
@@ -1500,6 +1502,55 @@ export default function ScormsTable({ userSession }) {
     }, 2000);
   };
 
+  const dismissScormAlerts = async (scormCode) => {
+    const normalizedCode = String(scormCode || '').trim().toUpperCase();
+
+    if (!normalizedCode) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const { error: deleteError } = await supabase.from('scorms_alertas').delete().eq('scorm_codigo', normalizedCode);
+
+    if (deleteError) {
+      setError(`No se pudo descartar la alerta del SCORM ${normalizedCode}: ${deleteError.message}`);
+      return;
+    }
+
+    const affectedRows = rows.filter((row) => String(row.scorm_code || '').trim().toUpperCase() === normalizedCode);
+
+    if (affectedRows.length > 0) {
+      const affectedRowIds = affectedRows.map((row) => row.id);
+      const { error: clearMasterError } = await supabase
+        .from('scorms_master')
+        .update({ scorms_alerta: null })
+        .in('id', affectedRowIds);
+
+      if (clearMasterError) {
+        setError(`Se eliminó la alerta, pero no se pudo limpiar en SCORM master: ${clearMasterError.message}`);
+        return;
+      }
+
+      setRows((previousRows) =>
+        previousRows.map((row) =>
+          affectedRowIds.includes(row.id)
+            ? {
+                ...row,
+                scorms_alerta: null,
+              }
+            : row,
+        ),
+      );
+    }
+
+    setAlertRecords((previous) =>
+      previous.filter((alertItem) => String(alertItem.scorm_codigo || '').trim().toUpperCase() !== normalizedCode),
+    );
+    setStatusMessage(`Alerta descartada para ${normalizedCode}.`);
+  };
+
   const submitScormUpdate = async () => {
     if (updateTargetRows.length === 0) {
       return;
@@ -1554,6 +1605,26 @@ export default function ScormsTable({ userSession }) {
       setUpdateSubmitting(false);
       setError(`Se registró el cambio, pero no se pudo actualizar el estado: ${stateError.message}`);
       return;
+    }
+
+    if (shouldClearAlert) {
+      const normalizedCodes = [...new Set(updateTargetRows.map((row) => String(row.scorm_code || '').trim().toUpperCase()).filter(Boolean))];
+
+      if (normalizedCodes.length > 0) {
+        const { error: deleteAlertError } = await supabase.from('scorms_alertas').delete().in('scorm_codigo', normalizedCodes);
+
+        if (deleteAlertError) {
+          setUpdateSubmitting(false);
+          setError(
+            `Se registró el cambio y el estado, pero no se pudo eliminar la alerta asociada en scorms_alertas: ${deleteAlertError.message}`,
+          );
+          return;
+        }
+
+        setAlertRecords((previous) =>
+          previous.filter((alertItem) => !normalizedCodes.includes(String(alertItem.scorm_codigo || '').trim().toUpperCase())),
+        );
+      }
     }
 
     const nextSnapshot = updateTargetRows.reduce((acc, row) => {
@@ -1839,13 +1910,13 @@ export default function ScormsTable({ userSession }) {
           </button>
           <button
             type="button"
-            className={`secondary ${alertRows.length > 0 ? 'pending-highlight' : ''}`}
+            className={`secondary ${alertScormsIndividualCount > 0 ? 'pending-highlight' : ''}`}
             onClick={() => setViewMode('alerts')}
             disabled={viewMode === 'alerts'}
             title='Ver alertas de actualización'
           >
             Alertas actualizaciones
-            <span className="kpi-badge">{alertRows.length}</span>
+            <span className="kpi-badge">{alertScormsIndividualCount}</span>
           </button>
           <button type="button" className="secondary" onClick={fetchData}>
             Recargar
@@ -2523,11 +2594,27 @@ export default function ScormsTable({ userSession }) {
               {alertsByScormCode.map((scormAlertGroup) => (
                 <details key={`alerts-group-${scormAlertGroup.scormCode}`} className="scorms-accordion-item course-level-1">
                   <summary>
-                    <div className="course-summary-grid">
+                    <div className="course-summary-grid scorm-alert-summary-grid">
                       <strong>{scormAlertGroup.scormCode}</strong>
                       <span>{scormAlertGroup.scormName}</span>
                       <span>
                         Última alerta: {formatDateDDMMYYYY(scormAlertGroup.lastAlertDate)} ({scormAlertGroup.alertCount})
+                      </span>
+                      <span className="row-actions" onClick={(event) => event.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="secondary action-button"
+                          onClick={() => dismissScormAlerts(scormAlertGroup.scormCode)}
+                        >
+                          DESCARTAR ALERTA
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary action-button"
+                          onClick={() => openUpdateModal(scormAlertGroup.relatedRows, { clearAlertOnSubmit: true, source: 'alerts' })}
+                        >
+                          ACTUALIZAR SCORM
+                        </button>
                       </span>
                     </div>
                   </summary>

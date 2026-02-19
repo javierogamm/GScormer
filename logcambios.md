@@ -1,6 +1,23 @@
 # Log de cambios
 
 
+
+## v1.42.0 - KPI de alertas por SCORM individual + acciones en acordeón nivel 1
+
+### Cambios consolidados
+- Se ajustó el KPI del botón **Alertas actualizaciones** para que contabilice el número de SCORMs individuales (`scorms_master`) que tienen alerta asociada en `scorms_alertas`, en lugar de contar solo filas con fecha local de alerta.
+- En la vista de alertas por acordeón (nivel 1) se reincorporaron los botones **DESCARTAR ALERTA** y **ACTUALIZAR SCORM** sobre cada bloque de SCORM.
+- **Descartar alerta** ahora elimina los registros asociados al `scorm_codigo` en `scorms_alertas` y limpia `scorms_alerta` en `scorms_master` para mantener consistencia visual y de datos.
+- **Actualizar SCORM** reutiliza el mismo flujo de actualización de la vista master y, cuando se lanza desde alertas, elimina también la alerta asociada en `scorms_alertas`.
+- Se ajustó la maquetación del resumen del acordeón de alertas para acercar visualmente el código de SCORM y su título.
+- Se actualizó la versión visible de la APP a **v1.42.0** y el versionado de `package.json` a `1.42.0`.
+
+### Versionado
+- Versión anterior: `1.41.0`
+- Nueva versión consolidada: `1.42.0`
+
+---
+
 ## v1.41.0 - Nuevo modelo de alertas con historial por SCORM
 
 ### Cambios consolidados

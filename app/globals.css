@@ -724,6 +724,16 @@ input:focus {
 }
 
 
+
+.scorm-alert-summary-grid {
+  grid-template-columns: minmax(110px, 0.45fr) minmax(220px, 1.2fr) minmax(170px, 0.9fr) auto;
+  column-gap: 0.7rem;
+}
+
+.scorm-alert-summary-grid .row-actions {
+  justify-content: flex-end;
+}
+
 .course-level-1 > summary {
   background: #e5f0ff;
 }
