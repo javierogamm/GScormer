@@ -1,6 +1,25 @@
 # Log de cambios
 
 
+## v1.41.0 - Nuevo modelo de alertas con historial por SCORM
+
+### Cambios consolidados
+- Se adaptó la vista **Alertas actualizaciones** para que esté disponible para todos los perfiles, independientemente del valor de `alertador`.
+- Se restringió el botón **Generar alertas** exclusivamente a usuarios con `alertador = true`.
+- Se reemplazó el origen de datos de alertas por la nueva tabla `scorms_alertas`, agrupando en acordeón por `scorm_codigo` y mostrando código, nombre, fecha de última alerta y número total de alertas.
+- Dentro de cada SCORM se listan las alertas con **Fecha alerta** y **Novedad**, incluyendo el botón **Ver etiquetas** para desplegar una tabla de etiquetas asociadas (código, nombre y clasificación).
+- El modal **Generar alertas** ahora permite informar `novedad` y guarda las alertas en `scorms_alertas`, persistiendo las etiquetas pegadas en formato coma-separado en `alerta_etiquetas`.
+- Al confirmar la generación se cierra el modal y se refresca automáticamente la vista tras 2 segundos.
+- Se añadió migración para creación de la nueva tabla `public.scorms_alertas`.
+- Se actualizó la versión visible de la APP a **v1.41.0** y el versionado de `package.json` a `1.41.0`.
+
+### Versionado
+- Versión anterior: `1.40.0`
+- Nueva versión consolidada: `1.41.0`
+
+---
+
+
 ## v1.40.0 - Generación y gestión de alertas con permisos + deshacer/rehacer
 
 ### Cambios consolidados
