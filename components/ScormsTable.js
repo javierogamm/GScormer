@@ -352,6 +352,9 @@ export default function ScormsTable({ userSession }) {
   const [redoHistory, setRedoHistory] = useState([]);
   const [alertActionsHistory, setAlertActionsHistory] = useState([]);
   const [alertRedoHistory, setAlertRedoHistory] = useState([]);
+  const [alertRecords, setAlertRecords] = useState([]);
+  const [tagCatalogRows, setTagCatalogRows] = useState([]);
+  const [expandedAlertTags, setExpandedAlertTags] = useState({});
   const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('ES');
   const [translationModalOpen, setTranslationModalOpen] = useState(false);
@@ -381,6 +384,7 @@ export default function ScormsTable({ userSession }) {
   const [coursesModalRow, setCoursesModalRow] = useState(null);
   const [alertGeneratorModalOpen, setAlertGeneratorModalOpen] = useState(false);
   const [alertCodesDraft, setAlertCodesDraft] = useState('');
+  const [alertNovedadDraft, setAlertNovedadDraft] = useState('');
   const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [myScormsOnly, setMyScormsOnly] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
@@ -391,10 +395,12 @@ export default function ScormsTable({ userSession }) {
     setLoading(true);
     setError('');
 
-    const [masterResponse, updatesResponse, cursosResponse] = await Promise.all([
+    const [masterResponse, updatesResponse, cursosResponse, alertasResponse, etiquetasResponse] = await Promise.all([
       supabase.from('scorms_master').select('*').order('id', { ascending: true }),
       supabase.from('scorms_actualizacion').select('scorm_codigo, cambio_tipo, fecha_modif, created_at'),
       supabase.from('scorms_cursos').select('*').order('id', { ascending: true }),
+      supabase.from('scorms_alertas').select('*').order('alerta_fecha', { ascending: false }).order('id', { ascending: false }),
+      supabase.from('scorms_etiquetas').select('etiqueta_codigo, etiqueta_nombre, clasificacion_scorm'),
     ]);
 
     if (masterResponse.error) {
@@ -439,6 +445,20 @@ export default function ScormsTable({ userSession }) {
       setError((previous) => previous || `No se pudieron cargar los cursos relacionados: ${cursosResponse.error.message}`);
     } else {
       setCoursesRows(cursosResponse.data || []);
+    }
+
+    if (alertasResponse.error) {
+      setAlertRecords([]);
+      setError((previous) => previous || `No se pudieron cargar las alertas: ${alertasResponse.error.message}`);
+    } else {
+      setAlertRecords(alertasResponse.data || []);
+    }
+
+    if (etiquetasResponse.error) {
+      setTagCatalogRows([]);
+      setError((previous) => previous || `No se pudieron cargar las etiquetas: ${etiquetasResponse.error.message}`);
+    } else {
+      setTagCatalogRows(etiquetasResponse.data || []);
     }
 
     setRows(masterResponse.data || []);
@@ -623,27 +643,80 @@ export default function ScormsTable({ userSession }) {
   );
 
   const alertRows = useMemo(() => {
-    return filteredRows
-      .filter((row) => getAlertDateValue(row))
-      .sort((left, right) => {
-        const leftMs = getDateMsFromCandidates([getAlertDateValue(left)]);
-        const rightMs = getDateMsFromCandidates([getAlertDateValue(right)]);
+    return filteredRows.filter((row) => getAlertDateValue(row));
+  }, [filteredRows]);
 
+  const tagsByCode = useMemo(() => {
+    return tagCatalogRows.reduce((acc, tagRow) => {
+      const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+      if (!code) {
+        return acc;
+      }
+
+      if (!acc[code]) {
+        acc[code] = [];
+      }
+
+      acc[code].push(tagRow);
+      return acc;
+    }, {});
+  }, [tagCatalogRows]);
+
+  const alertsByScormCode = useMemo(() => {
+    const scormRowsByCode = filteredRows.reduce((acc, row) => {
+      const code = String(row.scorm_code || '').trim().toUpperCase();
+      if (!code) {
+        return acc;
+      }
+
+      if (!acc[code]) {
+        acc[code] = [];
+      }
+      acc[code].push(row);
+      return acc;
+    }, {});
+
+    const groups = (alertRecords || []).reduce((acc, alertRow) => {
+      const scormCode = String(alertRow.scorm_codigo || '').trim().toUpperCase();
+      if (!scormCode || !scormRowsByCode[scormCode] || scormRowsByCode[scormCode].length === 0) {
+        return acc;
+      }
+
+      if (!acc[scormCode]) {
+        acc[scormCode] = [];
+      }
+      acc[scormCode].push(alertRow);
+      return acc;
+    }, {});
+
+    return Object.entries(groups)
+      .map(([scormCode, alerts]) => {
+        const matchedRows = scormRowsByCode[scormCode] || [];
+        const representativeRow = matchedRows[0] || null;
+        const sortedAlerts = [...alerts].sort((left, right) => {
+          const leftMs = getDateMsFromCandidates([left.alerta_fecha, left.created_at]);
+          const rightMs = getDateMsFromCandidates([right.alerta_fecha, right.created_at]);
+          return (rightMs || 0) - (leftMs || 0);
+        });
+        const latestAlert = sortedAlerts[0] || null;
+
+        return {
+          scormCode,
+          scormName: representativeRow ? getOfficialName(representativeRow) : 'Sin nombre',
+          lastAlertDate: latestAlert?.alerta_fecha || latestAlert?.created_at || null,
+          alertCount: sortedAlerts.length,
+          alerts: sortedAlerts,
+        };
+      })
+      .sort((left, right) => {
+        const leftMs = getDateMsFromCandidates([left.lastAlertDate]);
+        const rightMs = getDateMsFromCandidates([right.lastAlertDate]);
         if (leftMs && rightMs && leftMs !== rightMs) {
           return rightMs - leftMs;
         }
-
-        if (leftMs && !rightMs) {
-          return -1;
-        }
-
-        if (!leftMs && rightMs) {
-          return 1;
-        }
-
-        return getInternationalizedCode(left).localeCompare(getInternationalizedCode(right));
+        return left.scormCode.localeCompare(right.scormCode);
       });
-  }, [filteredRows]);
+  }, [alertRecords, filteredRows]);
 
   const publishUpdatesCount = pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar').length;
   const publishPendingCount = pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar').length;
@@ -1350,6 +1423,7 @@ export default function ScormsTable({ userSession }) {
 
     setAlertGeneratorModalOpen(false);
     setAlertCodesDraft('');
+    setAlertNovedadDraft('');
   };
 
   const submitGenerateAlerts = async () => {
@@ -1397,66 +1471,33 @@ export default function ScormsTable({ userSession }) {
     }
 
     const nowIso = new Date().toISOString();
-    const rowIds = rowsToAlert.map((row) => row.id);
+    const etiquetasRaw = tagCodes.join(',');
+    const novedad = String(alertNovedadDraft || '').trim();
+    const scormCodes = [...new Set(rowsToAlert.map((row) => String(row.scorm_code || '').trim().toUpperCase()).filter(Boolean))];
+    const payload = scormCodes.map((scormCode) => ({
+        scorm_codigo: scormCode,
+        alerta_fecha: nowIso,
+        alerta_novedad: novedad || null,
+        alerta_etiquetas: etiquetasRaw,
+      }));
 
-    const { error: updateError } = await supabase.from('scorms_master').update({ scorms_alerta: nowIso }).in('id', rowIds);
+    const { error: insertError } = await supabase.from('scorms_alertas').insert(payload);
 
-    if (updateError) {
+    if (insertError) {
       setAlertSubmitting(false);
-      setError(`No se pudieron generar las alertas: ${updateError.message}`);
+      setError(`No se pudieron generar las alertas: ${insertError.message}`);
       return;
     }
 
-    const beforeSnapshot = captureAlertSnapshot(rowsToAlert);
-    const afterSnapshot = rowsToAlert.reduce((acc, row) => {
-      acc[row.id] = {
-        scorms_alerta: nowIso,
-        scorm_estado: getRowState(row),
-      };
-      return acc;
-    }, {});
-
-    applyAlertSnapshotToRows(afterSnapshot);
-    setAlertActionsHistory((previous) => [...previous, { type: 'generate', before: beforeSnapshot, after: afterSnapshot }]);
-    setAlertRedoHistory([]);
     setAlertSubmitting(false);
     setAlertGeneratorModalOpen(false);
     setAlertCodesDraft('');
-    setStatusMessage(`${rowsToAlert.length} SCORM(s) marcados con alerta de actualización.`);
-  };
+    setAlertNovedadDraft('');
+    setStatusMessage(`${payload.length} alerta(s) generada(s). Recargando vista de alertas...`);
 
-  const discardAlert = async (row) => {
-    if (!row?.id) {
-      return;
-    }
-
-    const shouldDiscard = globalThis?.confirm?.(`¿Descartar alerta para ${getInternationalizedCode(row)}?`);
-    if (!shouldDiscard) {
-      return;
-    }
-
-    setError('');
-    setStatusMessage('');
-
-    const beforeSnapshot = captureAlertSnapshot([row]);
-    const afterSnapshot = {
-      [row.id]: {
-        scorms_alerta: null,
-        scorm_estado: getRowState(row),
-      },
-    };
-
-    const { error: discardError } = await supabase.from('scorms_master').update({ scorms_alerta: null }).eq('id', row.id);
-
-    if (discardError) {
-      setError(`No se pudo descartar la alerta: ${discardError.message}`);
-      return;
-    }
-
-    applyAlertSnapshotToRows(afterSnapshot);
-    setAlertActionsHistory((previous) => [...previous, { type: 'discard', before: beforeSnapshot, after: afterSnapshot }]);
-    setAlertRedoHistory([]);
-    setStatusMessage(`Alerta descartada para ${getInternationalizedCode(row)}.`);
+    globalThis.setTimeout(() => {
+      fetchData();
+    }, 2000);
   };
 
   const submitScormUpdate = async () => {
@@ -1800,8 +1841,8 @@ export default function ScormsTable({ userSession }) {
             type="button"
             className={`secondary ${alertRows.length > 0 ? 'pending-highlight' : ''}`}
             onClick={() => setViewMode('alerts')}
-            disabled={viewMode === 'alerts' || !canGenerateAlerts}
-            title={canGenerateAlerts ? 'Ver alertas de actualización' : 'Tu usuario no tiene permiso de alertador'}
+            disabled={viewMode === 'alerts'}
+            title='Ver alertas de actualización'
           >
             Alertas actualizaciones
             <span className="kpi-badge">{alertRows.length}</span>
@@ -2469,72 +2510,98 @@ export default function ScormsTable({ userSession }) {
       {!loading && canRenderTable && viewMode === 'alerts' && (
         <section className="publish-view">
           <div className="publish-controls">
-            <button type="button" onClick={() => setAlertGeneratorModalOpen(true)} disabled={!canGenerateAlerts || alertSubmitting}>
-              Generar alertas
-            </button>
-            <button type="button" className="secondary" disabled={alertActionsHistory.length === 0} onClick={handleUndoAlertAction}>
-              Deshacer alerta
-            </button>
-            <button type="button" className="secondary" disabled={alertRedoHistory.length === 0} onClick={handleRedoAlertAction}>
-              Rehacer alerta
-            </button>
+            {canGenerateAlerts && (
+              <button type="button" onClick={() => setAlertGeneratorModalOpen(true)} disabled={alertSubmitting}>
+                Generar alertas
+              </button>
+            )}
           </div>
-          {alertRows.length === 0 ? (
-            <p className="status">No hay SCORMs con alerta de actualización.</p>
+          {alertsByScormCode.length === 0 ? (
+            <p className="status">No hay SCORMs con alertas registradas.</p>
           ) : (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    {alertColumns.map((column) => (
-                      <th key={`alert-head-${column.key}`} className={`col-${column.key}`}>
-                        {column.label}
-                      </th>
-                    ))}
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {alertRows.map((row) => (
-                    <tr key={`alert-row-${row.id}`}>
-                      {alertColumns.map((column) => (
-                        <td key={`alert-${row.id}-${column.key}`} className={`col-${column.key}`}>
-                          {column.key === 'scorms_alerta' ? (
-                            <span>{formatDateDDMMYYYY(getAlertDateValue(row))}</span>
-                          ) : column.key === 'scorm_categoria' ? (
-                            <span className="category-chip" style={getCategoryColor(row[column.key])}>
-                              {row[column.key] || 'Sin categoría'}
-                            </span>
-                          ) : column.key === 'scorm_name' ? (
-                            <span>{getOfficialName(row)}</span>
-                          ) : column.key === 'scorm_code' ? (
-                            <span>{getInternationalizedCode(row)}</span>
-                          ) : (
-                            <span>{row[column.key] || '-'}</span>
-                          )}
-                        </td>
-                      ))}
-                      <td>
-                        <div className="row-actions">
-                          <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
-                            Detalles
-                          </button>
-                          <button type="button" className="secondary action-button" onClick={() => discardAlert(row)}>
-                            Descartar alerta
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary action-button"
-                            onClick={() => openUpdateModal(row, { clearAlertOnSubmit: true, source: 'alerts' })}
-                          >
-                            Actualizar SCORM
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="scorms-accordion-list">
+              {alertsByScormCode.map((scormAlertGroup) => (
+                <details key={`alerts-group-${scormAlertGroup.scormCode}`} className="scorms-accordion-item course-level-1">
+                  <summary>
+                    <div className="course-summary-grid">
+                      <strong>{scormAlertGroup.scormCode}</strong>
+                      <span>{scormAlertGroup.scormName}</span>
+                      <span>
+                        Última alerta: {formatDateDDMMYYYY(scormAlertGroup.lastAlertDate)} ({scormAlertGroup.alertCount})
+                      </span>
+                    </div>
+                  </summary>
+
+                  <div className="table-wrapper details-table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Fecha alerta</th>
+                          <th>Novedad</th>
+                          <th>Etiquetas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scormAlertGroup.alerts.map((alertItem) => {
+                          const alertItemKey = `alert-item-${alertItem.id}`;
+                          const currentTagCodes = parseTagCodesFromInput(alertItem.alerta_etiquetas || '');
+                          const isTagsOpen = expandedAlertTags[alertItemKey] === true;
+                          const relatedTags = currentTagCodes.flatMap((tagCode) => tagsByCode[tagCode] || []);
+
+                          return (
+                            <tr key={alertItemKey}>
+                              <td>{formatDateDDMMYYYY(alertItem.alerta_fecha || alertItem.created_at)}</td>
+                              <td>{String(alertItem.alerta_novedad || '').trim() || '-'}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="secondary action-button"
+                                  onClick={() =>
+                                    setExpandedAlertTags((previous) => ({
+                                      ...previous,
+                                      [alertItemKey]: !isTagsOpen,
+                                    }))
+                                  }
+                                >
+                                  {isTagsOpen ? 'Ocultar etiquetas' : 'Ver etiquetas'}
+                                </button>
+                                {isTagsOpen && (
+                                  <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                                    <table>
+                                      <thead>
+                                        <tr>
+                                          <th>Código</th>
+                                          <th>Nombre</th>
+                                          <th>Clasificación</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {relatedTags.length === 0 ? (
+                                          <tr>
+                                            <td colSpan={3}>No se encontraron etiquetas para esta alerta.</td>
+                                          </tr>
+                                        ) : (
+                                          relatedTags.map((tag, index) => (
+                                            <tr key={`${alertItemKey}-${tag.etiqueta_codigo}-${index}`}>
+                                              <td>{tag.etiqueta_codigo || '-'}</td>
+                                              <td>{tag.etiqueta_nombre || '-'}</td>
+                                              <td>{tag.clasificacion_scorm || '-'}</td>
+                                            </tr>
+                                          ))
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              ))}
             </div>
           )}
         </section>
@@ -2566,6 +2633,17 @@ export default function ScormsTable({ userSession }) {
                 value={alertCodesDraft}
                 onChange={(event) => setAlertCodesDraft(event.target.value)}
                 placeholder="Ejemplo: ETQ001, ETQ002"
+                disabled={alertSubmitting}
+              />
+            </label>
+
+            <label>
+              <span>Novedad</span>
+              <textarea
+                rows={4}
+                value={alertNovedadDraft}
+                onChange={(event) => setAlertNovedadDraft(event.target.value)}
+                placeholder="Describe la novedad asociada a la alerta"
                 disabled={alertSubmitting}
               />
             </label>
