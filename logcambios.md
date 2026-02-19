@@ -1,6 +1,24 @@
 # Log de cambios
 
 
+## v1.40.0 - Generación y gestión de alertas con permisos + deshacer/rehacer
+
+### Cambios consolidados
+- Se añadió el permiso funcional **alertador** en sesión de usuario (login, sesión persistida y reenganche), para habilitar exclusivamente a esos usuarios la vista de alertas y la generación de alertas por etiquetas.
+- En la vista **Alertas actualizaciones** se incorporó el botón **Generar alertas**, que abre un modal para pegar códigos de etiqueta y confirmar la operación.
+- Al confirmar, la app consulta `scorms_etiquetas`, obtiene la `clasificacion_scorm` asociada y marca con fecha actual (`scorms_alerta`) todos los SCORM de `scorms_master` cuya clasificación coincide.
+- En la tabla de alertas se añadieron dos acciones nuevas además de **Detalles**:
+  - **Descartar alerta**: pide confirmación y elimina la fecha de `scorms_alerta`.
+  - **Actualizar SCORM**: reutiliza el flujo de actualización; al actualizar cambia estado y limpia también `scorms_alerta` para que desaparezca de la vista.
+- Se añadieron controles **Deshacer alerta** y **Rehacer alerta** para el funcional de alertas, incluyendo generación, descarte y actualización desde alertas.
+- Se actualizó la versión visible de la APP a **v1.40.0** y el versionado de `package.json` a `1.40.0`.
+
+### Versionado
+- Versión anterior: `1.39.1`
+- Nueva versión consolidada: `1.40.0`
+
+---
+
 
 ## v1.39.1 - Corrección de visualización en vista Alertas
 

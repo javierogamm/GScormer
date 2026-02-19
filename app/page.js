@@ -9,7 +9,7 @@ import { APP_VERSION } from '../lib/appVersion';
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
 const AGENT_SPLIT_REGEX = /[&,;|]/;
 
-const isAdminFlagEnabled = (value) => {
+const isBooleanFlagEnabled = (value) => {
   if (typeof value === 'boolean') {
     return value;
   }
@@ -21,6 +21,9 @@ const isAdminFlagEnabled = (value) => {
   const normalizedValue = String(value || '').trim().toLowerCase();
   return ['true', 't', '1', 'yes', 'si', 'sí'].includes(normalizedValue);
 };
+
+const isAdminFlagEnabled = (value) => isBooleanFlagEnabled(value);
+const isAlertadorFlagEnabled = (value) => isBooleanFlagEnabled(value);
 
 const parseAgentList = (value) =>
   String(value || '')
@@ -114,6 +117,7 @@ export default function HomePage() {
         setUserSession({
           ...parsed,
           admin: isAdminFlagEnabled(parsed.admin),
+          alertador: isAlertadorFlagEnabled(parsed.alertador),
           agent: parsed.agent || parsed.agente || '',
           agente: parsedConfig.responsables.join(', '),
           agentFilters: parsedConfig,
@@ -161,6 +165,7 @@ export default function HomePage() {
       id: response.data.id,
       name: response.data.name,
       admin: isAdminFlagEnabled(response.data.admin),
+      alertador: isAlertadorFlagEnabled(response.data.alertador),
       agent: agentRawValue,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
@@ -188,7 +193,7 @@ export default function HomePage() {
 
     const response = await supabase
       .from('scorms_users')
-      .select('id, name, admin, agent, agente')
+      .select('id, name, admin, alertador, agent, agente')
       .eq('id', userSession.id)
       .limit(1)
       .maybeSingle();
@@ -205,6 +210,7 @@ export default function HomePage() {
       ...userSession,
       name: response.data.name || userSession.name,
       admin: isAdminFlagEnabled(response.data.admin),
+      alertador: isAlertadorFlagEnabled(response.data.alertador),
       agent: linkedAgent,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
