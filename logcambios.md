@@ -1,6 +1,23 @@
 # Log de cambios
 
 
+## v1.35.0 - Edición completa de cursos, filtros priorizados y depuración de planes
+
+### Cambios consolidados
+- En la vista de **Detalle del curso** (SCORMs Cursos) ahora todos los campos del curso son editables desde inputs de texto y se añadió el botón **Guardar cambios** para persistir la edición completa en `scorms_cursos`.
+- Se incorporó control de guardado del modal de detalle (`Guardando...`), actualización en memoria de la fila editada y mensaje de estado al guardar correctamente.
+- En el panel de filtros de cursos se reordenaron y priorizaron arriba los filtros: **Curso código**, **Curso nombre** y el nuevo filtro **SCORMS**.
+- El filtro **SCORMS** busca sobre los SCORMs asociados a cada curso a partir de referencias en `contenido`, incluyendo datos de SCORM master (código, nombre, responsable, categoría e idioma).
+- En la vista **Planes de aprendizaje** se ocultan los planes cuyo nombre contiene `00` o `CURSOS SIN PLAN DE APRENDIZAJE`.
+- Se actualizó la versión visible de la APP a **v1.35.0** y el versionado de `package.json` a `1.35.0`.
+
+### Versionado
+- Versión anterior: `1.34.0`
+- Nueva versión consolidada: `1.35.0`
+
+---
+
+
 ## v1.34.0 - Subvista de Planes de aprendizaje y contador en cursos individuales
 
 ### Cambios consolidados
