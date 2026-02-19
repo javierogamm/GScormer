@@ -9,7 +9,18 @@ import { APP_VERSION } from '../lib/appVersion';
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
 const AGENT_SPLIT_REGEX = /[&,;|]/;
 
-const isAdminFlagEnabled = (value) => value === true || String(value || '').trim().toLowerCase() === 'true';
+const isAdminFlagEnabled = (value) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value === 1;
+  }
+
+  const normalizedValue = String(value || '').trim().toLowerCase();
+  return ['true', 't', '1', 'yes', 'si', 'sí'].includes(normalizedValue);
+};
 
 const parseAgentList = (value) =>
   String(value || '')
