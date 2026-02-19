@@ -700,6 +700,7 @@ export default function ScormsTable({ userSession }) {
         return {
           scormCode,
           scormName: representativeRow ? getOfficialName(representativeRow) : 'Sin nombre',
+          scormClassification: representativeRow ? String(representativeRow.scorm_categoria || '').trim() : '',
           relatedRows: matchedRows,
           lastAlertDate: latestAlert?.alerta_fecha || latestAlert?.created_at || null,
           alertCount: sortedAlerts.length,
@@ -2564,12 +2565,6 @@ export default function ScormsTable({ userSession }) {
                 Generar alertas
               </button>
             )}
-            <button type="button" className="secondary" disabled={alertActionsHistory.length === 0} onClick={handleUndoAlertAction}>
-              Deshacer alerta
-            </button>
-            <button type="button" className="secondary" disabled={alertRedoHistory.length === 0} onClick={handleRedoAlertAction}>
-              Rehacer alerta
-            </button>
           </div>
           {alertsByScormCode.length === 0 ? (
             <p className="status">No hay SCORMs con alertas registradas.</p>
@@ -2581,6 +2576,12 @@ export default function ScormsTable({ userSession }) {
                     <div className="course-summary-grid scorm-alert-summary-grid">
                       <strong>{scormAlertGroup.scormCode}</strong>
                       <span>{scormAlertGroup.scormName}</span>
+                      <span>
+                        Clasificación:{' '}
+                        <span className="category-chip" style={getCategoryColor(scormAlertGroup.scormClassification)}>
+                          {scormAlertGroup.scormClassification || 'Sin clasificación'}
+                        </span>
+                      </span>
                       <span>
                         Última alerta: {formatDateDDMMYYYY(scormAlertGroup.lastAlertDate)} ({scormAlertGroup.alertCount})
                       </span>
@@ -2626,8 +2627,8 @@ export default function ScormsTable({ userSession }) {
                               <td>{String(alertItem.alerta_novedad || '').trim() || '-'}</td>
                               <td>
                                 {String(alertItem.url_novedad || '').trim() ? (
-                                  <a href={alertItem.url_novedad} target="_blank" rel="noreferrer">
-                                    LINK
+                                  <a href={String(alertItem.url_novedad || '').trim()} target="_blank" rel="noopener noreferrer">
+                                    {String(alertItem.url_novedad || '').trim()}
                                   </a>
                                 ) : (
                                   '-'

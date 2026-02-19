@@ -1,6 +1,21 @@
 # Log de cambios
 
 
+## v1.44.0 - Alertas: URL externa directa, clasificación visible y simplificación de acciones
+
+### Cambios consolidados
+- En la vista **Alertas actualizaciones** se eliminó la botonera **Deshacer alerta / Rehacer alerta**.
+- En el nivel 1 del acordeón de alertas se añadió el campo **Clasificación** del SCORM, mostrado con el mismo chip de categoría.
+- En la tabla de detalle de alertas (nivel 2), la columna **URL novedad** ahora abre y muestra íntegramente la URL almacenada en BDD, manteniendo navegación externa en nueva pestaña.
+- Se actualizó la versión visible de la APP a **v1.44.0** y el versionado de `package.json` a `1.44.0`.
+
+### Versionado
+- Versión anterior: `1.43.0`
+- Nueva versión consolidada: `1.44.0`
+
+---
+
+
 
 ## v1.43.0 - Alertas desacopladas de master + URL de novedad + deshacer/rehacer visible
 
