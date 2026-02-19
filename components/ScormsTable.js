@@ -215,6 +215,11 @@ const getPublicationUpdateType = (row, latestUpdateByCode = {}) => {
 };
 
 const getAlertDateValue = (row) => row.scorms_alerta || row.scorm_alerta || null;
+const parseTagCodesFromInput = (value) =>
+  [...new Set(String(value || '')
+    .split(/[\s,;\n\t]+/)
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean))];
 
 const formatDateDDMMYYYY = (value) => {
   const dateMs = typeof value === 'number' ? value : getDateMsFromCandidates([value]);
@@ -345,6 +350,8 @@ export default function ScormsTable({ userSession }) {
   const [draggedRowIds, setDraggedRowIds] = useState([]);
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
+  const [alertActionsHistory, setAlertActionsHistory] = useState([]);
+  const [alertRedoHistory, setAlertRedoHistory] = useState([]);
   const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('ES');
   const [translationModalOpen, setTranslationModalOpen] = useState(false);
@@ -354,6 +361,7 @@ export default function ScormsTable({ userSession }) {
   const [translationNameDrafts, setTranslationNameDrafts] = useState({});
   const [updateTargetRow, setUpdateTargetRow] = useState(null);
   const [updateTargetRows, setUpdateTargetRows] = useState([]);
+  const [updateModalOptions, setUpdateModalOptions] = useState({ clearAlertOnSubmit: false, source: 'general' });
   const [updateForm, setUpdateForm] = useState({
     cambio_tipo: '',
     fecha_modif: new Date().toISOString().slice(0, 10),
@@ -371,9 +379,13 @@ export default function ScormsTable({ userSession }) {
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
   const [coursesRows, setCoursesRows] = useState([]);
   const [coursesModalRow, setCoursesModalRow] = useState(null);
+  const [alertGeneratorModalOpen, setAlertGeneratorModalOpen] = useState(false);
+  const [alertCodesDraft, setAlertCodesDraft] = useState('');
+  const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [myScormsOnly, setMyScormsOnly] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
+  const canGenerateAlerts = userSession?.alertador === true;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -853,7 +865,7 @@ export default function ScormsTable({ userSession }) {
     setHistoryModalOpen(true);
   };
 
-  const openUpdateModal = (rowsToUpdate) => {
+  const openUpdateModal = (rowsToUpdate, options = { clearAlertOnSubmit: false, source: 'general' }) => {
     const normalizedRows = Array.isArray(rowsToUpdate) ? rowsToUpdate : [rowsToUpdate];
     const validRows = normalizedRows.filter(Boolean);
 
@@ -865,6 +877,10 @@ export default function ScormsTable({ userSession }) {
     setStatusMessage('');
     setUpdateTargetRows(validRows);
     setUpdateTargetRow(validRows[0]);
+    setUpdateModalOptions({
+      clearAlertOnSubmit: options?.clearAlertOnSubmit === true,
+      source: options?.source || 'general',
+    });
     setUpdateForm({
       cambio_tipo: '',
       fecha_modif: new Date().toISOString().slice(0, 10),
@@ -880,6 +896,7 @@ export default function ScormsTable({ userSession }) {
 
     setUpdateTargetRow(null);
     setUpdateTargetRows([]);
+    setUpdateModalOptions({ clearAlertOnSubmit: false, source: 'general' });
   };
 
   const openCreateModal = () => {
@@ -1165,6 +1182,120 @@ export default function ScormsTable({ userSession }) {
     setStatusMessage('Movimiento rehecho correctamente.');
   };
 
+
+  const captureAlertSnapshot = (targetRows) => {
+    return targetRows.reduce((acc, row) => {
+      if (!row?.id) {
+        return acc;
+      }
+
+      acc[row.id] = {
+        scorms_alerta: getAlertDateValue(row),
+        scorm_estado: getRowState(row),
+      };
+
+      return acc;
+    }, {});
+  };
+
+  const applyAlertSnapshotToRows = (snapshot) => {
+    const targetIds = Object.keys(snapshot).map((value) => Number(value));
+    if (targetIds.length === 0) {
+      return;
+    }
+
+    const patchRow = (row) => {
+      const patch = snapshot[row.id];
+      if (!patch) {
+        return row;
+      }
+
+      return {
+        ...row,
+        scorms_alerta: patch.scorms_alerta,
+        scorm_estado: patch.scorm_estado,
+      };
+    };
+
+    setRows((previousRows) => previousRows.map((row) => patchRow(row)));
+    setDetailDraft((previous) => (previous && targetIds.includes(previous.id) ? patchRow(previous) : previous));
+    setActiveRow((previous) => (previous && targetIds.includes(previous.id) ? patchRow(previous) : previous));
+  };
+
+  const persistAlertSnapshot = async (snapshot) => {
+    const updates = Object.entries(snapshot).map(([rowId, values]) =>
+      supabase
+        .from('scorms_master')
+        .update({
+          scorms_alerta: values.scorms_alerta,
+          scorm_estado: values.scorm_estado,
+        })
+        .eq('id', Number(rowId))
+    );
+
+    const results = await Promise.all(updates);
+    const failedUpdate = results.find((result) => result.error);
+
+    if (failedUpdate?.error) {
+      return { ok: false, message: failedUpdate.error.message };
+    }
+
+    return { ok: true };
+  };
+
+  const applyAlertActionHistory = async (action, direction = 'undo') => {
+    const targetSnapshot = direction === 'undo' ? action.before : action.after;
+    const persistResult = await persistAlertSnapshot(targetSnapshot);
+
+    if (!persistResult.ok) {
+      setError(`${direction === 'undo' ? 'No se pudo deshacer' : 'No se pudo rehacer'} la acción de alertas: ${persistResult.message}`);
+      return false;
+    }
+
+    applyAlertSnapshotToRows(targetSnapshot);
+    return true;
+  };
+
+  const handleUndoAlertAction = async () => {
+    const lastAction = alertActionsHistory[alertActionsHistory.length - 1];
+
+    if (!lastAction) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const ok = await applyAlertActionHistory(lastAction, 'undo');
+    if (!ok) {
+      return;
+    }
+
+    setAlertActionsHistory((previous) => previous.slice(0, -1));
+    setAlertRedoHistory((previous) => [...previous, lastAction]);
+    setStatusMessage('Acción de alertas deshecha correctamente.');
+  };
+
+  const handleRedoAlertAction = async () => {
+    const actionToRestore = alertRedoHistory[alertRedoHistory.length - 1];
+
+    if (!actionToRestore) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const ok = await applyAlertActionHistory(actionToRestore, 'redo');
+    if (!ok) {
+      return;
+    }
+
+    setAlertRedoHistory((previous) => previous.slice(0, -1));
+    setAlertActionsHistory((previous) => [...previous, actionToRestore]);
+    setStatusMessage('Acción de alertas rehecha correctamente.');
+  };
+
   const handleCardClick = (event, rowId) => {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
@@ -1211,6 +1342,123 @@ export default function ScormsTable({ userSession }) {
     await updateRowsStatus(idsToMove, targetState);
   };
 
+
+  const closeAlertGeneratorModal = () => {
+    if (alertSubmitting) {
+      return;
+    }
+
+    setAlertGeneratorModalOpen(false);
+    setAlertCodesDraft('');
+  };
+
+  const submitGenerateAlerts = async () => {
+    if (!canGenerateAlerts) {
+      setError('Tu usuario no tiene permisos para generar alertas.');
+      return;
+    }
+
+    const tagCodes = parseTagCodesFromInput(alertCodesDraft);
+
+    if (tagCodes.length === 0) {
+      setError('Pega uno o varios códigos de etiqueta para generar alertas.');
+      return;
+    }
+
+    setAlertSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const { data: etiquetasData, error: etiquetasError } = await supabase
+      .from('scorms_etiquetas')
+      .select('etiqueta_codigo, clasificacion_scorm')
+      .in('etiqueta_codigo', tagCodes);
+
+    if (etiquetasError) {
+      setAlertSubmitting(false);
+      setError(`No se pudieron consultar las etiquetas: ${etiquetasError.message}`);
+      return;
+    }
+
+    const classifications = [...new Set((etiquetasData || []).map((item) => String(item.clasificacion_scorm || '').trim()).filter(Boolean))];
+
+    if (classifications.length === 0) {
+      setAlertSubmitting(false);
+      setError('No se encontró clasificación SCORM asociada a los códigos informados.');
+      return;
+    }
+
+    const rowsToAlert = rows.filter((row) => classifications.includes(String(row.scorm_categoria || '').trim()));
+
+    if (rowsToAlert.length === 0) {
+      setAlertSubmitting(false);
+      setStatusMessage('No hay SCORMs con la clasificación de las etiquetas informadas.');
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const rowIds = rowsToAlert.map((row) => row.id);
+
+    const { error: updateError } = await supabase.from('scorms_master').update({ scorms_alerta: nowIso }).in('id', rowIds);
+
+    if (updateError) {
+      setAlertSubmitting(false);
+      setError(`No se pudieron generar las alertas: ${updateError.message}`);
+      return;
+    }
+
+    const beforeSnapshot = captureAlertSnapshot(rowsToAlert);
+    const afterSnapshot = rowsToAlert.reduce((acc, row) => {
+      acc[row.id] = {
+        scorms_alerta: nowIso,
+        scorm_estado: getRowState(row),
+      };
+      return acc;
+    }, {});
+
+    applyAlertSnapshotToRows(afterSnapshot);
+    setAlertActionsHistory((previous) => [...previous, { type: 'generate', before: beforeSnapshot, after: afterSnapshot }]);
+    setAlertRedoHistory([]);
+    setAlertSubmitting(false);
+    setAlertGeneratorModalOpen(false);
+    setAlertCodesDraft('');
+    setStatusMessage(`${rowsToAlert.length} SCORM(s) marcados con alerta de actualización.`);
+  };
+
+  const discardAlert = async (row) => {
+    if (!row?.id) {
+      return;
+    }
+
+    const shouldDiscard = globalThis?.confirm?.(`¿Descartar alerta para ${getInternationalizedCode(row)}?`);
+    if (!shouldDiscard) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const beforeSnapshot = captureAlertSnapshot([row]);
+    const afterSnapshot = {
+      [row.id]: {
+        scorms_alerta: null,
+        scorm_estado: getRowState(row),
+      },
+    };
+
+    const { error: discardError } = await supabase.from('scorms_master').update({ scorms_alerta: null }).eq('id', row.id);
+
+    if (discardError) {
+      setError(`No se pudo descartar la alerta: ${discardError.message}`);
+      return;
+    }
+
+    applyAlertSnapshotToRows(afterSnapshot);
+    setAlertActionsHistory((previous) => [...previous, { type: 'discard', before: beforeSnapshot, after: afterSnapshot }]);
+    setAlertRedoHistory([]);
+    setStatusMessage(`Alerta descartada para ${getInternationalizedCode(row)}.`);
+  };
+
   const submitScormUpdate = async () => {
     if (updateTargetRows.length === 0) {
       return;
@@ -1247,9 +1495,15 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
+    const shouldClearAlert = updateModalOptions.clearAlertOnSubmit === true;
+    const beforeAlertSnapshot = shouldClearAlert ? captureAlertSnapshot(updateTargetRows) : null;
+
     const { error: stateError } = await supabase
       .from('scorms_master')
-      .update({ scorm_estado: 'Actualizado pendiente de publicar' })
+      .update({
+        scorm_estado: 'Actualizado pendiente de publicar',
+        ...(shouldClearAlert ? { scorms_alerta: null } : {}),
+      })
       .in(
         'id',
         updateTargetRows.map((row) => row.id)
@@ -1261,31 +1515,41 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
-    setRows((previousRows) =>
-      previousRows.map((row) =>
-        updateTargetRows.some((targetRow) => targetRow.id === row.id)
-          ? { ...row, scorm_estado: 'Actualizado pendiente de publicar' }
-          : row
-      )
-    );
-    setDetailDraft((previous) =>
-      previous && updateTargetRows.some((targetRow) => targetRow.id === previous.id)
-        ? { ...previous, scorm_estado: 'Actualizado pendiente de publicar' }
-        : previous
-    );
-    setActiveRow((previous) =>
-      previous && updateTargetRows.some((targetRow) => targetRow.id === previous.id)
-        ? { ...previous, scorm_estado: 'Actualizado pendiente de publicar' }
-        : previous
-    );
+    const nextSnapshot = updateTargetRows.reduce((acc, row) => {
+      acc[row.id] = {
+        scorms_alerta: shouldClearAlert ? null : getAlertDateValue(row),
+        scorm_estado: 'Actualizado pendiente de publicar',
+      };
+      return acc;
+    }, {});
+
+    applyAlertSnapshotToRows(nextSnapshot);
+
+    if (shouldClearAlert && beforeAlertSnapshot) {
+      setAlertActionsHistory((previous) => [
+        ...previous,
+        {
+          type: 'update_from_alerts',
+          before: beforeAlertSnapshot,
+          after: nextSnapshot,
+        },
+      ]);
+      setAlertRedoHistory([]);
+    }
+
     setUpdateTargetRow(null);
     setUpdateTargetRows([]);
+    setUpdateModalOptions({ clearAlertOnSubmit: false, source: 'general' });
     setSelectedIds([]);
     setUpdateSubmitting(false);
     setStatusMessage(
       updateTargetRows.length === 1
-        ? 'Actualización SCORM registrada y estado cambiado a "Actualizado pendiente de publicar".'
-        : `${updateTargetRows.length} SCORMs actualizados y marcados como "Actualizado pendiente de publicar".`
+        ? shouldClearAlert
+          ? 'Actualización SCORM registrada, estado cambiado y alerta descartada.'
+          : 'Actualización SCORM registrada y estado cambiado a "Actualizado pendiente de publicar".'
+        : shouldClearAlert
+          ? `${updateTargetRows.length} SCORMs actualizados, con estado cambiado y alerta descartada.`
+          : `${updateTargetRows.length} SCORMs actualizados y marcados como "Actualizado pendiente de publicar".`
     );
   };
 
@@ -1536,7 +1800,8 @@ export default function ScormsTable({ userSession }) {
             type="button"
             className={`secondary ${alertRows.length > 0 ? 'pending-highlight' : ''}`}
             onClick={() => setViewMode('alerts')}
-            disabled={viewMode === 'alerts'}
+            disabled={viewMode === 'alerts' || !canGenerateAlerts}
+            title={canGenerateAlerts ? 'Ver alertas de actualización' : 'Tu usuario no tiene permiso de alertador'}
           >
             Alertas actualizaciones
             <span className="kpi-badge">{alertRows.length}</span>
@@ -2203,6 +2468,17 @@ export default function ScormsTable({ userSession }) {
 
       {!loading && canRenderTable && viewMode === 'alerts' && (
         <section className="publish-view">
+          <div className="publish-controls">
+            <button type="button" onClick={() => setAlertGeneratorModalOpen(true)} disabled={!canGenerateAlerts || alertSubmitting}>
+              Generar alertas
+            </button>
+            <button type="button" className="secondary" disabled={alertActionsHistory.length === 0} onClick={handleUndoAlertAction}>
+              Deshacer alerta
+            </button>
+            <button type="button" className="secondary" disabled={alertRedoHistory.length === 0} onClick={handleRedoAlertAction}>
+              Rehacer alerta
+            </button>
+          </div>
           {alertRows.length === 0 ? (
             <p className="status">No hay SCORMs con alerta de actualización.</p>
           ) : (
@@ -2243,6 +2519,16 @@ export default function ScormsTable({ userSession }) {
                           <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
                             Detalles
                           </button>
+                          <button type="button" className="secondary action-button" onClick={() => discardAlert(row)}>
+                            Descartar alerta
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary action-button"
+                            onClick={() => openUpdateModal(row, { clearAlertOnSubmit: true, source: 'alerts' })}
+                          >
+                            Actualizar SCORM
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -2252,6 +2538,48 @@ export default function ScormsTable({ userSession }) {
             </div>
           )}
         </section>
+      )}
+
+      {alertGeneratorModalOpen && (
+        <div className="modal-overlay" role="presentation" onClick={closeAlertGeneratorModal}>
+          <div
+            className="modal-content modal-content-narrow"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="generar-alertas-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="generar-alertas-titulo">Generar alertas</h3>
+                <p>Pega códigos de etiqueta (separados por espacios, comas o salto de línea).</p>
+              </div>
+              <button type="button" className="secondary" onClick={closeAlertGeneratorModal} disabled={alertSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <label>
+              <span>Códigos de etiqueta</span>
+              <textarea
+                rows={8}
+                value={alertCodesDraft}
+                onChange={(event) => setAlertCodesDraft(event.target.value)}
+                placeholder="Ejemplo: ETQ001, ETQ002"
+                disabled={alertSubmitting}
+              />
+            </label>
+
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={closeAlertGeneratorModal} disabled={alertSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" onClick={submitGenerateAlerts} disabled={alertSubmitting || !canGenerateAlerts}>
+                {alertSubmitting ? 'Generando...' : 'Confirmar: generar alertas'}
+              </button>
+            </footer>
+          </div>
+        </div>
       )}
 
       {translationModalOpen && (
