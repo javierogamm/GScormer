@@ -1,5 +1,34 @@
 # Log de cambios
 
+## v1.45.0 - Corrección de enlaces externos en URLs sin protocolo
+
+### Cambios consolidados
+- Se normalizaron las URLs externas para que, si se informan sin protocolo (por ejemplo `www.google.com`), se abran fuera de la APP añadiendo `https://` automáticamente.
+- El ajuste se aplica a enlaces de `scorm_url` en tabla/tarjetas/publicación y también en `URL novedad` de alertas.
+- Se mantiene visible el valor original de la URL en pantalla, corrigiendo únicamente el destino del enlace para evitar rutas relativas dentro de `g-scormer.vercel.app`.
+- Se actualizó la versión visible de la APP a **v1.45.0** y el versionado de `package.json` a `1.45.0`.
+
+### Versionado
+- Versión anterior: `1.44.0`
+- Nueva versión consolidada: `1.45.0`
+
+---
+
+
+## v1.44.0 - Alertas: URL externa directa, clasificación visible y simplificación de acciones
+
+### Cambios consolidados
+- En la vista **Alertas actualizaciones** se eliminó la botonera **Deshacer alerta / Rehacer alerta**.
+- En el nivel 1 del acordeón de alertas se añadió el campo **Clasificación** del SCORM, mostrado con el mismo chip de categoría.
+- En la tabla de detalle de alertas (nivel 2), la columna **URL novedad** ahora abre y muestra íntegramente la URL almacenada en BDD, manteniendo navegación externa en nueva pestaña.
+- Se actualizó la versión visible de la APP a **v1.44.0** y el versionado de `package.json` a `1.44.0`.
+
+### Versionado
+- Versión anterior: `1.43.0`
+- Nueva versión consolidada: `1.44.0`
+
+---
+
 
 
 ## v1.43.0 - Alertas desacopladas de master + URL de novedad + deshacer/rehacer visible
