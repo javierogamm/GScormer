@@ -305,6 +305,48 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       .sort((left, right) => left.codeLabel.localeCompare(right.codeLabel, 'es', { sensitivity: 'base' }));
   }, [filteredRows]);
 
+  const learningPlanGroups = useMemo(() => {
+    const grouped = filteredRows.reduce((acc, row) => {
+      const normalizedMembership = String(row.pa_formaparte || '').trim().toLowerCase();
+      const isPartOfPlan = ['si', 'sí', 'yes', 'true', '1', 'x'].includes(normalizedMembership);
+
+      if (!isPartOfPlan) {
+        return acc;
+      }
+
+      const planCode = String(row.pa_codigo || '').trim();
+      const planName = String(row.pa_nombre || '').trim();
+      const key = planCode || planName;
+
+      if (!key) {
+        return acc;
+      }
+
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          paCodigo: planCode || '-',
+          paNombre: planName || '-',
+          paUrl: String(row.pa_url || '').trim(),
+          rows: [],
+        };
+      }
+
+      if (!acc[key].paUrl) {
+        acc[key].paUrl = String(row.pa_url || '').trim();
+      }
+
+      acc[key].rows.push(row);
+      return acc;
+    }, {});
+
+    return Object.values(grouped).sort((left, right) => {
+      const leftKey = `${left.paCodigo} ${left.paNombre}`;
+      const rightKey = `${right.paCodigo} ${right.paNombre}`;
+      return leftKey.localeCompare(rightKey, 'es', { sensitivity: 'base' });
+    });
+  }, [filteredRows]);
+
 
   const pendingPublishRows = useMemo(
     () => filteredRows.filter((row) => String(row.curso_estado || '').trim() === COURSE_STATUS_PENDING),
@@ -556,6 +598,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
               ? 'Vista general'
               : cursosSubView === 'individuales'
                 ? 'Cursos individuales'
+                : cursosSubView === 'planes'
+                  ? 'Planes de aprendizaje'
                 : 'Publicación pendiente'}
           </h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
@@ -574,6 +618,9 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             onClick={() => setCursosSubView('individuales')}
           >
             Cursos individuales
+          </button>
+          <button type="button" className={cursosSubView === 'planes' ? '' : 'secondary'} onClick={() => setCursosSubView('planes')}>
+            Planes de aprendizaje
           </button>
           <button
             type="button"
@@ -793,7 +840,9 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                   <span className="individual-summary-actions">
                     <span className="individual-summary-grid">
                       <strong>{group.codeLabel}</strong>
-                      <span>{group.cursoNombre}</span>
+                      <span>
+                        {group.cursoNombre} ({group.rows.length})
+                      </span>
                       <span>{group.materia}</span>
                     </span>
                     <button
@@ -823,6 +872,73 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                     <tbody>
                       {group.rows.map((row) => (
                         <tr key={`individual-row-${row.id}`}>
+                          <td>{String(row.curso_codigo || '-')}</td>
+                          <td>{String(row.curso_nombre || '-')}</td>
+                          <td>{String(row.tipologia || '-')}</td>
+                          <td>{String(row.curso_estado || '-')}</td>
+                          <td>
+                            <div className="row-actions">
+                              {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
+                                  Pasar a pendiente de publicar
+                                </button>
+                              ) : null}
+                              <button type="button" className="secondary" onClick={() => setDetailModalRow(row)}>
+                                Detalles
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : cursosSubView === 'planes' ? (
+        <section className="individuales-view">
+          {learningPlanGroups.length === 0 ? <p className="status">No hay planes de aprendizaje para los filtros aplicados.</p> : null}
+          <div className="scorms-accordion-list">
+            {learningPlanGroups.map((group) => (
+              <details key={`plan-${group.key}`} className="scorms-accordion-item individual-course-group">
+                <summary>
+                  <span className="individual-summary-grid">
+                    <strong>{group.paCodigo}</strong>
+                    <span>{group.paNombre}</span>
+                    <span>
+                      {isUrl(group.paUrl) ? (
+                        <a
+                          className="table-link"
+                          href={group.paUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          LINK
+                        </a>
+                      ) : (
+                        'LINK'
+                      )}{' '}
+                      ({group.rows.length})
+                    </span>
+                  </span>
+                </summary>
+                <div className="table-wrapper individual-inner-table-wrapper">
+                  <table className="cursos-table compact-rows individual-inner-table">
+                    <thead>
+                      <tr>
+                        <th>Curso código</th>
+                        <th>Curso nombre</th>
+                        <th>Tipología</th>
+                        <th>Estado</th>
+                        <th>Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((row) => (
+                        <tr key={`plan-row-${group.key}-${row.id}`}>
                           <td>{String(row.curso_codigo || '-')}</td>
                           <td>{String(row.curso_nombre || '-')}</td>
                           <td>{String(row.tipologia || '-')}</td>
