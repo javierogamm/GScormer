@@ -9,6 +9,8 @@ import { APP_VERSION } from '../lib/appVersion';
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
 const AGENT_SPLIT_REGEX = /[&,;|]/;
 
+const isAdminFlagEnabled = (value) => value === true || String(value || '').trim().toLowerCase() === 'true';
+
 const parseAgentList = (value) =>
   String(value || '')
     .split(AGENT_SPLIT_REGEX)
@@ -100,6 +102,7 @@ export default function HomePage() {
         const parsedConfig = parseAgentConfig(parsed.agent || parsed.agente);
         setUserSession({
           ...parsed,
+          admin: isAdminFlagEnabled(parsed.admin),
           agent: parsed.agent || parsed.agente || '',
           agente: parsedConfig.responsables.join(', '),
           agentFilters: parsedConfig,
@@ -146,6 +149,7 @@ export default function HomePage() {
     const nextSession = {
       id: response.data.id,
       name: response.data.name,
+      admin: isAdminFlagEnabled(response.data.admin),
       agent: agentRawValue,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
@@ -173,7 +177,7 @@ export default function HomePage() {
 
     const response = await supabase
       .from('scorms_users')
-      .select('id, name, agent, agente')
+      .select('id, name, admin, agent, agente')
       .eq('id', userSession.id)
       .limit(1)
       .maybeSingle();
@@ -189,6 +193,7 @@ export default function HomePage() {
     const nextSession = {
       ...userSession,
       name: response.data.name || userSession.name,
+      admin: isAdminFlagEnabled(response.data.admin),
       agent: linkedAgent,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,

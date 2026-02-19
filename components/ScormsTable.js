@@ -361,6 +361,7 @@ export default function ScormsTable({ userSession }) {
   const [coursesModalRow, setCoursesModalRow] = useState(null);
   const [myScormsOnly, setMyScormsOnly] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
+  const canPublishAsAdmin = userSession?.admin === true;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -953,6 +954,12 @@ export default function ScormsTable({ userSession }) {
       return acc;
     }, {});
 
+    if (payload.scorm_estado === 'Publicado' && !canPublishAsAdmin) {
+      setStatusMessage('');
+      setError('Solo los usuarios ADMIN pueden poner un SCORM en estado "Publicado".');
+      return;
+    }
+
     const { error: updateError } = await supabase
       .from('scorms_master')
       .update(payload)
@@ -1018,6 +1025,12 @@ export default function ScormsTable({ userSession }) {
 
   const updateRowsStatus = async (rowIds, nextState, options = { recordHistory: true }) => {
     if (rowIds.length === 0 || !nextState) {
+      return;
+    }
+
+    if (nextState === 'Publicado' && !canPublishAsAdmin) {
+      setStatusMessage('');
+      setError('Solo los usuarios ADMIN pueden poner un SCORM en estado "Publicado".');
       return;
     }
 
@@ -1356,6 +1369,12 @@ export default function ScormsTable({ userSession }) {
 
     payload.scorm_code = code;
 
+    if (payload.scorm_estado === 'Publicado' && !canPublishAsAdmin) {
+      setCreateSubmitting(false);
+      setError('Solo los usuarios ADMIN pueden poner un SCORM en estado "Publicado".');
+      return;
+    }
+
     const { data, error: insertError } = await supabase.from('scorms_master').insert(payload).select('*').single();
 
     if (insertError) {
@@ -1375,6 +1394,12 @@ export default function ScormsTable({ userSession }) {
 
   const publishScorm = async (row) => {
     if (!row?.id) {
+      return;
+    }
+
+    if (!canPublishAsAdmin) {
+      setError('Solo los usuarios ADMIN pueden poner un SCORM en estado "Publicado".');
+      setStatusMessage('');
       return;
     }
 
@@ -1453,15 +1478,17 @@ export default function ScormsTable({ userSession }) {
           <button type="button" className="secondary" onClick={() => setViewMode('status')} disabled={viewMode === 'status'}>
             Vista por estado
           </button>
-          <button
-            type="button"
-            className={`secondary ${hasItemsPendingPublication ? 'pending-highlight' : ''}`}
-            onClick={() => setViewMode('publish')}
-            disabled={viewMode === 'publish'}
-          >
-            Publicación pendiente
-            <span className="kpi-badge">{pendingPublishRows.length}</span>
-          </button>
+          {canPublishAsAdmin && (
+            <button
+              type="button"
+              className={`secondary ${hasItemsPendingPublication ? 'pending-highlight' : ''}`}
+              onClick={() => setViewMode('publish')}
+              disabled={viewMode === 'publish'}
+            >
+              Publicación pendiente
+              <span className="kpi-badge">{pendingPublishRows.length}</span>
+            </button>
+          )}
           <button
             type="button"
             className="secondary"
@@ -2010,7 +2037,7 @@ export default function ScormsTable({ userSession }) {
         </section>
       )}
 
-      {!loading && viewMode === 'publish' && (
+      {!loading && canPublishAsAdmin && viewMode === 'publish' && (
         <section className="publish-view">
           <div className="translation-presets">
             <button
