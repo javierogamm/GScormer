@@ -215,6 +215,20 @@ const getPublicationUpdateType = (row, latestUpdateByCode = {}) => {
 };
 
 const getAlertDateValue = (row) => row.scorms_alerta || row.scorm_alerta || null;
+
+const getExternalUrl = (rawValue) => {
+  const trimmedValue = String(rawValue || '').trim();
+  if (!trimmedValue) {
+    return '';
+  }
+
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmedValue) || trimmedValue.startsWith('//')) {
+    return trimmedValue;
+  }
+
+  return `https://${trimmedValue}`;
+};
+
 const parseTagCodesFromInput = (value) =>
   [...new Set(String(value || '')
     .split(/[\s,;\n\t]+/)
@@ -2123,7 +2137,7 @@ export default function ScormsTable({ userSession }) {
                         {column.key === 'scorm_url' ? (
                           row[column.key] ? (
                             <a
-                              href={row[column.key]}
+                              href={getExternalUrl(row[column.key])}
                               target="_blank"
                               rel="noreferrer"
                               className="table-link"
@@ -2272,7 +2286,7 @@ export default function ScormsTable({ userSession }) {
                               </button>
                             </div>
                             {row.scorm_url ? (
-                              <a href={row.scorm_url} target="_blank" rel="noreferrer" className="table-link">
+                              <a href={getExternalUrl(row.scorm_url)} target="_blank" rel="noreferrer" className="table-link">
                                 Abrir enlace
                               </a>
                             ) : (
@@ -2519,7 +2533,7 @@ export default function ScormsTable({ userSession }) {
                             <span>{getPublicationUpdateType(row, latestUpdateByCode)}</span>
                           ) : column.key === 'scorm_url' ? (
                             row[column.key] ? (
-                              <a href={row[column.key]} target="_blank" rel="noreferrer" className="table-link">
+                              <a href={getExternalUrl(row[column.key])} target="_blank" rel="noreferrer" className="table-link">
                                 Abrir enlace
                               </a>
                             ) : (
@@ -2627,7 +2641,7 @@ export default function ScormsTable({ userSession }) {
                               <td>{String(alertItem.alerta_novedad || '').trim() || '-'}</td>
                               <td>
                                 {String(alertItem.url_novedad || '').trim() ? (
-                                  <a href={String(alertItem.url_novedad || '').trim()} target="_blank" rel="noopener noreferrer">
+                                  <a href={getExternalUrl(alertItem.url_novedad)} target="_blank" rel="noopener noreferrer">
                                     {String(alertItem.url_novedad || '').trim()}
                                   </a>
                                 ) : (
