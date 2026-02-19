@@ -214,6 +214,8 @@ const getPublicationUpdateType = (row, latestUpdateByCode = {}) => {
   return '-';
 };
 
+const getAlertDateValue = (row) => row.scorms_alerta || row.scorm_alerta || null;
+
 const formatDateDDMMYYYY = (value) => {
   const dateMs = typeof value === 'number' ? value : getDateMsFromCandidates([value]);
   if (!dateMs) {
@@ -610,10 +612,10 @@ export default function ScormsTable({ userSession }) {
 
   const alertRows = useMemo(() => {
     return filteredRows
-      .filter((row) => row.scorms_alerta)
+      .filter((row) => getAlertDateValue(row))
       .sort((left, right) => {
-        const leftMs = getDateMsFromCandidates([left.scorms_alerta]);
-        const rightMs = getDateMsFromCandidates([right.scorms_alerta]);
+        const leftMs = getDateMsFromCandidates([getAlertDateValue(left)]);
+        const rightMs = getDateMsFromCandidates([getAlertDateValue(right)]);
 
         if (leftMs && rightMs && leftMs !== rightMs) {
           return rightMs - leftMs;
@@ -2222,7 +2224,7 @@ export default function ScormsTable({ userSession }) {
                       {alertColumns.map((column) => (
                         <td key={`alert-${row.id}-${column.key}`} className={`col-${column.key}`}>
                           {column.key === 'scorms_alerta' ? (
-                            <span>{formatDateDDMMYYYY(row.scorms_alerta)}</span>
+                            <span>{formatDateDDMMYYYY(getAlertDateValue(row))}</span>
                           ) : column.key === 'scorm_categoria' ? (
                             <span className="category-chip" style={getCategoryColor(row[column.key])}>
                               {row[column.key] || 'Sin categoría'}

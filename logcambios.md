@@ -2,6 +2,20 @@
 
 
 
+## v1.39.1 - Corrección de visualización en vista Alertas
+
+### Cambios consolidados
+- Se corrigió la lógica de la subvista **Alertas actualizaciones** para que también contemple datos provenientes de la columna `scorm_alerta` (además de `scorms_alerta`), evitando que SCORMs con alerta informada queden fuera del listado.
+- Se actualizó el cálculo y ordenación de fechas en alertas para usar la nueva lectura compatible de ambas columnas.
+- Se ajustó el render de la fecha en la tabla de alertas para mostrar correctamente el valor detectado en cualquiera de los dos nombres de campo.
+- Se actualizó la versión visible de la APP a **v1.39.1** y el versionado de `package.json` a `1.39.1`.
+
+### Versionado
+- Versión anterior: `1.39.0`
+- Nueva versión consolidada: `1.39.1`
+
+---
+
 ## v1.39.0 - Alertas de actualizaciones y nuevas estructuras de BDD
 
 ### Cambios consolidados
