@@ -1,6 +1,23 @@
 # Log de cambios
 
 
+## v1.37.0 - Restricción de publicación a ADMIN + nuevo campo alertador
+
+### Cambios consolidados
+- En **SCORMs** la vista **Publicación pendiente** ahora solo aparece para usuarios con rol `ADMIN` (`scorms_users.admin = true`).
+- Se reforzó la seguridad funcional para que únicamente usuarios ADMIN puedan establecer el estado `Publicado`, incluyendo publicación directa, cambios masivos/drag&drop, guardado de detalles y alta de nuevos SCORMs.
+- En el inicio de sesión y recarga de sesión de usuario se persistió el flag `admin` dentro de la sesión cliente para aplicar las restricciones por rol en interfaz y acciones.
+- Se añadió una nueva migración SQL para incorporar el campo booleano `alertador` en `public.scorms_users`.
+- Se actualizó también la migración base de creación de `scorms_users` para incluir `alertador` en despliegues desde cero.
+- Se actualizó la versión visible de la APP a **v1.37.0** y el versionado de `package.json` a `1.37.0`.
+
+### Versionado
+- Versión anterior: `1.36.0`
+- Nueva versión consolidada: `1.37.0`
+
+---
+
+
 ## v1.36.0 - Creación de Plan de aprendizaje desde cursos existentes
 
 ### Cambios consolidados

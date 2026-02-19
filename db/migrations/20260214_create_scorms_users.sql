@@ -4,6 +4,7 @@ create table if not exists public.scorms_users (
   name text null,
   pass text null,
   admin boolean null,
+  alertador boolean null,
   agente text null,
   constraint scorms_users_pkey primary key (id)
 ) TABLESPACE pg_default;
