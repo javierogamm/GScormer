@@ -130,6 +130,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [detailSaving, setDetailSaving] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createPlanModalOpen, setCreatePlanModalOpen] = useState(false);
+  const [createPlanSubmitting, setCreatePlanSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState({
     curso_estado: COURSE_STATUS_IN_PROGRESS,
     curso_nombre: '',
@@ -146,6 +148,14 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   });
   const [scormSearchText, setScormSearchText] = useState('');
   const [selectedScormIds, setSelectedScormIds] = useState([]);
+  const [planCourseSearchText, setPlanCourseSearchText] = useState('');
+  const [selectedPlanCourseIds, setSelectedPlanCourseIds] = useState([]);
+  const [createPlanDraft, setCreatePlanDraft] = useState({
+    pa_nombre: '',
+    pa_codigo: '',
+    pa_url: '',
+    pa_acronimo: '',
+  });
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
@@ -298,6 +308,32 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     setSelectedScormIds((previous) => (previous.includes(scormId) ? previous.filter((id) => id !== scormId) : [...previous, scormId]));
   };
 
+  const selectablePlanCourses = useMemo(() => {
+    return rows.filter((row) => {
+      const normalizedMembership = String(row.pa_formaparte || '').trim().toLowerCase();
+      const isPartOfPlan = ['si', 'sí', 'yes', 'true', '1', 'x'].includes(normalizedMembership);
+      return !isPartOfPlan;
+    });
+  }, [rows]);
+
+  const filteredPlanCourses = useMemo(() => {
+    const search = String(planCourseSearchText || '').trim().toLowerCase();
+
+    if (!search) {
+      return selectablePlanCourses;
+    }
+
+    return selectablePlanCourses.filter((row) =>
+      [row.curso_codigo, row.curso_nombre, row.codigo_individual, row.materia, row.tipologia]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(search)),
+    );
+  }, [selectablePlanCourses, planCourseSearchText]);
+
+  const toggleSelectedPlanCourse = (rowId) => {
+    setSelectedPlanCourseIds((previous) => (previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]));
+  };
+
   const resetCreateCursoState = () => {
     setCreateModalOpen(false);
     setCreateSubmitting(false);
@@ -316,6 +352,19 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       link_inscripcion: '',
       observaciones: '',
       codigo_individual: '',
+    });
+  };
+
+  const resetCreatePlanState = () => {
+    setCreatePlanModalOpen(false);
+    setCreatePlanSubmitting(false);
+    setPlanCourseSearchText('');
+    setSelectedPlanCourseIds([]);
+    setCreatePlanDraft({
+      pa_nombre: '',
+      pa_codigo: '',
+      pa_url: '',
+      pa_acronimo: '',
     });
   };
 
@@ -582,6 +631,74 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     resetCreateCursoState();
   };
 
+  const submitCreatePlan = async () => {
+    const paNombre = String(createPlanDraft.pa_nombre || '').trim();
+    const paCodigo = String(createPlanDraft.pa_codigo || '').trim();
+    const paUrl = String(createPlanDraft.pa_url || '').trim();
+    const paAcronimo = String(createPlanDraft.pa_acronimo || '').trim().toUpperCase();
+
+    if (!paNombre) {
+      setError('El nombre del plan de aprendizaje es obligatorio.');
+      return;
+    }
+
+    if (!paCodigo) {
+      setError('El código del plan de aprendizaje es obligatorio.');
+      return;
+    }
+
+    if (!paAcronimo) {
+      setError('El acrónimo del PA es obligatorio para generar el nuevo código del curso.');
+      return;
+    }
+
+    if (selectedPlanCourseIds.length === 0) {
+      setError('Selecciona al menos un curso para añadir al plan de aprendizaje.');
+      return;
+    }
+
+    const selectedRows = rows.filter((row) => selectedPlanCourseIds.includes(row.id));
+
+    if (selectedRows.length === 0) {
+      setError('No se pudieron resolver los cursos seleccionados para el plan de aprendizaje.');
+      return;
+    }
+
+    const payload = selectedRows.map((row) => {
+      const baseCode = String(row.curso_codigo || '').trim();
+      const nextCourseCode = baseCode ? `${paAcronimo}-${baseCode}` : paAcronimo;
+
+      return {
+        ...columns.reduce((acc, column) => {
+          acc[column.key] = row[column.key] ?? null;
+          return acc;
+        }, {}),
+        pa_formaparte: 'Sí',
+        pa_codigo: paCodigo,
+        pa_nombre: paNombre,
+        pa_url: paUrl,
+        curso_codigo: nextCourseCode,
+      };
+    });
+
+    setCreatePlanSubmitting(true);
+    setError('');
+
+    const response = await supabase.from('scorms_cursos').insert(payload).select('*');
+
+    if (response.error) {
+      setCreatePlanSubmitting(false);
+      setError(`No se pudo crear el plan de aprendizaje: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previous) => [...previous, ...(response.data || [])]);
+    setStatusMessage(
+      `Plan de aprendizaje creado: ${paNombre} · Cursos añadidos: ${(response.data || []).length}`,
+    );
+    resetCreatePlanState();
+  };
+
   const toggleExpandRow = (rowId) => {
     setExpandedRows((previous) =>
       previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId],
@@ -734,6 +851,11 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           <button type="button" onClick={() => setCreateModalOpen(true)}>
             Crear Curso
           </button>
+          {cursosSubView === 'planes' ? (
+            <button type="button" onClick={() => setCreatePlanModalOpen(true)}>
+              Crear Plan de aprendizaje
+            </button>
+          ) : null}
           <button className="secondary" onClick={fetchData} disabled={loading}>
             {loading ? 'Cargando...' : 'Refrescar'}
           </button>
@@ -1163,6 +1285,129 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                 })}
               </div>
             )}
+          </section>
+        </div>
+      ) : null}
+
+      {createPlanModalOpen ? (
+        <div className="modal-overlay" role="presentation" onClick={resetCreatePlanState}>
+          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Crear Plan de aprendizaje</h3>
+                <p>Selecciona cursos existentes para generar sus filas vinculadas al PA.</p>
+              </div>
+              <button type="button" className="secondary" onClick={resetCreatePlanState} disabled={createPlanSubmitting}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="details-grid">
+              <label>
+                <span>PA Nombre</span>
+                <input
+                  type="text"
+                  value={createPlanDraft.pa_nombre}
+                  onChange={(event) =>
+                    setCreatePlanDraft((previous) => ({
+                      ...previous,
+                      pa_nombre: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>PA Código</span>
+                <input
+                  type="text"
+                  value={createPlanDraft.pa_codigo}
+                  onChange={(event) =>
+                    setCreatePlanDraft((previous) => ({
+                      ...previous,
+                      pa_codigo: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>PA URL</span>
+                <input
+                  type="text"
+                  value={createPlanDraft.pa_url}
+                  onChange={(event) =>
+                    setCreatePlanDraft((previous) => ({
+                      ...previous,
+                      pa_url: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>Acrónimo PA (para código curso)</span>
+                <input
+                  type="text"
+                  value={createPlanDraft.pa_acronimo}
+                  onChange={(event) =>
+                    setCreatePlanDraft((previous) => ({
+                      ...previous,
+                      pa_acronimo: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+
+            <section className="card-soft">
+              <h4>Seleccionar cursos existentes</h4>
+              <p className="status">Solo se muestran cursos que todavía no forman parte de un plan de aprendizaje.</p>
+              <input
+                type="text"
+                placeholder="Buscar curso por código, nombre o código individual..."
+                value={planCourseSearchText}
+                onChange={(event) => setPlanCourseSearchText(event.target.value)}
+              />
+
+              <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                <table className="compact-rows">
+                  <thead>
+                    <tr>
+                      <th>Sel.</th>
+                      <th>Código</th>
+                      <th>Nombre</th>
+                      <th>Código individual</th>
+                      <th>Tipología</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPlanCourses.slice(0, 80).map((row) => (
+                      <tr key={`create-plan-course-${row.id}`}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedPlanCourseIds.includes(row.id)}
+                            onChange={() => toggleSelectedPlanCourse(row.id)}
+                          />
+                        </td>
+                        <td>{String(row.curso_codigo || '-')}</td>
+                        <td>{String(row.curso_nombre || '-')}</td>
+                        <td>{String(row.codigo_individual || '-')}</td>
+                        <td>{String(row.tipologia || '-')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="status">
+                Seleccionados: {selectedPlanCourseIds.length} · Se crearán nuevas filas con datos del PA y código de curso prefijado con el acrónimo.
+              </p>
+            </section>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitCreatePlan} disabled={createPlanSubmitting}>
+                {createPlanSubmitting ? 'Creando PA...' : 'Crear Plan de aprendizaje'}
+              </button>
+            </footer>
           </section>
         </div>
       ) : null}

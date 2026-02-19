@@ -1,6 +1,22 @@
 # Log de cambios
 
 
+## v1.36.0 - Creación de Plan de aprendizaje desde cursos existentes
+
+### Cambios consolidados
+- En la vista **Planes de aprendizaje** se añadió el botón **Crear Plan de aprendizaje** para abrir un modal específico de alta de PA.
+- El nuevo modal permite informar datos del PA (`pa_nombre`, `pa_codigo`, `pa_url`) y solicita el **Acrónimo PA** para construir el nuevo `curso_codigo` de cada curso añadido.
+- Se incorporó selector de cursos existentes (con buscador) para elegir qué cursos se añaden al plan; la lista muestra únicamente cursos que no forman parte de otro PA.
+- Al confirmar, se crean nuevas filas en `scorms_cursos` copiando los valores del curso origen, manteniendo `codigo_individual`, añadiendo datos del PA y actualizando `curso_codigo` con formato `ACRONIMO-codigo_original`.
+- Se actualizó la versión visible de la APP a **v1.36.0** y el versionado de `package.json` a `1.36.0`.
+
+### Versionado
+- Versión anterior: `1.35.0`
+- Nueva versión consolidada: `1.36.0`
+
+---
+
+
 ## v1.35.0 - Edición completa de cursos, filtros priorizados y depuración de planes
 
 ### Cambios consolidados
