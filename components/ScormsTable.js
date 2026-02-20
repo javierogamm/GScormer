@@ -2282,7 +2282,7 @@ export default function ScormsTable({ userSession }) {
                                 title="Editar preguntas tipo test"
                                 aria-label={`Editar preguntas tipo test de ${getOfficialName(row)}`}
                               >
-                                📄 .txt
+                                📄 Test
                               </button>
                             ) : (
                               '❌'
@@ -3023,7 +3023,7 @@ export default function ScormsTable({ userSession }) {
 
             <footer className="modal-footer">
               <button type="button" className="secondary action-button" onClick={() => openTestQuestionsModal(detailDraft)}>
-                📄 .txt
+                📄 Test
               </button>
               <button type="button" className="secondary action-button" onClick={openHistoryModal}>
                 Actualizaciones

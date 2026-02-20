@@ -1,6 +1,21 @@
 # Log de cambios
 
 
+## v1.49.1 - Ajuste de texto en acceso de preguntas test
+
+### Cambios consolidados
+- En la nueva funcionalidad de preguntas tipo test se cambió el texto del acceso visual de **📄 .txt** a **📄 Test** tanto en la columna **Test** de la vista principal como en el modal de **Detalles** del SCORM.
+- Se mantiene intacta la lógica de apertura/guardado del modal y la persistencia en `scorm_preguntastest`.
+- Se actualizó la versión visible de la APP a **v1.49.1** y el versionado de `package.json` a `1.49.1`.
+
+### Versionado
+- Versión anterior: `1.49.0`
+- Nueva versión consolidada: `1.49.1`
+
+---
+
+
+
 ## v1.49.0 - Modal de preguntas test (.txt) y acceso directo desde columna Test
 
 ### Cambios consolidados
