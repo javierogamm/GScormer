@@ -16,6 +16,7 @@ const columns = [
   { key: 'scorm_url', label: 'URL', editable: true },
   { key: 'scorm_estado', label: 'Estado', editable: true },
   { key: 'scorm_test', label: 'Test', editable: true },
+  { key: 'scorm_observaciones', label: 'Observaciones', editable: true },
   { key: 'scorm_etiquetas', label: 'CURSOS', editable: false },
 ];
 
@@ -1004,6 +1005,7 @@ export default function ScormsTable({ userSession }) {
       scorm_subcategoria: '',
       scorm_url: '',
       scorm_estado: 'En proceso',
+      scorm_observaciones: '',
       scorm_etiquetas: '',
     });
   };
@@ -2122,7 +2124,7 @@ export default function ScormsTable({ userSession }) {
             </thead>
             <tbody>
               {filteredRows.map((row) => (
-                <tr key={row.id}>
+                <tr key={row.id} onDoubleClick={() => openDetails(row)}>
                   <td className="col-selector">
                     <input
                       type="checkbox"
