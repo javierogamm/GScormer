@@ -504,6 +504,21 @@ input:focus {
   color: #b3261e;
 }
 
+.txt-icon-button {
+  border: 1px solid #b8cae8;
+  background: #eef4ff;
+  color: #234b84;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.txt-icon-button:hover {
+  background: #dfebff;
+}
+
 .status-board {
   display: flex;
   gap: 0.85rem;
