@@ -22,6 +22,7 @@ const columns = [
   { key: 'curso_instructor', label: 'Curso instructor' },
   { key: 'curso_inscripcion', label: 'Curso inscripción' },
   { key: 'observaciones', label: 'Observaciones' },
+  { key: 'curso_observaciones', label: 'Curso observaciones' },
   { key: 'curso_descripcion', label: 'Curso descripción' },
   { key: 'tiempo_cert', label: 'Tiempo cert.' },
   { key: 'curso_url_ficha', label: 'URL ficha' },
@@ -34,7 +35,10 @@ const columns = [
 ];
 
 const compactColumns = ['curso_estado', 'curso_codigo', 'curso_nombre', 'tipologia', 'materia', 'pa_nombre', 'curso_instructor', 'curso_url'];
-const detailColumns = columns.filter((column) => column.key === 'curso_estado' || !compactColumns.includes(column.key));
+const detailModalColumns = [
+  ...columns.filter((column) => column.key !== 'curso_observaciones'),
+  ...columns.filter((column) => column.key === 'curso_observaciones'),
+];
 const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
@@ -123,7 +127,6 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [statusMessage, setStatusMessage] = useState('');
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
-  const [expandedRows, setExpandedRows] = useState([]);
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [scormsModalRows, setScormsModalRows] = useState([]);
   const [detailModalRow, setDetailModalRow] = useState(null);
@@ -145,6 +148,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     curso_descripcion: '',
     link_inscripcion: '',
     observaciones: '',
+    curso_observaciones: '',
     codigo_individual: '',
   });
   const [scormSearchText, setScormSearchText] = useState('');
@@ -192,6 +196,19 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!detailModalRow) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [detailModalRow]);
 
   const prioritizedFilterColumns = useMemo(() => {
     const highlightedKeys = ['curso_codigo', 'curso_nombre'];
@@ -699,13 +716,6 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     );
     resetCreatePlanState();
   };
-
-  const toggleExpandRow = (rowId) => {
-    setExpandedRows((previous) =>
-      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId],
-    );
-  };
-
   const handleFilterInputChange = (columnKey, value) => {
     setFilterInputs((previous) => ({
       ...previous,
@@ -989,11 +999,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row) => {
-                  const isExpanded = expandedRows.includes(row.id);
-
-                  return [
-                    <tr key={`row-${row.id}`}>
+                {filteredRows.map((row) => (
+                    <tr key={`row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
                       <td>
                             <button type="button" className="secondary" onClick={() => setScormsModalRows([row])}>
                               Scorms
@@ -1033,28 +1040,13 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                               Pasar a pendiente de publicar
                             </button>
                           ) : null}
-                          <button className="secondary expand-row-button" onClick={() => toggleExpandRow(row.id)}>
-                            {isExpanded ? 'Colapsar' : 'Expandir'}
+                          <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
+                            Detalles
                           </button>
                         </div>
                       </td>
-                    </tr>,
-                    isExpanded ? (
-                      <tr key={`detail-${row.id}`} className="expanded-detail-row">
-                        <td colSpan={compactColumns.length + 2}>
-                          <div className="details-grid">
-                            {detailColumns.map((column) => (
-                              <label key={`detail-${row.id}-${column.key}`}>
-                                <span>{column.label}</span>
-                                <input value={String(row[column.key] || '')} readOnly />
-                              </label>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null,
-                  ];
-                })}
+                    </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -1101,7 +1093,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                     </thead>
                     <tbody>
                       {group.rows.map((row) => (
-                        <tr key={`individual-row-${row.id}`}>
+                        <tr key={`individual-row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
                           <td>{String(row.curso_codigo || '-')}</td>
                           <td>{String(row.curso_nombre || '-')}</td>
                           <td>{String(row.tipologia || '-')}</td>
@@ -1168,7 +1160,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                     </thead>
                     <tbody>
                       {group.rows.map((row) => (
-                        <tr key={`plan-row-${group.key}-${row.id}`}>
+                        <tr key={`plan-row-${group.key}-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
                           <td>{String(row.curso_codigo || '-')}</td>
                           <td>{String(row.curso_nombre || '-')}</td>
                           <td>{String(row.tipologia || '-')}</td>
@@ -1221,7 +1213,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                 </thead>
                 <tbody>
                   {pendingPublishRows.map((row) => (
-                    <tr key={`publish-row-${row.id}`}>
+                    <tr key={`publish-row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
                       {compactColumns.map((columnKey) => {
                         const value = row[columnKey];
 
@@ -1521,7 +1513,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       ) : null}
 
       {detailModalRow && detailDraft ? (
-        <div className="modal-overlay" role="presentation" onClick={closeDetailModal}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -1533,19 +1525,32 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             </div>
 
             <div className="details-grid">
-              {columns.map((column) => (
+              {detailModalColumns.map((column) => (
                 <label key={`detail-modal-${column.key}`}>
                   <span>{column.label}</span>
-                  <input
-                    type="text"
-                    value={String(detailDraft[column.key] || '')}
-                    onChange={(event) =>
-                      setDetailDraft((previous) => ({
-                        ...previous,
-                        [column.key]: event.target.value,
-                      }))
-                    }
-                  />
+                  {column.key === 'curso_observaciones' ? (
+                    <textarea
+                      className="field-observaciones-textarea"
+                      value={String(detailDraft[column.key] || '')}
+                      onChange={(event) =>
+                        setDetailDraft((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={String(detailDraft[column.key] || '')}
+                      onChange={(event) =>
+                        setDetailDraft((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  )}
                 </label>
               ))}
             </div>

@@ -1,5 +1,38 @@
 # Log de cambios
 
+
+## v1.48.0 - Ajustes modal detalle: observaciones grandes, scroll bloqueado y cierre controlado
+
+### Cambios consolidados
+- Se amplió el campo de observaciones en los modales de detalle de **SCORM** y **Curso** usando área de texto con altura mayor para facilitar edición de textos largos.
+- Se reposicionó el campo de observaciones al final del detalle en ambos modales (`scorm_observaciones` y `curso_observaciones`).
+- Se eliminó el cierre por clic fuera en los modales de detalle de SCORM y Curso (solo se cierran con botón **Cerrar** o acciones explícitas).
+- Se añadió bloqueo de scroll del `body` mientras el modal de detalle está abierto, evitando que se desplace la pantalla de fondo.
+- Se actualizó la versión visible de la APP a **v1.48.0** y el versionado de `package.json` a `1.48.0`.
+
+### Versionado
+- Versión anterior: `1.47.0`
+- Nueva versión consolidada: `1.48.0`
+
+---
+
+
+## v1.47.0 - Observaciones en SCORM/Curso + detalle de cursos en modal + doble clic
+
+### Cambios consolidados
+- Se añadió la nueva columna `scorm_observaciones` en `scorms_master` y la nueva columna `curso_observaciones` en `scorms_cursos` mediante migración SQL.
+- En **SCORMs** se incorporó el campo **Observaciones** (`scorm_observaciones`) al flujo editable del modal de detalles, incluyendo persistencia al guardar.
+- En **Cursos** se incorporó el campo **Curso observaciones** (`curso_observaciones`) en el modal de detalle editable y en los payloads de creación/edición.
+- En la vista general de **Cursos** se sustituyó el desplegable de detalle expandible por apertura de **modal de detalle editable**.
+- Se habilitó apertura de detalle por **doble clic** en filas de SCORMs (vista tabla) y de Cursos (vistas general, individuales, planes y publicación).
+- Se actualizó la versión visible de la APP a **v1.47.0** y el versionado de `package.json` a `1.47.0`.
+
+### Versionado
+- Versión anterior: `1.46.0`
+- Nueva versión consolidada: `1.47.0`
+
+---
+
 ## v1.46.0 - Exportación Excel en vistas generales de SCORMs y Cursos
 
 ### Cambios consolidados
