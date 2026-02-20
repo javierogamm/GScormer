@@ -404,6 +404,9 @@ export default function ScormsTable({ userSession }) {
   const [alertUrlDraft, setAlertUrlDraft] = useState('');
   const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [myScormsOnly, setMyScormsOnly] = useState(false);
+  const [testQuestionsModalRow, setTestQuestionsModalRow] = useState(null);
+  const [testQuestionsDraft, setTestQuestionsDraft] = useState('');
+  const [testQuestionsSubmitting, setTestQuestionsSubmitting] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
   const canGenerateAlerts = userSession?.alertador === true;
@@ -940,6 +943,67 @@ export default function ScormsTable({ userSession }) {
     setHistoryModalOpen(false);
     setHistoryRecords([]);
     setHistoryLoading(false);
+  };
+
+  const openTestQuestionsModal = (row) => {
+    if (!row?.id) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+    setTestQuestionsModalRow(row);
+    setTestQuestionsDraft(String(row.scorm_preguntastest || ''));
+  };
+
+  const closeTestQuestionsModal = () => {
+    if (testQuestionsSubmitting) {
+      return;
+    }
+
+    setTestQuestionsModalRow(null);
+    setTestQuestionsDraft('');
+  };
+
+  const saveTestQuestions = async () => {
+    if (!testQuestionsModalRow?.id) {
+      return;
+    }
+
+    setTestQuestionsSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const payload = {
+      scorm_preguntastest: testQuestionsDraft || null,
+    };
+
+    const { error: updateError } = await supabase
+      .from('scorms_master')
+      .update(payload)
+      .eq('id', testQuestionsModalRow.id);
+
+    if (updateError) {
+      setTestQuestionsSubmitting(false);
+      setError(`No se pudieron guardar las preguntas tipo test: ${updateError.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((row) => (row.id === testQuestionsModalRow.id ? { ...row, ...payload } : row))
+    );
+
+    setActiveRow((previous) =>
+      previous?.id === testQuestionsModalRow.id ? { ...previous, ...payload } : previous
+    );
+
+    setDetailDraft((previous) =>
+      previous?.id === testQuestionsModalRow.id ? { ...previous, ...payload } : previous
+    );
+
+    setTestQuestionsSubmitting(false);
+    setStatusMessage(`Preguntas tipo test del SCORM ${testQuestionsModalRow.id} guardadas correctamente.`);
+    closeTestQuestionsModal();
   };
 
   const openHistoryModal = async () => {
@@ -2206,7 +2270,23 @@ export default function ScormsTable({ userSession }) {
                           </button>
                         ) : column.key === 'scorm_test' ? (
                           <span className={`test-indicator ${scormTestDisplay.isPositive ? 'ok' : 'error'}`}>
-                            {scormTestDisplay.value} {scormTestDisplay.isPositive ? '✅' : '❌'}
+                            {scormTestDisplay.value}{' '}
+                            {scormTestDisplay.isPositive ? (
+                              <button
+                                type="button"
+                                className="txt-icon-button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openTestQuestionsModal(row);
+                                }}
+                                title="Editar preguntas tipo test"
+                                aria-label={`Editar preguntas tipo test de ${getOfficialName(row)}`}
+                              >
+                                📄 Test
+                              </button>
+                            ) : (
+                              '❌'
+                            )}
                           </span>
                         ) : (
                           <span>{row[column.key] || '-'}</span>
@@ -2942,6 +3022,9 @@ export default function ScormsTable({ userSession }) {
             </div>
 
             <footer className="modal-footer">
+              <button type="button" className="secondary action-button" onClick={() => openTestQuestionsModal(detailDraft)}>
+                📄 Test
+              </button>
               <button type="button" className="secondary action-button" onClick={openHistoryModal}>
                 Actualizaciones
               </button>
@@ -2950,6 +3033,47 @@ export default function ScormsTable({ userSession }) {
               </button>
               <button type="button" onClick={saveDetails}>
                 Guardar detalles
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {testQuestionsModalRow && (
+        <div className="modal-overlay" role="presentation" onClick={closeTestQuestionsModal}>
+          <div
+            className="modal-content modal-content-narrow"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="preguntas-test-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="preguntas-test-titulo">Preguntas tipo test</h3>
+                <p>{getOfficialName(testQuestionsModalRow)} · {getInternationalizedCode(testQuestionsModalRow)}</p>
+              </div>
+              <button type="button" className="secondary" onClick={closeTestQuestionsModal} disabled={testQuestionsSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <label className="details-grid-single">
+              <span>Texto preguntas test</span>
+              <textarea
+                className="field-observaciones-textarea"
+                placeholder="Escribe aquí las preguntas tipo test. Se mantendrán los saltos de línea."
+                value={testQuestionsDraft}
+                onChange={(event) => setTestQuestionsDraft(event.target.value)}
+              />
+            </label>
+
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={closeTestQuestionsModal} disabled={testQuestionsSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" onClick={saveTestQuestions} disabled={testQuestionsSubmitting}>
+                {testQuestionsSubmitting ? 'Guardando...' : 'Guardar'}
               </button>
             </footer>
           </div>

@@ -1,6 +1,40 @@
 # Log de cambios
 
 
+## v1.49.1 - Ajuste de texto en acceso de preguntas test
+
+### Cambios consolidados
+- En la nueva funcionalidad de preguntas tipo test se cambió el texto del acceso visual de **📄 .txt** a **📄 Test** tanto en la columna **Test** de la vista principal como en el modal de **Detalles** del SCORM.
+- Se mantiene intacta la lógica de apertura/guardado del modal y la persistencia en `scorm_preguntastest`.
+- Se actualizó la versión visible de la APP a **v1.49.1** y el versionado de `package.json` a `1.49.1`.
+
+### Versionado
+- Versión anterior: `1.49.0`
+- Nueva versión consolidada: `1.49.1`
+
+---
+
+
+
+## v1.49.0 - Modal de preguntas test (.txt) y acceso directo desde columna Test
+
+### Cambios consolidados
+- Se añadió soporte para la nueva columna `scorm_preguntastest` en `scorms_master` mediante migración SQL, preparada con `IF NOT EXISTS`.
+- En la vista principal de **SCORMs** (modo tabla), cuando el campo **Test** vale **Sí**, el icono de check verde se sustituye por un botón tipo **📄 .txt** que abre el modal de preguntas test.
+- Se incorporó un nuevo modal específico de texto para **Preguntas tipo test**, con `textarea` y botón **Guardar**, persistiendo el contenido en `scorm_preguntastest`.
+- Se añadió acceso al mismo modal desde **Detalles del SCORM** mediante botón/icono **📄 .txt**.
+- El contenido de preguntas test se guarda tal cual en un campo de texto (`text`), manteniendo los saltos de línea introducidos en el `textarea`.
+- Se incorporaron estilos para el nuevo botón/icono `.txt` en la columna de Test.
+- Se actualizó la versión visible de la APP a **v1.49.0** y el versionado de `package.json` a `1.49.0`.
+
+### Versionado
+- Versión anterior: `1.48.0`
+- Nueva versión consolidada: `1.49.0`
+
+---
+
+
+
 ## v1.48.0 - Ajustes modal detalle: observaciones grandes, scroll bloqueado y cierre controlado
 
 ### Cambios consolidados
