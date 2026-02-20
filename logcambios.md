@@ -1,6 +1,21 @@
 # Log de cambios
 
 
+## v1.49.2 - Independencia entre Observaciones y Preguntas tipo test
+
+### Cambios consolidados
+- Se ajustó la columna **Test** en la vista principal de SCORMs para que el acceso **📄 Test** esté siempre disponible, independientemente del valor actual de `scorm_test`.
+- Se mantiene el indicador visual del estado de `scorm_test` (incluyendo marca de error cuando no es positivo), pero sin bloquear la edición del texto de preguntas tipo test.
+- Con este ajuste, la edición de **Preguntas tipo test** y la edición de **Observaciones** quedan desacopladas funcionalmente en la UI, tratándose como campos independientes.
+- Se actualizó la versión visible de la APP a **v1.49.2** y el versionado de `package.json` a `1.49.2`.
+
+### Versionado
+- Versión anterior: `1.49.1`
+- Nueva versión consolidada: `1.49.2`
+
+---
+
+
 ## v1.49.1 - Ajuste de texto en acceso de preguntas test
 
 ### Cambios consolidados

@@ -2270,23 +2270,19 @@ export default function ScormsTable({ userSession }) {
                           </button>
                         ) : column.key === 'scorm_test' ? (
                           <span className={`test-indicator ${scormTestDisplay.isPositive ? 'ok' : 'error'}`}>
-                            {scormTestDisplay.value}{' '}
-                            {scormTestDisplay.isPositive ? (
-                              <button
-                                type="button"
-                                className="txt-icon-button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openTestQuestionsModal(row);
-                                }}
-                                title="Editar preguntas tipo test"
-                                aria-label={`Editar preguntas tipo test de ${getOfficialName(row)}`}
-                              >
-                                📄 Test
-                              </button>
-                            ) : (
-                              '❌'
-                            )}
+                            {scormTestDisplay.value} {!scormTestDisplay.isPositive ? '❌' : ''}{' '}
+                            <button
+                              type="button"
+                              className="txt-icon-button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openTestQuestionsModal(row);
+                              }}
+                              title="Editar preguntas tipo test"
+                              aria-label={`Editar preguntas tipo test de ${getOfficialName(row)}`}
+                            >
+                              📄 Test
+                            </button>
                           </span>
                         ) : (
                           <span>{row[column.key] || '-'}</span>
