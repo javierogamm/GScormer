@@ -1041,3 +1041,7 @@ textarea:focus {
 .agent-check-row input {
   width: auto;
 }
+
+.field-observaciones-textarea {
+  min-height: 220px;
+}

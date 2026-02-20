@@ -16,8 +16,8 @@ const columns = [
   { key: 'scorm_url', label: 'URL', editable: true },
   { key: 'scorm_estado', label: 'Estado', editable: true },
   { key: 'scorm_test', label: 'Test', editable: true },
-  { key: 'scorm_observaciones', label: 'Observaciones', editable: true },
   { key: 'scorm_etiquetas', label: 'CURSOS', editable: false },
+  { key: 'scorm_observaciones', label: 'Observaciones', editable: true },
 ];
 
 const FILTER_LAYOUT_ROWS = [
@@ -486,6 +486,19 @@ export default function ScormsTable({ userSession }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!activeRow) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeRow]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -2870,7 +2883,7 @@ export default function ScormsTable({ userSession }) {
 
 
       {activeRow && detailDraft && (
-        <div className="modal-overlay" role="presentation" onClick={closeDetails}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content"
             role="dialog"
@@ -2901,7 +2914,13 @@ export default function ScormsTable({ userSession }) {
                     <tr key={`detail-${column.key}`}>
                       <td>{column.label}</td>
                       <td>
-                        {column.key === 'scorm_responsable' ? (
+                        {column.key === 'scorm_observaciones' ? (
+                          <textarea
+                            className="field-observaciones-textarea"
+                            value={detailDraft[column.key] || ''}
+                            onChange={(event) => updateDetailDraft(column.key, event.target.value)}
+                          />
+                        ) : column.key === 'scorm_responsable' ? (
                           <input
                             type="text"
                             value={detailDraft[column.key] || ''}

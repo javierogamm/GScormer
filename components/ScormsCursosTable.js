@@ -35,6 +35,10 @@ const columns = [
 ];
 
 const compactColumns = ['curso_estado', 'curso_codigo', 'curso_nombre', 'tipologia', 'materia', 'pa_nombre', 'curso_instructor', 'curso_url'];
+const detailModalColumns = [
+  ...columns.filter((column) => column.key !== 'curso_observaciones'),
+  ...columns.filter((column) => column.key === 'curso_observaciones'),
+];
 const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
@@ -192,6 +196,19 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!detailModalRow) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [detailModalRow]);
 
   const prioritizedFilterColumns = useMemo(() => {
     const highlightedKeys = ['curso_codigo', 'curso_nombre'];
@@ -1496,7 +1513,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       ) : null}
 
       {detailModalRow && detailDraft ? (
-        <div className="modal-overlay" role="presentation" onClick={closeDetailModal}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -1508,19 +1525,32 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             </div>
 
             <div className="details-grid">
-              {columns.map((column) => (
+              {detailModalColumns.map((column) => (
                 <label key={`detail-modal-${column.key}`}>
                   <span>{column.label}</span>
-                  <input
-                    type="text"
-                    value={String(detailDraft[column.key] || '')}
-                    onChange={(event) =>
-                      setDetailDraft((previous) => ({
-                        ...previous,
-                        [column.key]: event.target.value,
-                      }))
-                    }
-                  />
+                  {column.key === 'curso_observaciones' ? (
+                    <textarea
+                      className="field-observaciones-textarea"
+                      value={String(detailDraft[column.key] || '')}
+                      onChange={(event) =>
+                        setDetailDraft((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={String(detailDraft[column.key] || '')}
+                      onChange={(event) =>
+                        setDetailDraft((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  )}
                 </label>
               ))}
             </div>
