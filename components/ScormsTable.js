@@ -974,9 +974,14 @@ export default function ScormsTable({ userSession }) {
     setError('');
     setStatusMessage('');
 
+    const normalizedQuestions = String(testQuestionsDraft || '').trim();
     const payload = {
-      scorm_preguntastest: testQuestionsDraft || null,
+      scorm_preguntastest: normalizedQuestions ? testQuestionsDraft : null,
     };
+
+    if (normalizedQuestions) {
+      payload.scorm_test = 'Sí';
+    }
 
     const { error: updateError } = await supabase
       .from('scorms_master')
