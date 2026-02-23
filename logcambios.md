@@ -1,5 +1,33 @@
 # Log de cambios
 
+## v1.49.3 - Autoasignación de `scorm_test` al guardar preguntas test
+
+### Cambios consolidados
+- Se ajustó el guardado del modal de **Preguntas tipo test** para que, cuando el texto guardado no esté vacío, se actualice automáticamente `scorm_test` con el valor **Sí**.
+- Se mantiene la posibilidad de editar observaciones y preguntas de forma independiente, añadiendo únicamente esta regla de consistencia al guardar preguntas.
+- Se actualizó la versión visible de la APP a **v1.49.3** y el versionado de `package.json` a `1.49.3`.
+
+### Versionado
+- Versión anterior: `1.49.2`
+- Nueva versión consolidada: `1.49.3`
+
+---
+
+
+## v1.49.2 - Independencia entre Observaciones y Preguntas tipo test
+
+### Cambios consolidados
+- Se ajustó la columna **Test** en la vista principal de SCORMs para que el acceso **📄 Test** esté siempre disponible, independientemente del valor actual de `scorm_test`.
+- Se mantiene el indicador visual del estado de `scorm_test` (incluyendo marca de error cuando no es positivo), pero sin bloquear la edición del texto de preguntas tipo test.
+- Con este ajuste, la edición de **Preguntas tipo test** y la edición de **Observaciones** quedan desacopladas funcionalmente en la UI, tratándose como campos independientes.
+- Se actualizó la versión visible de la APP a **v1.49.2** y el versionado de `package.json` a `1.49.2`.
+
+### Versionado
+- Versión anterior: `1.49.1`
+- Nueva versión consolidada: `1.49.2`
+
+---
+
 
 ## v1.49.1 - Ajuste de texto en acceso de preguntas test
 
