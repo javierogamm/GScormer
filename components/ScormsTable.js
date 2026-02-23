@@ -31,6 +31,9 @@ const FILTER_LABELS = {
   scorm_categoria: 'Clasificación',
 };
 
+const SCORM_SELECTOR_FIELDS = ['scorm_responsable', 'scorm_tipo', 'scorm_categoria', 'scorm_subcategoria', 'scorm_estado', 'scorm_test'];
+const NEW_SELECTOR_OPTION_VALUE = '__new_option__';
+
 const publishColumns = [
   ...columns.filter((column) => !['scorm_subcategoria', 'scorm_etiquetas'].includes(column.key)),
   { key: 'publication_update_type', label: 'Tipo de actualización', editable: false },
@@ -394,6 +397,7 @@ export default function ScormsTable({ userSession }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRecords, setHistoryRecords] = useState([]);
   const [publishPreset, setPublishPreset] = useState('todos');
+  const [selectedPublishIds, setSelectedPublishIds] = useState([]);
   const [latestUpdateByCode, setLatestUpdateByCode] = useState({});
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
   const [coursesRows, setCoursesRows] = useState([]);
@@ -409,6 +413,7 @@ export default function ScormsTable({ userSession }) {
   const [testQuestionsSubmitting, setTestQuestionsSubmitting] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
+  const canDeleteAsAdmin = userSession?.admin === true;
   const canGenerateAlerts = userSession?.alertador === true;
 
   const fetchData = useCallback(async () => {
@@ -535,6 +540,25 @@ export default function ScormsTable({ userSession }) {
         a.localeCompare(b, 'es', { sensitivity: 'base' })
       );
       acc[key] = uniqueValues;
+      return acc;
+    }, {});
+  }, [rows]);
+
+  const selectorOptionsByField = useMemo(() => {
+    return SCORM_SELECTOR_FIELDS.reduce((acc, fieldKey) => {
+      const values = rows
+        .map((row) => String(row[fieldKey] || '').trim())
+        .filter(Boolean);
+
+      if (fieldKey === 'scorm_estado') {
+        values.push(...STATUS_ORDER);
+      }
+
+      if (fieldKey === 'scorm_test') {
+        values.push('Sí', 'No');
+      }
+
+      acc[fieldKey] = [...new Set(values)].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       return acc;
     }, {});
   }, [rows]);
@@ -674,6 +698,11 @@ export default function ScormsTable({ userSession }) {
     () => filteredRows.filter((row) => PUBLISH_PENDING_STATES.includes(getRowState(row))),
     [filteredRows]
   );
+
+  useEffect(() => {
+    const pendingIds = new Set(pendingPublishRows.map((row) => row.id));
+    setSelectedPublishIds((previous) => previous.filter((rowId) => pendingIds.has(rowId)));
+  }, [pendingPublishRows]);
 
   const tagsByCode = useMemo(() => {
     return tagCatalogRows.reduce((acc, tagRow) => {
@@ -1172,6 +1201,45 @@ export default function ScormsTable({ userSession }) {
     }));
   };
 
+  const resolveNewSelectorValue = (fieldKey) => {
+    if (!canDeleteAsAdmin) {
+      return null;
+    }
+
+    const fieldLabel = columns.find((column) => column.key === fieldKey)?.label || fieldKey;
+    const typedValue = globalThis?.prompt(`Nuevo valor para ${fieldLabel}:`);
+    const normalizedValue = String(typedValue || '').trim();
+
+    if (!normalizedValue) {
+      return null;
+    }
+
+    return normalizedValue;
+  };
+
+  const handleSelectorFieldChange = (scope, fieldKey, nextValue) => {
+    if (nextValue === NEW_SELECTOR_OPTION_VALUE) {
+      const newValue = resolveNewSelectorValue(fieldKey);
+      if (!newValue) {
+        return;
+      }
+
+      if (scope === 'detail') {
+        updateDetailDraft(fieldKey, newValue);
+      } else {
+        updateCreateDraft(fieldKey, newValue);
+      }
+      return;
+    }
+
+    if (scope === 'detail') {
+      updateDetailDraft(fieldKey, nextValue);
+      return;
+    }
+
+    updateCreateDraft(fieldKey, nextValue);
+  };
+
   const saveDetails = async () => {
     if (!detailDraft?.id) {
       return;
@@ -1230,6 +1298,24 @@ export default function ScormsTable({ userSession }) {
     }
 
     setSelectedIds((previous) => [...new Set([...previous, ...visibleIds])]);
+  };
+
+  const togglePublishSelection = (rowId) => {
+    setSelectedPublishIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]
+    );
+  };
+
+  const toggleAllPendingPublishRows = () => {
+    const pendingIds = publicationRows.map((row) => row.id);
+    const areAllSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedPublishIds.includes(id));
+
+    if (areAllSelected) {
+      setSelectedPublishIds((previous) => previous.filter((id) => !pendingIds.includes(id)));
+      return;
+    }
+
+    setSelectedPublishIds((previous) => [...new Set([...previous, ...pendingIds])]);
   };
 
   const persistStatusUpdates = async (statusByRowId) => {
@@ -1952,6 +2038,53 @@ export default function ScormsTable({ userSession }) {
     setStatusMessage(`SCORM ${getInternationalizedCode(row)} publicado correctamente.`);
   };
 
+  const publishSelectedScorms = async () => {
+    const selectedRows = publicationRows.filter((row) => selectedPublishIds.includes(row.id));
+
+    if (selectedRows.length === 0) {
+      setError('Selecciona uno o más SCORMs pendientes para publicar.');
+      setStatusMessage('');
+      return;
+    }
+
+    await updateRowsStatus(selectedRows.map((row) => row.id), 'Publicado');
+    setSelectedPublishIds([]);
+  };
+
+  const deleteScorm = async (row) => {
+    if (!canDeleteAsAdmin) {
+      setError('Solo los usuarios ADMIN pueden eliminar SCORMs.');
+      setStatusMessage('');
+      return;
+    }
+
+    if (!row?.id) {
+      return;
+    }
+
+    const confirmation = globalThis?.confirm(`¿Eliminar el SCORM ${getInternationalizedCode(row)}? Esta acción no se puede deshacer.`);
+
+    if (!confirmation) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const { error: deleteError } = await supabase.from('scorms_master').delete().eq('id', row.id);
+
+    if (deleteError) {
+      setError(`No se pudo eliminar el SCORM: ${deleteError.message}`);
+      return;
+    }
+
+    setRows((previousRows) => previousRows.filter((currentRow) => currentRow.id !== row.id));
+    setSelectedIds((previous) => previous.filter((id) => id !== row.id));
+    setSelectedPublishIds((previous) => previous.filter((id) => id !== row.id));
+    closeDetails();
+    setStatusMessage(`SCORM ${getInternationalizedCode(row)} eliminado correctamente.`);
+  };
+
   const togglePublishDateSort = () => {
     setPublishDateSortDirection((previous) => (previous === 'asc' ? 'desc' : 'asc'));
   };
@@ -2325,6 +2458,9 @@ export default function ScormsTable({ userSession }) {
             <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
               REHACER →
             </button>
+            <button type="button" onClick={publishSelectedScorms} disabled={selectedPublishIds.length === 0}>
+              Publicar selección ({selectedPublishIds.length})
+            </button>
           </div>
 
           <section className="status-board">
@@ -2617,6 +2753,9 @@ export default function ScormsTable({ userSession }) {
             <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
               REHACER →
             </button>
+            <button type="button" onClick={publishSelectedScorms} disabled={selectedPublishIds.length === 0}>
+              Publicar selección ({selectedPublishIds.length})
+            </button>
           </div>
 
           {publicationRows.length === 0 ? (
@@ -2626,6 +2765,14 @@ export default function ScormsTable({ userSession }) {
               <table>
                 <thead>
                   <tr>
+                    <th className="col-selector">
+                      <input
+                        type="checkbox"
+                        checked={publicationRows.length > 0 && publicationRows.every((row) => selectedPublishIds.includes(row.id))}
+                        onChange={toggleAllPendingPublishRows}
+                        aria-label="Seleccionar todos los SCORMs pendientes de publicación"
+                      />
+                    </th>
                     {publishColumns.map((column) => (
                       <th key={`publish-head-${column.key}`} className={`col-${column.key}`}>
                         {column.key === 'publication_date' ? (
@@ -2643,6 +2790,14 @@ export default function ScormsTable({ userSession }) {
                 <tbody>
                   {publicationRows.map((row) => (
                     <tr key={`publish-row-${row.id}`}>
+                      <td className="col-selector">
+                        <input
+                          type="checkbox"
+                          checked={selectedPublishIds.includes(row.id)}
+                          onChange={() => togglePublishSelection(row.id)}
+                          aria-label={`Seleccionar ${getInternationalizedCode(row)} para publicación`}
+                        />
+                      </td>
                       {publishColumns.map((column) => (
                         <td key={`publish-${row.id}-${column.key}`} className={`col-${column.key}`}>
                           {column.key === 'publication_date' ? (
@@ -3001,13 +3156,19 @@ export default function ScormsTable({ userSession }) {
                             value={detailDraft[column.key] || ''}
                             onChange={(event) => updateDetailDraft(column.key, event.target.value)}
                           />
-                        ) : column.key === 'scorm_responsable' ? (
-                          <input
-                            type="text"
+                        ) : SCORM_SELECTOR_FIELDS.includes(column.key) ? (
+                          <select
                             value={detailDraft[column.key] || ''}
-                            placeholder="Responsables separados por &"
-                            onChange={(event) => updateDetailDraft(column.key, event.target.value)}
-                          />
+                            onChange={(event) => handleSelectorFieldChange('detail', column.key, event.target.value)}
+                          >
+                            <option value="">Selecciona una opción</option>
+                            {(selectorOptionsByField[column.key] || []).map((optionValue) => (
+                              <option key={`detail-${column.key}-${optionValue}`} value={optionValue}>
+                                {optionValue}
+                              </option>
+                            ))}
+                            {canDeleteAsAdmin ? <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option> : null}
+                          </select>
                         ) : (
                           <input
                             type="text"
@@ -3032,6 +3193,11 @@ export default function ScormsTable({ userSession }) {
               <button type="button" className="secondary action-button" onClick={() => openUpdateModal(detailDraft)}>
                 Actualizar SCORM
               </button>
+              {canDeleteAsAdmin ? (
+                <button type="button" className="secondary action-button" onClick={() => deleteScorm(detailDraft)}>
+                  Eliminar SCORM
+                </button>
+              ) : null}
               <button type="button" onClick={saveDetails}>
                 Guardar detalles
               </button>
@@ -3226,12 +3392,26 @@ export default function ScormsTable({ userSession }) {
               {columns.filter((column) => column.editable).map((column) => (
                 <label key={`create-${column.key}`}>
                   <span>{column.label}</span>
-                  <input
-                    type="text"
-                    value={createDraft[column.key] || ''}
-                    placeholder={column.key === 'scorm_responsable' ? 'Responsables separados por &' : ''}
-                    onChange={(event) => updateCreateDraft(column.key, event.target.value)}
-                  />
+                  {SCORM_SELECTOR_FIELDS.includes(column.key) ? (
+                    <select
+                      value={createDraft[column.key] || ''}
+                      onChange={(event) => handleSelectorFieldChange('create', column.key, event.target.value)}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      {(selectorOptionsByField[column.key] || []).map((optionValue) => (
+                        <option key={`create-${column.key}-${optionValue}`} value={optionValue}>
+                          {optionValue}
+                        </option>
+                      ))}
+                      {canDeleteAsAdmin ? <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option> : null}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={createDraft[column.key] || ''}
+                      onChange={(event) => updateCreateDraft(column.key, event.target.value)}
+                    />
+                  )}
                 </label>
               ))}
             </div>
