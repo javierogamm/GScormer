@@ -1,5 +1,42 @@
 # Log de cambios
 
+## v1.50.1 - Ajuste de traducciones de Cursos por código individual y filtro Solo en Español
+
+### Cambios consolidados
+- Se ajustó la subvista **Traducciones** de Cursos para que el preset pase de **Solo en un idioma** a **Solo en Español**.
+- El nuevo preset **Solo en Español** ahora filtra exclusivamente cursos que tienen versión `ES` y no tienen ninguna versión en otros idiomas.
+- Se corrigió la lógica de identificación de cursos internacionalizados para agrupar por `codigo_individual` como clave principal.
+- En la agrupación por traducciones se ignora la partícula final de idioma en `codigo_individual` cuando termina en `_ES`, `_PT` o `_PORT`, de forma que las variantes internacionalizadas del mismo curso se reconozcan como un único grupo.
+- Se actualizó la versión visible de la APP a **v1.50.1** y el versionado de `package.json` a `1.50.1`.
+
+### Versionado
+- Versión anterior: `1.50.0`
+- Nueva versión consolidada: `1.50.1`
+
+---
+
+
+## v1.50.0 - Multiidioma en Cursos y subvista de Traducciones
+
+### Cambios consolidados
+- Se añadió soporte de base de datos para el nuevo campo `curso_idioma` en `scorms_cursos`, con migración para crear la columna si no existe y normalizar registros vacíos a `ES`.
+- Se incorporó la columna **Curso idioma** en la gestión de cursos para que sea visible/editable en tabla y modal de detalles.
+- Se actualizó el flujo de **Crear Curso** para incluir `curso_idioma` con valor inicial `ES`.
+- Se creó la nueva subvista **Traducciones** dentro de Cursos, con el mismo enfoque visual de SCORMs:
+  - preset **TODOS**,
+  - preset **Traducidos a todos los idiomas**,
+  - preset **Solo en un idioma**,
+  - preset **Pendiente de idioma** con selector de idioma.
+- La subvista de Traducciones de cursos agrupa por curso base y muestra cobertura por idioma con indicadores visuales por columna.
+- Se renombró el botón superior de navegación de **SCORMs Cursos** a **CURSOS**.
+- Se actualizó la versión visible de la APP a **v1.50.0** y el versionado de `package.json` a `1.50.0`.
+
+### Versionado
+- Versión anterior: `1.49.3`
+- Nueva versión consolidada: `1.50.0`
+
+---
+
 ## v1.49.3 - Autoasignación de `scorm_test` al guardar preguntas test
 
 ### Cambios consolidados

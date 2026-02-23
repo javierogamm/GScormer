@@ -6,6 +6,7 @@ import { exportRowsToExcel } from '../lib/excelExport';
 
 const columns = [
   { key: 'curso_estado', label: 'Estado curso' },
+  { key: 'curso_idioma', label: 'Curso idioma' },
   { key: 'codigo_individual', label: 'Código individual' },
   { key: 'categoria', label: 'Categoría' },
   { key: 'subcategoria', label: 'Subcategoría' },
@@ -42,6 +43,27 @@ const detailModalColumns = [
 const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
+
+const normalizeLanguage = (value) => String(value || '').trim().toUpperCase();
+
+const getIndividualCodeWithoutLanguageParticle = (value) =>
+  String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/_(ES|PT|PORT)$/i, '');
+
+const getCourseTranslationGroupId = (row) => {
+  const individualCode = String(row.codigo_individual || '').trim().toUpperCase();
+  const individualCodeBase = getIndividualCodeWithoutLanguageParticle(individualCode);
+  const code = String(row.curso_codigo || '').trim().toUpperCase();
+  const baseCode = code.replace(/^[A-Z]{2,3}[-_]/, '');
+  const normalizedName = String(row.curso_nombre || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+
+  return individualCodeBase || individualCode || baseCode || normalizedName || `ID-${row.id}`;
+};
 
 const isUrl = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -138,6 +160,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [createPlanSubmitting, setCreatePlanSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState({
     curso_estado: COURSE_STATUS_IN_PROGRESS,
+    curso_idioma: 'ES',
     curso_nombre: '',
     curso_codigo: '',
     tipologia: '',
@@ -164,6 +187,8 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
+  const [translationPreset, setTranslationPreset] = useState('todos');
+  const [pendingLanguage, setPendingLanguage] = useState('EN');
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
 
   const fetchData = useCallback(async () => {
@@ -359,6 +384,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     setSelectedScormIds([]);
     setCreateDraft({
       curso_estado: COURSE_STATUS_IN_PROGRESS,
+      curso_idioma: 'ES',
       curso_nombre: '',
       curso_codigo: '',
       tipologia: '',
@@ -505,6 +531,96 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     () => filteredRows.filter((row) => String(row.curso_estado || '').trim() === COURSE_STATUS_PENDING),
     [filteredRows],
   );
+
+  const availableCourseLanguages = useMemo(() => {
+    const languages = Array.from(
+      new Set(
+        rows
+          .map((row) => normalizeLanguage(row.curso_idioma))
+          .filter(Boolean),
+      ),
+    ).sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' }));
+
+    if (!languages.includes('ES')) {
+      languages.unshift('ES');
+    }
+
+    return languages;
+  }, [rows]);
+
+  useEffect(() => {
+    if (availableCourseLanguages.length === 0) {
+      return;
+    }
+
+    if (!availableCourseLanguages.includes(pendingLanguage)) {
+      setPendingLanguage(availableCourseLanguages[0]);
+    }
+  }, [availableCourseLanguages, pendingLanguage]);
+
+  const translationRows = useMemo(() => {
+    const grouped = filteredRows.reduce((acc, row) => {
+      const groupId = getCourseTranslationGroupId(row);
+      const language = normalizeLanguage(row.curso_idioma) || 'SIN_IDIOMA';
+
+      if (!acc[groupId]) {
+        const normalizedIndividualCode = String(row.codigo_individual || '').trim().toUpperCase();
+        const baseIndividualCode = getIndividualCodeWithoutLanguageParticle(normalizedIndividualCode);
+
+        acc[groupId] = {
+          groupId,
+          baseCode: baseIndividualCode || normalizedIndividualCode || '-',
+          displayCode: normalizedIndividualCode || String(row.curso_codigo || '').trim() || '-',
+          cursoNombre: String(row.curso_nombre || '-'),
+          materia: String(row.materia || '-'),
+          byLanguage: {},
+        };
+      }
+
+      if (!acc[groupId].byLanguage[language]) {
+        acc[groupId].byLanguage[language] = [];
+      }
+
+      acc[groupId].byLanguage[language].push(row);
+
+      return acc;
+    }, {});
+
+    const groups = Object.values(grouped)
+      .map((group) => ({
+        ...group,
+        availableLanguages: Object.keys(group.byLanguage).filter((language) => language !== 'SIN_IDIOMA'),
+      }))
+      .sort((left, right) => {
+        const leftKey = `${left.baseCode || left.displayCode} ${left.cursoNombre}`;
+        const rightKey = `${right.baseCode || right.displayCode} ${right.cursoNombre}`;
+        return leftKey.localeCompare(rightKey, 'es', { sensitivity: 'base' });
+      });
+
+    if (translationPreset === 'all') {
+      return groups.filter((group) =>
+        availableCourseLanguages.every((language) => (group.byLanguage[language] || []).length > 0),
+      );
+    }
+
+    if (translationPreset === 'only_es') {
+      return groups.filter((group) => {
+        const hasSpanish = (group.byLanguage.ES || []).length > 0;
+        if (!hasSpanish) {
+          return false;
+        }
+
+        const nonSpanishLanguages = group.availableLanguages.filter((language) => language !== 'ES');
+        return nonSpanishLanguages.length === 0;
+      });
+    }
+
+    if (translationPreset === 'missing_language') {
+      return groups.filter((group) => (group.byLanguage[pendingLanguage] || []).length === 0);
+    }
+
+    return groups;
+  }, [availableCourseLanguages, filteredRows, pendingLanguage, translationPreset]);
 
   const publishCoursesCount = pendingPublishRows.length;
 
@@ -830,7 +946,9 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                 ? 'Cursos individuales'
                 : cursosSubView === 'planes'
                   ? 'Planes de aprendizaje'
-                : 'Publicación pendiente'}
+                  : cursosSubView === 'traducciones'
+                    ? 'Traducciones'
+                    : 'Publicación pendiente'}
           </h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
@@ -851,6 +969,13 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           </button>
           <button type="button" className={cursosSubView === 'planes' ? '' : 'secondary'} onClick={() => setCursosSubView('planes')}>
             Planes de aprendizaje
+          </button>
+          <button
+            type="button"
+            className={cursosSubView === 'traducciones' ? '' : 'secondary'}
+            onClick={() => setCursosSubView('traducciones')}
+          >
+            Traducciones
           </button>
           <button
             type="button"
@@ -1185,6 +1310,107 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
               </details>
             ))}
           </div>
+        </section>
+      ) : cursosSubView === 'traducciones' ? (
+        <section className="translations-view">
+          <div className="translation-presets">
+            <button
+              type="button"
+              className={`secondary ${translationPreset === 'todos' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('todos')}
+            >
+              TODOS
+            </button>
+            <button
+              type="button"
+              className={`secondary ${translationPreset === 'all' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('all')}
+            >
+              Traducidos a todos los idiomas
+            </button>
+            <button
+              type="button"
+              className={`secondary ${translationPreset === 'only_es' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('only_es')}
+            >
+              Solo en Español
+            </button>
+            <div className="missing-language-filter">
+              <button
+                type="button"
+                className={`secondary ${translationPreset === 'missing_language' ? 'active-preset' : ''}`}
+                onClick={() => setTranslationPreset('missing_language')}
+              >
+                Pendiente de idioma
+              </button>
+              <select
+                value={pendingLanguage}
+                onChange={(event) => {
+                  setPendingLanguage(event.target.value);
+                  setTranslationPreset('missing_language');
+                }}
+                aria-label="Seleccionar idioma pendiente"
+              >
+                {availableCourseLanguages.map((language) => (
+                  <option key={`pending-course-${language}`} value={language}>
+                    {language}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {translationRows.length === 0 ? (
+            <p className="status">No hay cursos que coincidan con el filtro de traducciones seleccionado.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código base</th>
+                    <th>Nombre</th>
+                    <th>Materia</th>
+                    {availableCourseLanguages.map((language) => (
+                      <th key={`course-translation-head-${language}`}>{language}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {translationRows.map((group) => (
+                    <tr
+                      key={`course-translation-${group.groupId}`}
+                      onDoubleClick={() => {
+                        const firstLanguage = group.availableLanguages[0];
+                        const firstRow = firstLanguage ? group.byLanguage[firstLanguage]?.[0] : null;
+                        if (firstRow) {
+                          openDetailModal(firstRow);
+                        }
+                      }}
+                    >
+                      <td>{group.baseCode || group.displayCode}</td>
+                      <td>{group.cursoNombre}</td>
+                      <td>{group.materia}</td>
+                      {availableCourseLanguages.map((language) => {
+                        const languageRows = group.byLanguage[language] || [];
+                        const hasLanguage = languageRows.length > 0;
+                        return (
+                          <td key={`course-translation-cell-${group.groupId}-${language}`}>
+                            {hasLanguage ? (
+                              <span className="status-chip yes" title={`${languageRows.length} curso(s) en ${language}`}>
+                                Sí ({languageRows.length})
+                              </span>
+                            ) : (
+                              <span className="status-chip no">No</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       ) : (
         <section className="publish-view">
