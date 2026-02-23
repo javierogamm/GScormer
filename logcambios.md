@@ -1,3 +1,24 @@
+## v1.50.0 - Eliminación admin, publicación masiva y selectores administrables
+
+### Cambios consolidados
+- Se habilitó la **eliminación de SCORMs** para usuarios con perfil **Admin** desde la ventana de detalle, con confirmación previa.
+- En la vista **Pendientes de publicar** se añadió selección múltiple por checkbox y acción de **publicación masiva** para publicar varios SCORMs de una sola vez.
+- En creación y edición de SCORM se transformaron en **selectores desplegables** los campos:
+  - Responsable
+  - Tipo
+  - Categoría
+  - Subcategoría
+  - Estado
+  - Test
+- Los selectores cargan sus valores desde los datos existentes en la tabla (`scorms_master`).
+- Para usuarios **Admin** se añadió en esos selectores la opción **"+ Nuevo valor…"**, que permite crear un nuevo valor al vuelo y seleccionarlo inmediatamente.
+
+### Versionado
+- Versión anterior: `1.49.3`
+- Nueva versión consolidada: `1.50.0`
+
+---
+
 # Log de cambios
 
 ## v1.49.3 - Autoasignación de `scorm_test` al guardar preguntas test
