@@ -1,5 +1,27 @@
 # Log de cambios
 
+
+## v1.50.0 - Multiidioma en Cursos y subvista de Traducciones
+
+### Cambios consolidados
+- Se añadió soporte de base de datos para el nuevo campo `curso_idioma` en `scorms_cursos`, con migración para crear la columna si no existe y normalizar registros vacíos a `ES`.
+- Se incorporó la columna **Curso idioma** en la gestión de cursos para que sea visible/editable en tabla y modal de detalles.
+- Se actualizó el flujo de **Crear Curso** para incluir `curso_idioma` con valor inicial `ES`.
+- Se creó la nueva subvista **Traducciones** dentro de Cursos, con el mismo enfoque visual de SCORMs:
+  - preset **TODOS**,
+  - preset **Traducidos a todos los idiomas**,
+  - preset **Solo en un idioma**,
+  - preset **Pendiente de idioma** con selector de idioma.
+- La subvista de Traducciones de cursos agrupa por curso base y muestra cobertura por idioma con indicadores visuales por columna.
+- Se renombró el botón superior de navegación de **SCORMs Cursos** a **CURSOS**.
+- Se actualizó la versión visible de la APP a **v1.50.0** y el versionado de `package.json` a `1.50.0`.
+
+### Versionado
+- Versión anterior: `1.49.3`
+- Nueva versión consolidada: `1.50.0`
+
+---
+
 ## v1.49.3 - Autoasignación de `scorm_test` al guardar preguntas test
 
 ### Cambios consolidados
