@@ -46,16 +46,23 @@ const COURSE_STATUS_IN_PROGRESS = 'En proceso';
 
 const normalizeLanguage = (value) => String(value || '').trim().toUpperCase();
 
+const getIndividualCodeWithoutLanguageParticle = (value) =>
+  String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/_(ES|PT|PORT)$/i, '');
+
 const getCourseTranslationGroupId = (row) => {
+  const individualCode = String(row.codigo_individual || '').trim().toUpperCase();
+  const individualCodeBase = getIndividualCodeWithoutLanguageParticle(individualCode);
   const code = String(row.curso_codigo || '').trim().toUpperCase();
   const baseCode = code.replace(/^[A-Z]{2,3}[-_]/, '');
-  const individualCode = String(row.codigo_individual || '').trim().toUpperCase();
   const normalizedName = String(row.curso_nombre || '')
     .trim()
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
-  return baseCode || individualCode || normalizedName || `ID-${row.id}`;
+  return individualCodeBase || individualCode || baseCode || normalizedName || `ID-${row.id}`;
 };
 
 const isUrl = (value) => {
@@ -557,10 +564,13 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       const language = normalizeLanguage(row.curso_idioma) || 'SIN_IDIOMA';
 
       if (!acc[groupId]) {
+        const normalizedIndividualCode = String(row.codigo_individual || '').trim().toUpperCase();
+        const baseIndividualCode = getIndividualCodeWithoutLanguageParticle(normalizedIndividualCode);
+
         acc[groupId] = {
           groupId,
-          baseCode: String(row.curso_codigo || '').trim().toUpperCase().replace(/^[A-Z]{2,3}[-_]/, ''),
-          displayCode: String(row.curso_codigo || '').trim() || '-',
+          baseCode: baseIndividualCode || normalizedIndividualCode || '-',
+          displayCode: normalizedIndividualCode || String(row.curso_codigo || '').trim() || '-',
           cursoNombre: String(row.curso_nombre || '-'),
           materia: String(row.materia || '-'),
           byLanguage: {},
@@ -593,8 +603,16 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       );
     }
 
-    if (translationPreset === 'only_one') {
-      return groups.filter((group) => group.availableLanguages.length <= 1);
+    if (translationPreset === 'only_es') {
+      return groups.filter((group) => {
+        const hasSpanish = (group.byLanguage.ES || []).length > 0;
+        if (!hasSpanish) {
+          return false;
+        }
+
+        const nonSpanishLanguages = group.availableLanguages.filter((language) => language !== 'ES');
+        return nonSpanishLanguages.length === 0;
+      });
     }
 
     if (translationPreset === 'missing_language') {
@@ -1312,10 +1330,10 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             </button>
             <button
               type="button"
-              className={`secondary ${translationPreset === 'only_one' ? 'active-preset' : ''}`}
-              onClick={() => setTranslationPreset('only_one')}
+              className={`secondary ${translationPreset === 'only_es' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('only_es')}
             >
-              Solo en un idioma
+              Solo en Español
             </button>
             <div className="missing-language-filter">
               <button

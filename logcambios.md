@@ -1,5 +1,20 @@
 # Log de cambios
 
+## v1.50.1 - Ajuste de traducciones de Cursos por código individual y filtro Solo en Español
+
+### Cambios consolidados
+- Se ajustó la subvista **Traducciones** de Cursos para que el preset pase de **Solo en un idioma** a **Solo en Español**.
+- El nuevo preset **Solo en Español** ahora filtra exclusivamente cursos que tienen versión `ES` y no tienen ninguna versión en otros idiomas.
+- Se corrigió la lógica de identificación de cursos internacionalizados para agrupar por `codigo_individual` como clave principal.
+- En la agrupación por traducciones se ignora la partícula final de idioma en `codigo_individual` cuando termina en `_ES`, `_PT` o `_PORT`, de forma que las variantes internacionalizadas del mismo curso se reconozcan como un único grupo.
+- Se actualizó la versión visible de la APP a **v1.50.1** y el versionado de `package.json` a `1.50.1`.
+
+### Versionado
+- Versión anterior: `1.50.0`
+- Nueva versión consolidada: `1.50.1`
+
+---
+
 
 ## v1.50.0 - Multiidioma en Cursos y subvista de Traducciones
 
