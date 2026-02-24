@@ -403,31 +403,7 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
     });
   };
 
-  const individualCourseGroups = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const key = String(row.codigo_individual || '').trim() || 'SIN_CODIGO_INDIVIDUAL';
 
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-
-      acc[key].push(row);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped)
-      .map(([codeKey, groupRows]) => {
-        const firstRow = groupRows[0] || {};
-        return {
-          codeKey,
-          codeLabel: codeKey === 'SIN_CODIGO_INDIVIDUAL' ? 'Sin código individual' : codeKey,
-          materia: String(firstRow.materia || '-'),
-          cursoNombre: String(firstRow.curso_nombre || '-'),
-          rows: groupRows,
-        };
-      })
-      .sort((left, right) => left.codeLabel.localeCompare(right.codeLabel, 'es', { sensitivity: 'base' }));
-  }, [filteredRows]);
 
   const learningPlanGroups = useMemo(() => {
     const grouped = filteredRows.reduce((acc, row) => {
@@ -556,7 +532,23 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
 
         return true;
       })
-      .sort((left, right) => left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' }));
+      .flatMap((group) =>
+        group.rows.map((row) => ({
+          id: row.id,
+          uniqueId: group.uniqueId,
+          cursoNombre: String(row.curso_nombre || row.curso_codigo || '-'),
+          idioma: normalizeLanguage(row.curso_idioma),
+          row,
+        }))
+      )
+      .sort((left, right) => {
+        const byId = left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' });
+        if (byId !== 0) {
+          return byId;
+        }
+
+        return left.cursoNombre.localeCompare(right.cursoNombre, 'es', { sensitivity: 'base' });
+      });
   }, [pendingLanguage, translationAvailableLanguages, translationCourseGroups, translationPreset]);
 
   const relatedCourseGroups = useMemo(() => {
@@ -960,12 +952,10 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
             CURSOS ·{' '}
             {cursosSubView === 'general'
               ? 'Vista general'
-              : cursosSubView === 'individuales'
-                ? 'Cursos individuales'
-                : cursosSubView === 'planes'
+                              : cursosSubView === 'planes'
                   ? 'Planes de aprendizaje'
                   : cursosSubView === 'relaciones'
-                    ? 'Relaciones por ID único'
+                    ? 'Cursos relacionados'
                     : cursosSubView === 'traducciones'
                       ? 'Traducciones'
                       : 'Publicación pendiente'}
@@ -980,18 +970,11 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           >
             Vista general
           </button>
-          <button
-            type="button"
-            className={cursosSubView === 'individuales' ? '' : 'secondary'}
-            onClick={() => setCursosSubView('individuales')}
-          >
-            Cursos individuales
-          </button>
           <button type="button" className={cursosSubView === 'planes' ? '' : 'secondary'} onClick={() => setCursosSubView('planes')}>
             Planes de aprendizaje
           </button>
           <button type="button" className={cursosSubView === 'relaciones' ? '' : 'secondary'} onClick={() => setCursosSubView('relaciones')}>
-            Relaciones cursos
+            Cursos relacionados
           </button>
           <button type="button" className={cursosSubView === 'traducciones' ? '' : 'secondary'} onClick={() => setCursosSubView('traducciones')}>
             Traducciones
@@ -1196,73 +1179,6 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           </div>
           {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
         </>
-      ) : cursosSubView === 'individuales' ? (
-        <section className="individuales-view">
-          {individualCourseGroups.length === 0 ? <p className="status">No hay cursos individuales para los filtros aplicados.</p> : null}
-          <div className="scorms-accordion-list">
-            {individualCourseGroups.map((group) => (
-              <details key={group.codeKey} className="scorms-accordion-item individual-course-group">
-                <summary>
-                  <span className="individual-summary-actions">
-                    <span className="individual-summary-grid">
-                      <strong>{group.codeLabel}</strong>
-                      <span>
-                        {group.cursoNombre} ({group.rows.length})
-                      </span>
-                      <span>{group.materia}</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setScormsModalRows(group.rows);
-                      }}
-                    >
-                      Scorms
-                    </button>
-                  </span>
-                </summary>
-                <div className="table-wrapper individual-inner-table-wrapper">
-                  <table className="cursos-table compact-rows individual-inner-table">
-                    <thead>
-                      <tr>
-                        <th>Curso código</th>
-                        <th>Curso nombre</th>
-                        <th>Tipología</th>
-                        <th>Estado</th>
-                        <th>Detalle</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.rows.map((row) => (
-                        <tr key={`individual-row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
-                          <td>{String(row.curso_codigo || '-')}</td>
-                          <td>{String(row.curso_nombre || '-')}</td>
-                          <td>{String(row.tipologia || '-')}</td>
-                          <td>{String(row.curso_estado || '-')}</td>
-                          <td>
-                            <div className="row-actions">
-                              {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
-                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
-                                  Pasar a pendiente de publicar
-                                </button>
-                              ) : null}
-                              <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
-                                Detalles
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
       ) : cursosSubView === 'planes' ? (
         <section className="individuales-view">
           {learningPlanGroups.length === 0 ? <p className="status">No hay planes de aprendizaje para los filtros aplicados.</p> : null}
@@ -1440,35 +1356,19 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                 <thead>
                   <tr>
                     <th>IDUnico</th>
-                    <th>Curso base</th>
-                    {translationAvailableLanguages.map((language) => (
-                      <th key={`curso-translation-head-${language}`}>{language}</th>
-                    ))}
+                    <th>Curso nombre</th>
+                    <th>Idioma</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {translationRows.map((group) => (
-                    <tr key={`curso-translation-${group.uniqueId}`}>
-                      <td>{group.uniqueId}</td>
-                      <td>{String(group.baseRow.curso_nombre || group.baseRow.curso_codigo || '-')}</td>
-                      {translationAvailableLanguages.map((language) => {
-                        const course = group.rowsByLanguage[language];
-
-                        return (
-                          <td key={`curso-translation-cell-${group.uniqueId}-${language}`}>
-                            {course ? (
-                              <button type="button" className="secondary" onClick={() => openDetailModal(course)}>
-                                {String(course.curso_nombre || course.curso_codigo || 'OK')}
-                              </button>
-                            ) : (
-                              <span>-</span>
-                            )}
-                          </td>
-                        );
-                      })}
+                  {translationRows.map((item) => (
+                    <tr key={`curso-translation-${item.id}`}>
+                      <td>{item.uniqueId}</td>
+                      <td>{item.cursoNombre}</td>
+                      <td>{item.idioma}</td>
                       <td>
-                        <button type="button" className="secondary" onClick={() => openDetailModal(group.baseRow)}>
+                        <button type="button" className="secondary" onClick={() => openDetailModal(item.row)}>
                           Ver detalle
                         </button>
                       </td>
