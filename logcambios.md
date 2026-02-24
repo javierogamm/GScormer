@@ -1,3 +1,18 @@
+## v1.53.0 - Simplificación de subvistas de cursos y ajustes de traducciones
+
+### Cambios consolidados
+- Se eliminó la subvista **Cursos individuales** de la sección CURSOS para simplificar la navegación de subvistas.
+- Se renombró la subvista **Relaciones cursos** a **Cursos relacionados** (botón y título de vista).
+- En la subvista **Traducciones**, se cambió la presentación para que **cada curso** aparezca como una fila independiente con las columnas: `IDUnico`, `Curso nombre` e `Idioma`.
+- Se mantuvieron los presets de filtrado de traducciones existentes (**TODOS**, **Todos los idiomas**, **Solo en un idioma**, **Pendiente de idioma**) aplicados al nuevo formato por fila.
+- Se actualizó la versión visible de la APP a **v1.53.0** y el versionado de `package.json` a `1.53.0`.
+
+### Versionado
+- Versión anterior: `1.52.0`
+- Nueva versión consolidada: `1.53.0`
+
+---
+
 ## v1.52.0 - Multiidioma en cursos + subvista de traducciones
 
 ### Cambios consolidados
