@@ -459,6 +459,40 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
       });
   }, [filteredRows]);
 
+  const relatedCourseGroups = useMemo(() => {
+    const grouped = filteredRows.reduce((acc, row) => {
+      const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
+
+      if (!uniqueId) {
+        return acc;
+      }
+
+      if (!acc[uniqueId]) {
+        acc[uniqueId] = [];
+      }
+
+      acc[uniqueId].push(row);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([uniqueId, groupRows]) => {
+        const parentRow =
+          groupRows.find((row) => String(row.relacion_tipo || '').trim().toLowerCase() === 'padre') || groupRows[0] || {};
+
+        return {
+          uniqueId,
+          parentRow,
+          rows: groupRows.sort((left, right) => {
+            const leftName = String(left.curso_nombre || left.curso_codigo || left.id || '');
+            const rightName = String(right.curso_nombre || right.curso_codigo || right.id || '');
+            return leftName.localeCompare(rightName, 'es', { sensitivity: 'base' });
+          }),
+        };
+      })
+      .sort((left, right) => left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' }));
+  }, [filteredRows]);
+
   const openDetailModal = (row) => {
     setDetailModalRow(row);
     setDetailDraft({ ...row });
@@ -830,7 +864,9 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                 ? 'Cursos individuales'
                 : cursosSubView === 'planes'
                   ? 'Planes de aprendizaje'
-                : 'Publicación pendiente'}
+                  : cursosSubView === 'relaciones'
+                    ? 'Relaciones por ID único'
+                    : 'Publicación pendiente'}
           </h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
@@ -851,6 +887,9 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           </button>
           <button type="button" className={cursosSubView === 'planes' ? '' : 'secondary'} onClick={() => setCursosSubView('planes')}>
             Planes de aprendizaje
+          </button>
+          <button type="button" className={cursosSubView === 'relaciones' ? '' : 'secondary'} onClick={() => setCursosSubView('relaciones')}>
+            Relaciones cursos
           </button>
           <button
             type="button"
@@ -1165,6 +1204,59 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
                           <td>{String(row.curso_nombre || '-')}</td>
                           <td>{String(row.tipologia || '-')}</td>
                           <td>{String(row.curso_estado || '-')}</td>
+                          <td>
+                            <div className="row-actions">
+                              {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
+                                  Pasar a pendiente de publicar
+                                </button>
+                              ) : null}
+                              <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
+                                Detalles
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : cursosSubView === 'relaciones' ? (
+        <section className="individuales-view">
+          {relatedCourseGroups.length === 0 ? <p className="status">No hay relaciones por ID único para los filtros aplicados.</p> : null}
+          <div className="scorms-accordion-list">
+            {relatedCourseGroups.map((group) => (
+              <details key={`relacion-${group.uniqueId}`} className="scorms-accordion-item individual-course-group">
+                <summary>
+                  <span className="individual-summary-grid">
+                    <strong>IDUnico: {group.uniqueId}</strong>
+                    <span>{String(group.parentRow.curso_nombre || '-')}</span>
+                    <span>{String(group.parentRow.curso_instructor || '-')}</span>
+                    <span>({group.rows.length})</span>
+                  </span>
+                </summary>
+                <div className="table-wrapper individual-inner-table-wrapper">
+                  <table className="cursos-table compact-rows individual-inner-table">
+                    <thead>
+                      <tr>
+                        <th>IDUnico</th>
+                        <th>Curso nombre</th>
+                        <th>Instructor</th>
+                        <th>Relación tipo</th>
+                        <th>Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((row) => (
+                        <tr key={`related-row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
+                          <td>{String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '-')}</td>
+                          <td>{String(row.curso_nombre || '-')}</td>
+                          <td>{String(row.curso_instructor || '-')}</td>
+                          <td>{String(row.relacion_tipo || '-')}</td>
                           <td>
                             <div className="row-actions">
                               {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
