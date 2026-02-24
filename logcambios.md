@@ -1,3 +1,19 @@
+## v1.52.0 - Multiidioma en cursos + subvista de traducciones
+
+### Cambios consolidados
+- Se añadió la nueva columna `curso_idioma` en `scorms_cursos` mediante migración SQL para poder asignar idioma a cada curso.
+- En la gestión de cursos se incorporó el campo **Idioma curso** dentro de columnas editables y en la creación de cursos con valor por defecto `ES`.
+- Se creó la nueva subvista **Traducciones** en Cursos, agrupando cursos por `IDUnico` y usando `relacion_tipo = Traducción` para identificar variantes idiomáticas.
+- La subvista incluye presets visuales equivalentes a SCORMs: **TODOS**, **Todos los idiomas**, **Solo en un idioma** y **Pendiente de idioma** con selector de idioma.
+- Se renombró el botón superior de navegación de **SCORMs Cursos** a **CURSOS**.
+- Se actualizó la versión visible de la APP a **v1.52.0** y el versionado de `package.json` a `1.52.0`.
+
+### Versionado
+- Versión anterior: `1.51.0`
+- Nueva versión consolidada: `1.52.0`
+
+---
+
 ## v1.51.0 - Subvista de relaciones de cursos por IDUnico
 
 ### Cambios consolidados
