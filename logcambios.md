@@ -1,3 +1,18 @@
+## v1.51.0 - Subvista de relaciones de cursos por IDUnico
+
+### Cambios consolidados
+- Se añadió una nueva subvista **Relaciones cursos** dentro de la sección de Cursos para visualizar agrupaciones por `IDUnico` en formato acordeón.
+- En el **nivel 1** del acordeón se muestra el curso principal (priorizando `relacion_tipo = Padre`) con los datos: `IDUnico`, `curso_nombre`, `curso_instructor` y el total de cursos relacionados entre paréntesis.
+- En el **nivel 2** se listan todos los cursos que comparten `IDUnico`, incluyendo el campo `relacion_tipo` junto a nombre e instructor.
+- Se mantiene activo e integrado el **panel de filtros global** para esta nueva subvista, reutilizando la lógica de filtrado existente sobre `scorms_cursos`.
+- Se actualizó la versión visible de la APP a **v1.51.0** y el versionado de `package.json` a `1.51.0`.
+
+### Versionado
+- Versión anterior: `1.50.0`
+- Nueva versión consolidada: `1.51.0`
+
+---
+
 ## v1.50.0 - Eliminación admin, publicación masiva y selectores administrables
 
 ### Cambios consolidados
