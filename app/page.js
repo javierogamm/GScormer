@@ -402,7 +402,7 @@ export default function HomePage() {
               className={activeView === 'cursos' ? '' : 'secondary'}
               onClick={() => setActiveView('cursos')}
             >
-              SCORMs Cursos
+              CURSOS
             </button>
             <button type="button" className="secondary" onClick={openAgentModal}>
               Asociar mi usuario a agente
