@@ -130,7 +130,7 @@ const extractScormReferencesFromContenido = (contenido) => {
   return references;
 };
 
-export default function ScormsCursosTable({ onBackToScorms, userSession }) {
+export default function ScormsCursosTable({ userSession }) {
   const [cursosSubView, setCursosSubView] = useState('general');
   const [translationPreset, setTranslationPreset] = useState('todos');
   const [pendingLanguage, setPendingLanguage] = useState('CAT');
@@ -962,67 +962,78 @@ export default function ScormsCursosTable({ onBackToScorms, userSession }) {
           </h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className={cursosSubView === 'general' ? '' : 'secondary'}
-            onClick={() => setCursosSubView('general')}
-          >
-            Vista general
-          </button>
-          <button type="button" className={cursosSubView === 'planes' ? '' : 'secondary'} onClick={() => setCursosSubView('planes')}>
-            Planes de aprendizaje
-          </button>
-          <button type="button" className={cursosSubView === 'relaciones' ? '' : 'secondary'} onClick={() => setCursosSubView('relaciones')}>
-            Cursos relacionados
-          </button>
-          <button type="button" className={cursosSubView === 'traducciones' ? '' : 'secondary'} onClick={() => setCursosSubView('traducciones')}>
-            Traducciones
-          </button>
-          <button
-            type="button"
-            className={`${cursosSubView === 'publicacion' ? '' : 'secondary'} ${publishCoursesCount > 0 ? 'pending-highlight' : ''}`}
-            onClick={() => setCursosSubView('publicacion')}
-          >
-            Publicación pendiente
-            <span className="preset-kpi-badge" title="Cursos pendientes de publicar">
-              {publishCoursesCount}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`secondary ${myCoursesOnly ? 'active-preset' : ''}`}
-            onClick={() => setMyCoursesOnly((previous) => !previous)}
-            disabled={scopedInstructorAgents.length === 0}
-            title={
-              scopedInstructorAgents.length > 0
-                ? `Filtrar por instructores asociados (${scopedInstructorAgents.length})`
-                : 'Tu usuario no tiene instructores asociados'
-            }
-          >
-            Mis cursos
-          </button>
-          <button type="button" onClick={() => setCreateModalOpen(true)}>
-            Crear Curso
-          </button>
-          {cursosSubView === 'planes' ? (
-            <button type="button" onClick={() => setCreatePlanModalOpen(true)}>
-              Crear Plan de aprendizaje
+        <div className="header-actions cursos-header-actions">
+          <div className="header-actions-row">
+            <button
+              type="button"
+              className={`secondary view-select-button ${cursosSubView === 'general' ? 'is-selected' : ''}`}
+              onClick={() => setCursosSubView('general')}
+            >
+              Vista general
             </button>
-          ) : null}
-          <button className="secondary" onClick={fetchData} disabled={loading}>
-            {loading ? 'Cargando...' : 'Refrescar'}
-          </button>
-          {cursosSubView === 'general' ? (
-            <button type="button" className="secondary" onClick={handleExportCursosGeneralExcel}>
-              Exportar Excel
+            <button
+              type="button"
+              className={`secondary view-select-button ${cursosSubView === 'planes' ? 'is-selected' : ''}`}
+              onClick={() => setCursosSubView('planes')}
+            >
+              Planes de aprendizaje
             </button>
-          ) : null}
-          {onBackToScorms ? (
-            <button className="secondary" onClick={onBackToScorms}>
-              ← Volver a SCORMs
+            <button
+              type="button"
+              className={`secondary view-select-button ${cursosSubView === 'relaciones' ? 'is-selected' : ''}`}
+              onClick={() => setCursosSubView('relaciones')}
+            >
+              Cursos relacionados
             </button>
-          ) : null}
+            <button
+              type="button"
+              className={`secondary view-select-button ${cursosSubView === 'traducciones' ? 'is-selected' : ''}`}
+              onClick={() => setCursosSubView('traducciones')}
+            >
+              Traducciones
+            </button>
+            <button
+              type="button"
+              className={`secondary view-select-button ${cursosSubView === 'publicacion' ? 'is-selected' : ''} ${publishCoursesCount > 0 ? 'pending-highlight' : ''}`}
+              onClick={() => setCursosSubView('publicacion')}
+            >
+              Publicación pendiente
+              <span className="preset-kpi-badge" title="Cursos pendientes de publicar">
+                {publishCoursesCount}
+              </span>
+            </button>
+          </div>
+          <div className="header-actions-row">
+            <button
+              type="button"
+              className={`secondary action-select-button ${myCoursesOnly ? 'is-selected' : ''}`}
+              onClick={() => setMyCoursesOnly((previous) => !previous)}
+              disabled={scopedInstructorAgents.length === 0}
+              title={
+                scopedInstructorAgents.length > 0
+                  ? `Filtrar por instructores asociados (${scopedInstructorAgents.length})`
+                  : 'Tu usuario no tiene instructores asociados'
+              }
+            >
+              Mis cursos
+            </button>
+            <button type="button" className="secondary action-select-button" onClick={() => setCreateModalOpen(true)}>
+              Crear Curso
+            </button>
+            {cursosSubView === 'planes' ? (
+              <button type="button" className="secondary action-select-button" onClick={() => setCreatePlanModalOpen(true)}>
+                Crear Plan de aprendizaje
+              </button>
+            ) : null}
+            <button className="secondary action-select-button" onClick={fetchData} disabled={loading}>
+              {loading ? 'Cargando...' : 'Refrescar'}
+            </button>
+            {cursosSubView === 'general' ? (
+              <button type="button" className="secondary action-select-button" onClick={handleExportCursosGeneralExcel}>
+                Exportar Excel
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

@@ -1,3 +1,20 @@
+## v1.54.0 - Reorganización de botones en CURSOS y selección visual homogénea
+
+### Cambios consolidados
+- En la cabecera de **CURSOS** se separó la botonera en **dos alturas**:
+  - Fila superior con botones de **subvistas**: Vista general, Planes de aprendizaje, Cursos relacionados, Traducciones y Publicación pendiente.
+  - Fila inferior con botones **específicos de acción**: Mis cursos, Crear Curso, Crear Plan de aprendizaje (en subvista de planes), Refrescar y Exportar Excel (en vista general).
+- Se eliminó el botón **← Volver a SCORMs** de la sección CURSOS.
+- Se homogeneizaron tamaño mínimo y disposición de botones de cabecera en CURSOS para una alineación visual consistente.
+- Se homogeneizó el efecto de selección de vista/subvista en CURSOS usando estilo azul (colores de Cursos) para botones activos.
+- Se actualizó la versión visible de la APP a **v1.54.0** y el versionado de `package.json` a `1.54.0`.
+
+### Versionado
+- Versión anterior: `1.53.0`
+- Nueva versión consolidada: `1.54.0`
+
+---
+
 ## v1.53.0 - Simplificación de subvistas de cursos y ajustes de traducciones
 
 ### Cambios consolidados

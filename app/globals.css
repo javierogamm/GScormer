@@ -63,6 +63,37 @@ body {
   gap: 0.55rem;
 }
 
+.cursos-header-actions {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.header-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.view-select-button,
+.action-select-button {
+  min-height: 38px;
+}
+
+button.secondary.view-select-button.is-selected,
+button.secondary.action-select-button.is-selected {
+  background: var(--primary);
+  border-color: #6ca8ff;
+  color: #0e2b52;
+  box-shadow: 0 0 0 1px rgba(108, 168, 255, 0.35);
+}
+
+button.secondary.view-select-button.is-selected:hover,
+button.secondary.action-select-button.is-selected:hover {
+  background: var(--primary-strong);
+}
+
 
 .app-switcher {
   display: inline-flex;
@@ -1060,3 +1091,12 @@ textarea:focus {
 .field-observaciones-textarea {
   min-height: 220px;
 }
+
+@media (max-width: 1200px) {
+  .cursos-header-actions,
+  .header-actions-row {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
