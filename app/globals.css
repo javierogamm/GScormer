@@ -881,6 +881,19 @@ input:focus {
   flex-wrap: wrap;
 }
 
+.field-highlight {
+  border: 1px solid #ffd26d;
+  border-radius: 10px;
+  padding: 0.45rem;
+  background: #fff9e8;
+}
+
+.field-highlight-input {
+  border-color: #f0b429 !important;
+  background: #fffdf4 !important;
+  font-weight: 600;
+}
+
 .action-button {
   min-width: 152px;
   text-align: center;
@@ -1099,4 +1112,3 @@ textarea:focus {
     justify-content: flex-start;
   }
 }
-
