@@ -133,7 +133,7 @@ const extractScormReferencesFromContenido = (contenido) => {
 
 export default function ScormsCursosTable({ userSession }) {
   const [cursosSubView, setCursosSubView] = useState('general');
-  const [translationPreset, setTranslationPreset] = useState('todos');
+  const [translationPreset, setTranslationPreset] = useState('parents');
   const [pendingLanguage, setPendingLanguage] = useState('CAT');
   const [rows, setRows] = useState([]);
   const [masterRows, setMasterRows] = useState([]);
@@ -156,6 +156,12 @@ export default function ScormsCursosTable({ userSession }) {
   const [relatedCreateUniqueId, setRelatedCreateUniqueId] = useState('');
   const [relatedRelationType, setRelatedRelationType] = useState('RELACIONADO');
   const [relatedCreateDraft, setRelatedCreateDraft] = useState({});
+  const [translationCreateModalOpen, setTranslationCreateModalOpen] = useState(false);
+  const [translationCreateSubmitting, setTranslationCreateSubmitting] = useState(false);
+  const [translationCreateBulkMode, setTranslationCreateBulkMode] = useState(false);
+  const [translationCreateLanguage, setTranslationCreateLanguage] = useState('CAT');
+  const [translationCreateRows, setTranslationCreateRows] = useState([]);
+  const [selectedTranslationParentIds, setSelectedTranslationParentIds] = useState([]);
   const [createDraft, setCreateDraft] = useState({
     curso_estado: COURSE_STATUS_IN_PROGRESS,
     curso_nombre: '',
@@ -451,6 +457,46 @@ export default function ScormsCursosTable({ userSession }) {
     setRelatedCreateDraft({});
   };
 
+  const toggleTranslationParentSelection = (rowId) => {
+    setSelectedTranslationParentIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId],
+    );
+  };
+
+  const openCreateTranslationModal = (sourceRows, isBulkMode) => {
+    const validRows = (sourceRows || []).filter(Boolean);
+
+    if (validRows.length === 0) {
+      setError('No se pudieron resolver los cursos de origen para crear traducciones.');
+      return;
+    }
+
+    const rowsDraft = validRows.map((row) => ({
+      sourceId: row.id,
+      uniqueId: String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim(),
+      name: String(row.curso_nombre || ''),
+      draft: columns.reduce((acc, column) => {
+        acc[column.key] = row[column.key] ?? '';
+        return acc;
+      }, {}),
+    }));
+
+    setTranslationCreateRows(rowsDraft);
+    setTranslationCreateLanguage('CAT');
+    setTranslationCreateBulkMode(Boolean(isBulkMode));
+    setTranslationCreateSubmitting(false);
+    setTranslationCreateModalOpen(true);
+    setError('');
+  };
+
+  const resetCreateTranslationState = () => {
+    setTranslationCreateModalOpen(false);
+    setTranslationCreateSubmitting(false);
+    setTranslationCreateBulkMode(false);
+    setTranslationCreateLanguage('CAT');
+    setTranslationCreateRows([]);
+  };
+
 
 
   const learningPlanGroups = useMemo(() => {
@@ -503,9 +549,8 @@ export default function ScormsCursosTable({ userSession }) {
   const translationCourseGroups = useMemo(() => {
     const grouped = filteredRows.reduce((acc, row) => {
       const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
-      const relationType = String(row.relacion_tipo || '').trim().toLowerCase();
 
-      if (!uniqueId || relationType !== 'traducción') {
+      if (!uniqueId) {
         return acc;
       }
 
@@ -517,32 +562,37 @@ export default function ScormsCursosTable({ userSession }) {
       return acc;
     }, {});
 
-    return Object.entries(grouped).map(([uniqueId, groupRows]) => {
-      const rowsByLanguage = groupRows.reduce((langAcc, row) => {
-        const language = normalizeLanguage(row.curso_idioma);
-        if (!language) {
+    return Object.entries(grouped)
+      .map(([uniqueId, groupRows]) => {
+        const rowsByLanguage = groupRows.reduce((langAcc, row) => {
+          const language = normalizeLanguage(row.curso_idioma);
+          if (!language) {
+            return langAcc;
+          }
+
+          if (!langAcc[language]) {
+            langAcc[language] = row;
+          }
+
           return langAcc;
-        }
+        }, {});
 
-        if (!langAcc[language]) {
-          langAcc[language] = row;
-        }
+        const languageSet = new Set(Object.keys(rowsByLanguage));
+        const parentRow =
+          groupRows.find((row) => String(row.relacion_tipo || '').trim().toLowerCase() === 'padre') ||
+          rowsByLanguage.ES ||
+          groupRows[0] ||
+          {};
 
-        return langAcc;
-      }, {});
-
-      const languageSet = new Set(Object.keys(rowsByLanguage));
-      const fallbackRow = groupRows[0] || {};
-      const baseRow = rowsByLanguage.ES || fallbackRow;
-
-      return {
-        uniqueId,
-        rows: groupRows,
-        rowsByLanguage,
-        languageSet,
-        baseRow,
-      };
-    });
+        return {
+          uniqueId,
+          rows: groupRows,
+          rowsByLanguage,
+          languageSet,
+          parentRow,
+        };
+      })
+      .sort((left, right) => left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' }));
   }, [filteredRows]);
 
   const translationAvailableLanguages = useMemo(() => {
@@ -562,33 +612,32 @@ export default function ScormsCursosTable({ userSession }) {
   const translationRows = useMemo(() => {
     return translationCourseGroups
       .filter((group) => {
-        if (translationPreset === 'todos') {
-          return true;
+        if (translationPreset === 'parents') {
+          return String(group.parentRow.relacion_tipo || '').trim().toLowerCase() === 'padre';
         }
 
-        if (translationPreset === 'all') {
-          return translationAvailableLanguages.every((language) => group.languageSet.has(language));
+        if (translationPreset === 'es_only') {
+          return group.languageSet.size === 1 && group.languageSet.has('ES');
         }
 
-        if (translationPreset === 'only_one_language') {
-          return group.languageSet.size === 1;
+        if (translationPreset === 'all_languages') {
+          return DEFAULT_LANGUAGES.every((language) => group.languageSet.has(language));
         }
 
-        if (translationPreset === 'missing_language') {
-          return !group.languageSet.has(pendingLanguage);
+        if (translationPreset === 'only_language') {
+          return group.languageSet.size === 1 && group.languageSet.has(pendingLanguage);
         }
 
-        return true;
+        return false;
       })
-      .flatMap((group) =>
-        group.rows.map((row) => ({
-          id: row.id,
-          uniqueId: group.uniqueId,
-          cursoNombre: String(row.curso_nombre || row.curso_codigo || '-'),
-          idioma: normalizeLanguage(row.curso_idioma),
-          row,
-        }))
-      )
+      .map((group) => ({
+        id: group.parentRow.id,
+        uniqueId: group.uniqueId,
+        cursoNombre: String(group.parentRow.curso_nombre || group.parentRow.curso_codigo || '-'),
+        idioma: normalizeLanguage(group.parentRow.curso_idioma),
+        row: group.parentRow,
+        languageSummary: Array.from(group.languageSet).sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' })),
+      }))
       .sort((left, right) => {
         const byId = left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' });
         if (byId !== 0) {
@@ -865,6 +914,54 @@ export default function ScormsCursosTable({ userSession }) {
     setRows((previous) => [...previous, response.data]);
     setStatusMessage(`Curso relacionado creado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`}`);
     resetRelatedCreateState();
+  };
+
+  const submitCreateTranslation = async () => {
+    const language = normalizeLanguage(translationCreateLanguage);
+
+    if (!language) {
+      setError('El idioma de traducción es obligatorio.');
+      return;
+    }
+
+    if (translationCreateRows.length === 0) {
+      setError('No hay cursos seleccionados para crear traducción.');
+      return;
+    }
+
+    const payload = translationCreateRows.map((row) => {
+      const cursoNombre = String(row.name || '').trim();
+
+      return {
+        ...row.draft,
+        IDUnico: row.uniqueId,
+        relacion_tipo: 'Traducción',
+        curso_idioma: language,
+        curso_nombre: cursoNombre,
+      };
+    });
+
+    const hasInvalidName = payload.some((row) => !String(row.curso_nombre || '').trim());
+    if (hasInvalidName) {
+      setError('El nombre del curso es obligatorio en todas las traducciones.');
+      return;
+    }
+
+    setTranslationCreateSubmitting(true);
+    setError('');
+
+    const response = await supabase.from('scorms_cursos').insert(payload).select('*');
+
+    if (response.error) {
+      setTranslationCreateSubmitting(false);
+      setError(`No se pudo crear la traducción: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previous) => [...previous, ...(response.data || [])]);
+    setSelectedTranslationParentIds([]);
+    setStatusMessage(`Traducciones creadas: ${(response.data || []).length}`);
+    resetCreateTranslationState();
   };
 
   const submitCreatePlan = async () => {
@@ -1356,22 +1453,26 @@ export default function ScormsCursosTable({ userSession }) {
             {relatedCourseGroups.map((group) => (
               <details key={`relacion-${group.uniqueId}`} className="scorms-accordion-item individual-course-group">
                 <summary>
-                  <span className="individual-summary-grid">
-                    <strong>IDUnico: {group.uniqueId}</strong>
-                    <span>{String(group.parentRow.curso_nombre || '-')}</span>
-                    <span>{String(group.parentRow.curso_instructor || '-')}</span>
-                    <span>({group.rows.length})</span>
+                  <span className="individual-summary-actions">
+                    <span className="individual-summary-grid">
+                      <strong>IDUnico: {group.uniqueId}</strong>
+                      <span>{String(group.parentRow.curso_nombre || '-')}</span>
+                      <span>{String(group.parentRow.curso_instructor || '-')}</span>
+                      <span>({group.rows.length})</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary action-select-button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openRelatedCreateModal(group.parentRow, group.uniqueId);
+                      }}
+                    >
+                      Crear curso relacionado
+                    </button>
                   </span>
                 </summary>
-                <div className="individual-group-actions">
-                  <button
-                    type="button"
-                    className="secondary action-select-button"
-                    onClick={() => openRelatedCreateModal(group.parentRow, group.uniqueId)}
-                  >
-                    Crear curso relacionado
-                  </button>
-                </div>
                 <div className="table-wrapper individual-inner-table-wrapper">
                   <table className="cursos-table compact-rows individual-inner-table">
                     <thead>
@@ -1416,43 +1517,43 @@ export default function ScormsCursosTable({ userSession }) {
           <div className="translation-presets">
             <button
               type="button"
-              className={`secondary ${translationPreset === 'todos' ? 'active-preset' : ''}`}
-              onClick={() => setTranslationPreset('todos')}
+              className={`secondary ${translationPreset === 'parents' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('parents')}
             >
               TODOS
             </button>
             <button
               type="button"
-              className={`secondary ${translationPreset === 'all' ? 'active-preset' : ''}`}
-              onClick={() => setTranslationPreset('all')}
+              className={`secondary ${translationPreset === 'es_only' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('es_only')}
             >
-              Todos los idiomas
+              Solo en español
             </button>
             <button
               type="button"
-              className={`secondary ${translationPreset === 'only_one_language' ? 'active-preset' : ''}`}
-              onClick={() => setTranslationPreset('only_one_language')}
+              className={`secondary ${translationPreset === 'all_languages' ? 'active-preset' : ''}`}
+              onClick={() => setTranslationPreset('all_languages')}
             >
-              Solo en un idioma
+              Cursos en todos los idiomas
             </button>
             <div className="missing-language-filter">
               <button
                 type="button"
-                className={`secondary ${translationPreset === 'missing_language' ? 'active-preset' : ''}`}
-                onClick={() => setTranslationPreset('missing_language')}
+                className={`secondary ${translationPreset === 'only_language' ? 'active-preset' : ''}`}
+                onClick={() => setTranslationPreset('only_language')}
               >
-                Pendiente de idioma
+                Solo en
               </button>
               <select
                 value={pendingLanguage}
                 onChange={(event) => {
                   setPendingLanguage(event.target.value);
-                  setTranslationPreset('missing_language');
+                  setTranslationPreset('only_language');
                 }}
-                aria-label="Seleccionar idioma pendiente"
+                aria-label="Seleccionar idioma"
               >
                 {translationAvailableLanguages.map((language) => (
-                  <option key={`curso-pending-${language}`} value={language}>
+                  <option key={`curso-language-${language}`} value={language}>
                     {language}
                   </option>
                 ))}
@@ -1460,29 +1561,70 @@ export default function ScormsCursosTable({ userSession }) {
             </div>
           </div>
 
+          {translationPreset === 'parents' ? (
+            <div className="status-board-actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={selectedTranslationParentIds.length === 0}
+                onClick={() => {
+                  const selectedRows = translationRows
+                    .filter((item) => selectedTranslationParentIds.includes(item.id))
+                    .map((item) => item.row);
+                  openCreateTranslationModal(selectedRows, true);
+                }}
+              >
+                CREAR TRADUCCIÓN ({selectedTranslationParentIds.length})
+              </button>
+            </div>
+          ) : null}
+
           {translationRows.length === 0 ? (
-            <p className="status">No hay cursos de traducción que coincidan con el filtro seleccionado.</p>
+            <p className="status">No hay cursos que coincidan con el filtro seleccionado.</p>
           ) : (
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
+                    {translationPreset === 'parents' ? <th>Sel.</th> : null}
                     <th>IDUnico</th>
                     <th>Curso nombre</th>
                     <th>Idioma</th>
+                    <th>Idiomas del grupo</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {translationRows.map((item) => (
                     <tr key={`curso-translation-${item.id}`}>
+                      {translationPreset === 'parents' ? (
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedTranslationParentIds.includes(item.id)}
+                            onChange={() => toggleTranslationParentSelection(item.id)}
+                          />
+                        </td>
+                      ) : null}
                       <td>{item.uniqueId}</td>
                       <td>{item.cursoNombre}</td>
                       <td>{item.idioma}</td>
+                      <td>{item.languageSummary.join(', ') || '-'}</td>
                       <td>
-                        <button type="button" className="secondary" onClick={() => openDetailModal(item.row)}>
-                          Ver detalle
-                        </button>
+                        <div className="row-actions">
+                          {translationPreset === 'parents' ? (
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => openCreateTranslationModal([item.row], false)}
+                            >
+                              CREAR TRADUCCIÓN
+                            </button>
+                          ) : null}
+                          <button type="button" className="secondary" onClick={() => openDetailModal(item.row)}>
+                            Ver detalle
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1885,6 +2027,158 @@ export default function ScormsCursosTable({ userSession }) {
           </section>
         </div>
       ) : null}
+
+      {translationCreateModalOpen ? (
+        <div className="modal-overlay" role="presentation" onClick={resetCreateTranslationState}>
+          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>{translationCreateBulkMode ? 'Crear traducciones múltiples' : 'Crear traducción'}</h3>
+                <p>Se conserva el IDUnico del curso padre y se asigna tipo de relación Traducción.</p>
+              </div>
+              <button type="button" className="secondary" onClick={resetCreateTranslationState} disabled={translationCreateSubmitting}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="details-grid" style={{ marginBottom: '0.8rem' }}>
+              <label className="field-highlight">
+                <span>Idioma (obligatorio)</span>
+                <select
+                  value={translationCreateLanguage}
+                  onChange={(event) => setTranslationCreateLanguage(event.target.value)}
+                  disabled={translationCreateSubmitting}
+                >
+                  {translationAvailableLanguages.map((language) => (
+                    <option key={`translation-create-lang-${language}`} value={language}>
+                      {language}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Tipo de relación</span>
+                <input type="text" value="Traducción" disabled />
+              </label>
+            </div>
+
+            {translationCreateBulkMode ? (
+              <div className="table-wrapper">
+                <table className="compact-rows">
+                  <thead>
+                    <tr>
+                      <th>IDUnico</th>
+                      <th>Nombre original</th>
+                      <th>Nombre traducción (obligatorio)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {translationCreateRows.map((row, index) => (
+                      <tr key={`translation-create-bulk-${row.sourceId}-${row.uniqueId}`}>
+                        <td>{row.uniqueId || '-'}</td>
+                        <td>{String(row.draft.curso_nombre || '-')}</td>
+                        <td>
+                          <input
+                            className="field-highlight-input"
+                            type="text"
+                            value={row.name}
+                            onChange={(event) =>
+                              setTranslationCreateRows((previous) =>
+                                previous.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? {
+                                        ...item,
+                                        name: event.target.value,
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                            disabled={translationCreateSubmitting}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="details-grid">
+                {columns.map((column) => {
+                  const row = translationCreateRows[0] || {};
+                  const currentValue = column.key === 'curso_nombre' ? row.name : String(row.draft?.[column.key] || '');
+
+                  if (column.key === 'curso_idioma') {
+                    return null;
+                  }
+
+                  return (
+                    <label key={`translation-single-${column.key}`} className={column.key === 'curso_nombre' ? 'field-highlight' : ''}>
+                      <span>{column.label}{column.key === 'curso_nombre' ? ' (obligatorio)' : ''}</span>
+                      {column.key === 'curso_observaciones' ? (
+                        <textarea
+                          className="field-observaciones-textarea"
+                          value={currentValue}
+                          onChange={(event) =>
+                            setTranslationCreateRows((previous) =>
+                              previous.map((item, index) =>
+                                index === 0
+                                  ? {
+                                      ...item,
+                                      draft: {
+                                        ...item.draft,
+                                        [column.key]: event.target.value,
+                                      },
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                          disabled={translationCreateSubmitting}
+                        />
+                      ) : (
+                        <input
+                          className={column.key === 'curso_nombre' ? 'field-highlight-input' : ''}
+                          type="text"
+                          value={currentValue}
+                          onChange={(event) =>
+                            setTranslationCreateRows((previous) =>
+                              previous.map((item, index) =>
+                                index === 0
+                                  ? column.key === 'curso_nombre'
+                                    ? {
+                                        ...item,
+                                        name: event.target.value,
+                                      }
+                                    : {
+                                        ...item,
+                                        draft: {
+                                          ...item.draft,
+                                          [column.key]: event.target.value,
+                                        },
+                                      }
+                                  : item,
+                              ),
+                            )
+                          }
+                          disabled={translationCreateSubmitting}
+                        />
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitCreateTranslation} disabled={translationCreateSubmitting}>
+                {translationCreateSubmitting ? 'Creando...' : 'Guardar traducción'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
 
       {detailModalRow && detailDraft ? (
         <div className="modal-overlay" role="presentation">

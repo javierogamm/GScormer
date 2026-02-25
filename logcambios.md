@@ -1,3 +1,28 @@
+## v1.56.0 - Traducciones por PADRE, creación múltiple y botón de relacionado en nivel 1
+
+### Cambios consolidados
+- Se movió el botón **Crear curso relacionado** al **nivel 1 del acordeón** (dentro del `summary`) para usarlo sin necesidad de expandir el grupo.
+- En la subvista **Traducciones** se redefinieron los filtros/presets a:
+  - **TODOS** (solo cursos con `relacion_tipo = PADRE`),
+  - **Solo en español**,
+  - **Cursos en todos los idiomas**,
+  - **Solo en** (con selector de idioma).
+- En la vista **TODOS** de Traducciones se añadió:
+  - acción por fila **CREAR TRADUCCIÓN**,
+  - selección múltiple y acción masiva **CREAR TRADUCCIÓN (N)**.
+- Nueva funcionalidad de creación de traducciones:
+  - modal individual: hereda `IDUnico` del padre, fija `relacion_tipo = Traducción`, hereda el resto de campos editables y destaca de forma obligatoria **Idioma** y **Nombre del curso**,
+  - modal masivo: idioma común y edición de múltiples nombres (una fila por curso seleccionado).
+- Se mantuvo la regla de altas desde cero: `IDUnico` correlativo (`CUNNNN`) y `relacion_tipo = PADRE`.
+- Se actualizaron estilos para destacar campos obligatorios en los nuevos modales.
+- Se actualizó la versión visible de la APP a **v1.56.0** y el versionado de `package.json` a `1.56.0`.
+
+### Versionado
+- Versión anterior: `1.55.0`
+- Nueva versión consolidada: `1.56.0`
+
+---
+
 ## v1.55.0 - Alta de cursos relacionados y autoasignación de IDUnico PADRE
 
 ### Cambios consolidados
