@@ -418,7 +418,7 @@ export default function HomePage() {
       {activeView === 'scorms' ? (
         <ScormsTable userSession={userSession} />
       ) : (
-        <ScormsCursosTable userSession={userSession} onBackToScorms={() => setActiveView('scorms')} />
+        <ScormsCursosTable userSession={userSession} />
       )}
 
       {passwordModalOpen && (
