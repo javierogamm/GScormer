@@ -1,3 +1,24 @@
+## v1.55.0 - Alta de cursos relacionados y autoasignación de IDUnico PADRE
+
+### Cambios consolidados
+- En la subvista **Cursos relacionados** se añadió el botón **Crear curso relacionado** en el **nivel 1 del acordeón** (por cada grupo de `IDUnico`).
+- El botón abre un modal de alta que:
+  - muestra y fija el `IDUnico` heredado del curso padre,
+  - permite indicar/editar el **Tipo de relación**,
+  - carga el resto de campos del curso con los valores heredados del padre y los deja editables.
+- Al guardar desde ese modal se crea un nuevo curso en `scorms_cursos` conservando el mismo `IDUnico` del padre.
+- Se añadió una regla global para la creación de cursos **desde 0** (botón Crear Curso):
+  - se calcula automáticamente el próximo `IDUnico` disponible con formato `CUNNNN`,
+  - se asigna automáticamente `relacion_tipo = PADRE`.
+- Se añadieron estilos para mostrar la acción de creación relacionada dentro del acordeón.
+- Se actualizó la versión visible de la APP a **v1.55.0** y el versionado de `package.json` a `1.55.0`.
+
+### Versionado
+- Versión anterior: `1.54.0`
+- Nueva versión consolidada: `1.55.0`
+
+---
+
 ## v1.54.0 - Reorganización de botones en CURSOS y selección visual homogénea
 
 ### Cambios consolidados

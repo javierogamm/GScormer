@@ -44,6 +44,7 @@ const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT', 'GAL', 'IT'];
+const DEFAULT_RELATION_TYPE_PARENT = 'PADRE';
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -150,6 +151,11 @@ export default function ScormsCursosTable({ userSession }) {
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createPlanModalOpen, setCreatePlanModalOpen] = useState(false);
   const [createPlanSubmitting, setCreatePlanSubmitting] = useState(false);
+  const [relatedCreateModalOpen, setRelatedCreateModalOpen] = useState(false);
+  const [relatedCreateSubmitting, setRelatedCreateSubmitting] = useState(false);
+  const [relatedCreateUniqueId, setRelatedCreateUniqueId] = useState('');
+  const [relatedRelationType, setRelatedRelationType] = useState('RELACIONADO');
+  const [relatedCreateDraft, setRelatedCreateDraft] = useState({});
   const [createDraft, setCreateDraft] = useState({
     curso_estado: COURSE_STATUS_IN_PROGRESS,
     curso_nombre: '',
@@ -180,6 +186,41 @@ export default function ScormsCursosTable({ userSession }) {
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
+
+  const getDefaultCreateDraft = useCallback(
+    () => ({
+      curso_estado: COURSE_STATUS_IN_PROGRESS,
+      curso_nombre: '',
+      curso_codigo: '',
+      curso_idioma: 'ES',
+      tipologia: '',
+      inscripcion: '',
+      materia: '',
+      curso_instructor: '',
+      curso_url: '',
+      curso_descripcion: '',
+      link_inscripcion: '',
+      observaciones: '',
+      curso_observaciones: '',
+      codigo_individual: '',
+    }),
+    [],
+  );
+
+  const getNextAvailableUniqueId = useCallback(() => {
+    const maxSequence = rows.reduce((acc, row) => {
+      const value = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim().toUpperCase();
+      const match = value.match(/^CU(\d{4})$/i);
+
+      if (!match) {
+        return acc;
+      }
+
+      return Math.max(acc, Number(match[1]));
+    }, 0);
+
+    return `CU${String(maxSequence + 1).padStart(4, '0')}`;
+  }, [rows]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -372,22 +413,7 @@ export default function ScormsCursosTable({ userSession }) {
     setCreateSubmitting(false);
     setScormSearchText('');
     setSelectedScormIds([]);
-    setCreateDraft({
-      curso_estado: COURSE_STATUS_IN_PROGRESS,
-      curso_nombre: '',
-      curso_codigo: '',
-      curso_idioma: 'ES',
-      tipologia: '',
-      inscripcion: '',
-      materia: '',
-      curso_instructor: '',
-      curso_url: '',
-      curso_descripcion: '',
-      link_inscripcion: '',
-      observaciones: '',
-      curso_observaciones: '',
-      codigo_individual: '',
-    });
+    setCreateDraft(getDefaultCreateDraft());
   };
 
   const resetCreatePlanState = () => {
@@ -401,6 +427,28 @@ export default function ScormsCursosTable({ userSession }) {
       pa_url: '',
       pa_acronimo: '',
     });
+  };
+
+  const openRelatedCreateModal = (row, uniqueId) => {
+    const rowSource = row || {};
+    const nextDraft = columns.reduce((acc, column) => {
+      acc[column.key] = rowSource[column.key] ?? '';
+      return acc;
+    }, {});
+
+    setRelatedCreateDraft(nextDraft);
+    setRelatedCreateUniqueId(String(uniqueId || rowSource.IDUnico || rowSource.idunico || rowSource.id_unico || '').trim());
+    setRelatedRelationType('RELACIONADO');
+    setRelatedCreateSubmitting(false);
+    setRelatedCreateModalOpen(true);
+  };
+
+  const resetRelatedCreateState = () => {
+    setRelatedCreateModalOpen(false);
+    setRelatedCreateSubmitting(false);
+    setRelatedCreateUniqueId('');
+    setRelatedRelationType('RELACIONADO');
+    setRelatedCreateDraft({});
   };
 
 
@@ -756,6 +804,8 @@ export default function ScormsCursosTable({ userSession }) {
 
     const payload = {
       ...createDraft,
+      IDUnico: getNextAvailableUniqueId(),
+      relacion_tipo: DEFAULT_RELATION_TYPE_PARENT,
       contenido: contenidoScorm,
     };
 
@@ -773,6 +823,48 @@ export default function ScormsCursosTable({ userSession }) {
     setRows((previous) => [...previous, response.data]);
     setStatusMessage(`Curso creado: ${response.data.curso_nombre || 'Sin nombre'}`);
     resetCreateCursoState();
+  };
+
+  const submitCreateRelatedCurso = async () => {
+    const cursoNombre = String(relatedCreateDraft.curso_nombre || '').trim();
+    const uniqueId = String(relatedCreateUniqueId || '').trim();
+    const relationType = String(relatedRelationType || '').trim();
+
+    if (!uniqueId) {
+      setError('No se pudo resolver el IDUnico del curso padre.');
+      return;
+    }
+
+    if (!cursoNombre) {
+      setError('El nombre del curso es obligatorio para crear el curso relacionado.');
+      return;
+    }
+
+    if (!relationType) {
+      setError('El tipo de relación es obligatorio.');
+      return;
+    }
+
+    const payload = {
+      ...relatedCreateDraft,
+      IDUnico: uniqueId,
+      relacion_tipo: relationType,
+    };
+
+    setRelatedCreateSubmitting(true);
+    setError('');
+
+    const response = await supabase.from('scorms_cursos').insert(payload).select('*').single();
+
+    if (response.error) {
+      setRelatedCreateSubmitting(false);
+      setError(`No se pudo crear el curso relacionado: ${response.error.message}`);
+      return;
+    }
+
+    setRows((previous) => [...previous, response.data]);
+    setStatusMessage(`Curso relacionado creado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`}`);
+    resetRelatedCreateState();
   };
 
   const submitCreatePlan = async () => {
@@ -1271,6 +1363,15 @@ export default function ScormsCursosTable({ userSession }) {
                     <span>({group.rows.length})</span>
                   </span>
                 </summary>
+                <div className="individual-group-actions">
+                  <button
+                    type="button"
+                    className="secondary action-select-button"
+                    onClick={() => openRelatedCreateModal(group.parentRow, group.uniqueId)}
+                  >
+                    Crear curso relacionado
+                  </button>
+                </div>
                 <div className="table-wrapper individual-inner-table-wrapper">
                   <table className="cursos-table compact-rows individual-inner-table">
                     <thead>
@@ -1710,6 +1811,75 @@ export default function ScormsCursosTable({ userSession }) {
             <footer className="modal-footer">
               <button type="button" onClick={submitCreateCurso} disabled={createSubmitting}>
                 {createSubmitting ? 'Creando...' : 'Crear Curso'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+
+      {relatedCreateModalOpen ? (
+        <div className="modal-overlay" role="presentation" onClick={resetRelatedCreateState}>
+          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Crear curso relacionado</h3>
+                <p>El nuevo curso heredará el IDUnico del padre y permite editar los datos heredados.</p>
+              </div>
+              <button type="button" className="secondary" onClick={resetRelatedCreateState} disabled={relatedCreateSubmitting}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="details-grid" style={{ marginBottom: '0.8rem' }}>
+              <label>
+                <span>IDUnico (padre)</span>
+                <input type="text" value={relatedCreateUniqueId} disabled />
+              </label>
+              <label>
+                <span>Tipo de relación</span>
+                <input
+                  type="text"
+                  value={relatedRelationType}
+                  onChange={(event) => setRelatedRelationType(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="details-grid">
+              {columns.map((column) => (
+                <label key={`create-related-${column.key}`}>
+                  <span>{column.label}</span>
+                  {column.key === 'curso_observaciones' ? (
+                    <textarea
+                      className="field-observaciones-textarea"
+                      value={String(relatedCreateDraft[column.key] || '')}
+                      onChange={(event) =>
+                        setRelatedCreateDraft((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={String(relatedCreateDraft[column.key] || '')}
+                      onChange={(event) =>
+                        setRelatedCreateDraft((previous) => ({
+                          ...previous,
+                          [column.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitCreateRelatedCurso} disabled={relatedCreateSubmitting}>
+                {relatedCreateSubmitting ? 'Creando...' : 'Guardar curso relacionado'}
               </button>
             </footer>
           </section>
