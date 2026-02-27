@@ -875,6 +875,14 @@ input:focus {
   margin-top: 1rem;
 }
 
+
+.modal-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .row-actions {
   display: inline-flex;
   gap: 0.45rem;

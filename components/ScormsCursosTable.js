@@ -2222,9 +2222,19 @@ export default function ScormsCursosTable({ userSession }) {
               <div>
                 <h3>Detalle del curso</h3>
               </div>
-              <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
-                Cerrar
-              </button>
+              <div className="modal-header-actions">
+                <button
+                  type="button"
+                  className="secondary action-button delete-button"
+                  onClick={() => deleteCourse(detailDraft)}
+                  disabled={detailSaving}
+                >
+                  Eliminar curso
+                </button>
+                <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
+                  Cerrar
+                </button>
+              </div>
             </div>
 
             <div className="details-grid">
@@ -2259,9 +2269,6 @@ export default function ScormsCursosTable({ userSession }) {
             </div>
 
             <footer className="modal-footer">
-              <button type="button" className="secondary action-button delete-button" onClick={() => deleteCourse(detailDraft)} disabled={detailSaving}>
-                Eliminar curso
-              </button>
               <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
                 {detailSaving ? 'Guardando...' : 'Guardar cambios'}
               </button>

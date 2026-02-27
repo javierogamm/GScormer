@@ -1,3 +1,18 @@
+## v1.59.0 - Botón Eliminar curso visible en cabecera del modal
+
+### Cambios consolidados
+- Se movió la acción **Eliminar curso** a la **cabecera del modal de Detalle del curso**, junto al botón **Cerrar**, para que sea visible sin depender del scroll del formulario.
+- Se mantiene la validación de permisos en la acción de borrado (solo `ADMIN` puede eliminar efectivamente).
+- Se eliminó el botón duplicado de eliminación en el pie del modal para evitar confusión.
+- Se añadieron estilos de `modal-header-actions` para ordenar correctamente las acciones en cabecera.
+- Se actualizó la versión visible de la APP a **v1.59.0** y el versionado de `package.json` a `1.59.0`.
+
+### Versionado
+- Versión anterior: `1.58.0`
+- Nueva versión consolidada: `1.59.0`
+
+---
+
 ## v1.58.0 - Botón Eliminar curso visible en detalle de curso
 
 ### Cambios consolidados
