@@ -3194,7 +3194,7 @@ export default function ScormsTable({ userSession }) {
                 Actualizar SCORM
               </button>
               {canDeleteAsAdmin ? (
-                <button type="button" className="secondary action-button" onClick={() => deleteScorm(detailDraft)}>
+                <button type="button" className="secondary action-button delete-button" onClick={() => deleteScorm(detailDraft)}>
                   Eliminar SCORM
                 </button>
               ) : null}

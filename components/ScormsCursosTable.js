@@ -192,6 +192,7 @@ export default function ScormsCursosTable({ userSession }) {
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
+  const canDeleteAsAdmin = String(userSession?.role || '').trim().toUpperCase() === 'ADMIN';
 
   const getDefaultCreateDraft = useCallback(
     () => ({
@@ -722,6 +723,40 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailSaving(false);
     setDetailModalRow(response.data);
     setDetailDraft({ ...response.data });
+  };
+
+
+  const deleteCourse = async (row) => {
+    if (!canDeleteAsAdmin) {
+      setError('Solo los usuarios ADMIN pueden eliminar cursos.');
+      setStatusMessage('');
+      return;
+    }
+
+    if (!row?.id) {
+      return;
+    }
+
+    const courseLabel = String(row.curso_nombre || row.curso_codigo || `ID ${row.id}`);
+    const confirmation = globalThis?.confirm(`¿Eliminar el curso ${courseLabel}? Esta acción no se puede deshacer.`);
+
+    if (!confirmation) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const { error: deleteError } = await supabase.from('scorms_cursos').delete().eq('id', row.id);
+
+    if (deleteError) {
+      setError(`No se pudo eliminar el curso: ${deleteError.message}`);
+      return;
+    }
+
+    setRows((previousRows) => previousRows.filter((currentRow) => currentRow.id !== row.id));
+    closeDetailModal();
+    setStatusMessage(`Curso eliminado: ${courseLabel}`);
   };
 
   const pendingPublishRows = useMemo(
@@ -2187,9 +2222,19 @@ export default function ScormsCursosTable({ userSession }) {
               <div>
                 <h3>Detalle del curso</h3>
               </div>
-              <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
-                Cerrar
-              </button>
+              <div className="modal-header-actions">
+                <button
+                  type="button"
+                  className="secondary action-button delete-button"
+                  onClick={() => deleteCourse(detailDraft)}
+                  disabled={detailSaving}
+                >
+                  Eliminar curso
+                </button>
+                <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
+                  Cerrar
+                </button>
+              </div>
             </div>
 
             <div className="details-grid">

@@ -1,3 +1,47 @@
+## v1.59.0 - Botón Eliminar curso visible en cabecera del modal
+
+### Cambios consolidados
+- Se movió la acción **Eliminar curso** a la **cabecera del modal de Detalle del curso**, junto al botón **Cerrar**, para que sea visible sin depender del scroll del formulario.
+- Se mantiene la validación de permisos en la acción de borrado (solo `ADMIN` puede eliminar efectivamente).
+- Se eliminó el botón duplicado de eliminación en el pie del modal para evitar confusión.
+- Se añadieron estilos de `modal-header-actions` para ordenar correctamente las acciones en cabecera.
+- Se actualizó la versión visible de la APP a **v1.59.0** y el versionado de `package.json` a `1.59.0`.
+
+### Versionado
+- Versión anterior: `1.58.0`
+- Nueva versión consolidada: `1.59.0`
+
+---
+
+## v1.58.0 - Botón Eliminar curso visible en detalle de curso
+
+### Cambios consolidados
+- Se dejó el botón **Eliminar curso** siempre visible en el modal de **Detalle del curso**.
+- Se mantiene la validación de permisos en la acción de borrado: si el usuario no es `ADMIN`, se muestra mensaje de restricción al intentar eliminar.
+- Se mantiene el estilo rojo de acción destructiva en el botón de eliminación para cursos y SCORMs.
+- Se actualizó la versión visible de la APP a **v1.58.0** y el versionado de `package.json` a `1.58.0`.
+
+### Versionado
+- Versión anterior: `1.57.0`
+- Nueva versión consolidada: `1.58.0`
+
+---
+
+## v1.57.0 - Eliminación de cursos y acciones de borrado en rojo
+
+### Cambios consolidados
+- Se añadió el botón **Eliminar curso** en el modal de **Detalle del curso**.
+- La eliminación de cursos se limita a usuarios con rol **ADMIN**, con confirmación previa y mensaje de resultado tras borrar en `scorms_cursos`.
+- Se aplicó estilo visual en **rojo** para las acciones destructivas de borrado.
+- El botón **Eliminar SCORM** también usa ahora estilo rojo para mantener consistencia visual.
+- Se actualizó la versión visible de la APP a **v1.57.0** y el versionado de `package.json` a `1.57.0`.
+
+### Versionado
+- Versión anterior: `1.56.0`
+- Nueva versión consolidada: `1.57.0`
+
+---
+
 ## v1.56.0 - Traducciones por PADRE, creación múltiple y botón de relacionado en nivel 1
 
 ### Cambios consolidados

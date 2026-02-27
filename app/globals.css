@@ -875,6 +875,14 @@ input:focus {
   margin-top: 1rem;
 }
 
+
+.modal-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .row-actions {
   display: inline-flex;
   gap: 0.45rem;
@@ -897,6 +905,17 @@ input:focus {
 .action-button {
   min-width: 152px;
   text-align: center;
+}
+
+.delete-button {
+  background: #ffe3e3 !important;
+  border-color: #f5a3a3 !important;
+  color: #a11919 !important;
+}
+
+.delete-button:hover {
+  background: #ffd1d1 !important;
+  border-color: #eb8e8e !important;
 }
 
 
