@@ -1731,7 +1731,7 @@ export default function ScormsCursosTable({ userSession }) {
       )}
 
       {scormsModalRows.length > 0 ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setScormsModalRows([])}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -1786,7 +1786,7 @@ export default function ScormsCursosTable({ userSession }) {
       ) : null}
 
       {createPlanModalOpen ? (
-        <div className="modal-overlay" role="presentation" onClick={resetCreatePlanState}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -1909,7 +1909,7 @@ export default function ScormsCursosTable({ userSession }) {
       ) : null}
 
       {createModalOpen ? (
-        <div className="modal-overlay" role="presentation" onClick={resetCreateCursoState}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -1996,7 +1996,7 @@ export default function ScormsCursosTable({ userSession }) {
 
 
       {relatedCreateModalOpen ? (
-        <div className="modal-overlay" role="presentation" onClick={resetRelatedCreateState}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -2064,7 +2064,7 @@ export default function ScormsCursosTable({ userSession }) {
       ) : null}
 
       {translationCreateModalOpen ? (
-        <div className="modal-overlay" role="presentation" onClick={resetCreateTranslationState}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>

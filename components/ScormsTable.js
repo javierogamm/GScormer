@@ -2977,7 +2977,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {alertGeneratorModalOpen && (
-        <div className="modal-overlay" role="presentation" onClick={closeAlertGeneratorModal}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content modal-content-narrow"
             role="dialog"
@@ -3041,7 +3041,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {translationModalOpen && (
-        <div className="modal-overlay" role="presentation" onClick={closeTranslationModal}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content"
             role="dialog"
@@ -3207,7 +3207,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {testQuestionsModalRow && (
-        <div className="modal-overlay" role="presentation" onClick={closeTestQuestionsModal}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content modal-content-narrow"
             role="dialog"
@@ -3248,7 +3248,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {historyModalOpen && detailDraft && (
-        <div className="modal-overlay" role="presentation" onClick={() => setHistoryModalOpen(false)}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content modal-content-narrow"
             role="dialog"
@@ -3292,7 +3292,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {updateTargetRow && (
-        <div className="modal-overlay" role="presentation" onClick={closeUpdateModal}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content modal-content-narrow"
             role="dialog"
@@ -3370,7 +3370,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {createDraft && (
-        <div className="modal-overlay" role="presentation" onClick={closeCreateModal}>
+        <div className="modal-overlay" role="presentation">
           <div
             className="modal-content"
             role="dialog"
@@ -3426,7 +3426,7 @@ export default function ScormsTable({ userSession }) {
       )}
 
       {coursesModalRow ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setCoursesModalRow(null)}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <header className="modal-header">
               <div>

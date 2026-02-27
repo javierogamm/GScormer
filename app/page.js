@@ -422,7 +422,7 @@ export default function HomePage() {
       )}
 
       {passwordModalOpen && (
-        <div className="modal-overlay" role="presentation" onClick={() => setPasswordModalOpen(false)}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content modal-content-narrow" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h3>{userSession.name}</h3>
             <p className="status">Usuario conectado · Asociaciones: {selectedAgentsCount}</p>
@@ -466,7 +466,7 @@ export default function HomePage() {
       )}
 
       {agentModalOpen && (
-        <div className="modal-overlay" role="presentation" onClick={() => setAgentModalOpen(false)}>
+        <div className="modal-overlay" role="presentation">
           <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h3>Asociar mi usuario a agente</h3>
             <p className="status">Selecciona responsables e instructores para el usuario {userSession?.name}.</p>
