@@ -2259,11 +2259,9 @@ export default function ScormsCursosTable({ userSession }) {
             </div>
 
             <footer className="modal-footer">
-              {canDeleteAsAdmin ? (
-                <button type="button" className="secondary action-button delete-button" onClick={() => deleteCourse(detailDraft)} disabled={detailSaving}>
-                  Eliminar curso
-                </button>
-              ) : null}
+              <button type="button" className="secondary action-button delete-button" onClick={() => deleteCourse(detailDraft)} disabled={detailSaving}>
+                Eliminar curso
+              </button>
               <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
                 {detailSaving ? 'Guardando...' : 'Guardar cambios'}
               </button>

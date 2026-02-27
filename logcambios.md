@@ -1,3 +1,17 @@
+## v1.58.0 - Botón Eliminar curso visible en detalle de curso
+
+### Cambios consolidados
+- Se dejó el botón **Eliminar curso** siempre visible en el modal de **Detalle del curso**.
+- Se mantiene la validación de permisos en la acción de borrado: si el usuario no es `ADMIN`, se muestra mensaje de restricción al intentar eliminar.
+- Se mantiene el estilo rojo de acción destructiva en el botón de eliminación para cursos y SCORMs.
+- Se actualizó la versión visible de la APP a **v1.58.0** y el versionado de `package.json` a `1.58.0`.
+
+### Versionado
+- Versión anterior: `1.57.0`
+- Nueva versión consolidada: `1.58.0`
+
+---
+
 ## v1.57.0 - Eliminación de cursos y acciones de borrado en rojo
 
 ### Cambios consolidados
