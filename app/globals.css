@@ -899,6 +899,17 @@ input:focus {
   text-align: center;
 }
 
+.delete-button {
+  background: #ffe3e3 !important;
+  border-color: #f5a3a3 !important;
+  color: #a11919 !important;
+}
+
+.delete-button:hover {
+  background: #ffd1d1 !important;
+  border-color: #eb8e8e !important;
+}
+
 
 .kpi-chip {
   display: inline-flex;

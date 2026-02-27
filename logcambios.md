@@ -1,3 +1,18 @@
+## v1.57.0 - Eliminación de cursos y acciones de borrado en rojo
+
+### Cambios consolidados
+- Se añadió el botón **Eliminar curso** en el modal de **Detalle del curso**.
+- La eliminación de cursos se limita a usuarios con rol **ADMIN**, con confirmación previa y mensaje de resultado tras borrar en `scorms_cursos`.
+- Se aplicó estilo visual en **rojo** para las acciones destructivas de borrado.
+- El botón **Eliminar SCORM** también usa ahora estilo rojo para mantener consistencia visual.
+- Se actualizó la versión visible de la APP a **v1.57.0** y el versionado de `package.json` a `1.57.0`.
+
+### Versionado
+- Versión anterior: `1.56.0`
+- Nueva versión consolidada: `1.57.0`
+
+---
+
 ## v1.56.0 - Traducciones por PADRE, creación múltiple y botón de relacionado en nivel 1
 
 ### Cambios consolidados
