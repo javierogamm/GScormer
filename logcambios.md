@@ -1,3 +1,17 @@
+## v1.61.0 - Selectores SCORM dinámicos y alta de nuevos valores
+
+### Cambios consolidados
+- Los selectores de campos tipados de SCORM (Responsable, Tipo, Categoría, Subcategoría, Estado y Test) ahora muestran únicamente los valores existentes en la tabla `scorms_master` en ese momento.
+- Se eliminó la inyección de valores fijos en los selectores para que las listas se construyan recorriendo únicamente los datos actuales de la tabla.
+- La opción **+ Nuevo valor…** queda disponible en creación y detalle para permitir crear y seleccionar un valor nuevo al vuelo.
+- Se actualizó la versión visible de la APP a **v1.61.0** y el versionado de `package.json` a `1.61.0`.
+
+### Versionado
+- Versión anterior: `1.60.0`
+- Nueva versión consolidada: `1.61.0`
+
+---
+
 ## v1.60.0 - Modales solo se cierran con acciones internas
 
 ### Cambios consolidados

@@ -550,14 +550,6 @@ export default function ScormsTable({ userSession }) {
         .map((row) => String(row[fieldKey] || '').trim())
         .filter(Boolean);
 
-      if (fieldKey === 'scorm_estado') {
-        values.push(...STATUS_ORDER);
-      }
-
-      if (fieldKey === 'scorm_test') {
-        values.push('Sí', 'No');
-      }
-
       acc[fieldKey] = [...new Set(values)].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       return acc;
     }, {});
@@ -1202,10 +1194,6 @@ export default function ScormsTable({ userSession }) {
   };
 
   const resolveNewSelectorValue = (fieldKey) => {
-    if (!canDeleteAsAdmin) {
-      return null;
-    }
-
     const fieldLabel = columns.find((column) => column.key === fieldKey)?.label || fieldKey;
     const typedValue = globalThis?.prompt(`Nuevo valor para ${fieldLabel}:`);
     const normalizedValue = String(typedValue || '').trim();
@@ -3167,7 +3155,7 @@ export default function ScormsTable({ userSession }) {
                                 {optionValue}
                               </option>
                             ))}
-                            {canDeleteAsAdmin ? <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option> : null}
+                            <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
                           </select>
                         ) : (
                           <input
@@ -3403,7 +3391,7 @@ export default function ScormsTable({ userSession }) {
                           {optionValue}
                         </option>
                       ))}
-                      {canDeleteAsAdmin ? <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option> : null}
+                      <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
                     </select>
                   ) : (
                     <input
