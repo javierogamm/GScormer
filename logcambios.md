@@ -1,3 +1,16 @@
+## v1.60.0 - Modales solo se cierran con acciones internas
+
+### Cambios consolidados
+- Se eliminó el cierre por clic en el fondo (overlay) en todos los modales de la APP para evitar cierres accidentales.
+- A partir de esta consolidación, los modales solo se cierran mediante las acciones internas ya existentes (**Cerrar**, **Guardar**, etc.).
+- Se actualizó la versión visible de la APP a **v1.60.0** y el versionado de `package.json` a `1.60.0`.
+
+### Versionado
+- Versión anterior: `1.59.0`
+- Nueva versión consolidada: `1.60.0`
+
+---
+
 ## v1.59.0 - Botón Eliminar curso visible en cabecera del modal
 
 ### Cambios consolidados
