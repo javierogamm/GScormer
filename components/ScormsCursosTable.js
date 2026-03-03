@@ -46,6 +46,39 @@ const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT', 'GAL', 'IT'];
 const DEFAULT_RELATION_TYPE_PARENT = 'PADRE';
+const COURSE_SORT_OPTIONS = {
+  created_desc: {
+    label: 'Creación (más recientes)',
+    compare: (left, right) => new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime(),
+  },
+  created_asc: {
+    label: 'Creación (más antiguos)',
+    compare: (left, right) => new Date(left.created_at || 0).getTime() - new Date(right.created_at || 0).getTime(),
+  },
+  updated_desc: {
+    label: 'Edición (más recientes)',
+    compare: (left, right) => new Date(right.updated_at || right.created_at || 0).getTime() - new Date(left.updated_at || left.created_at || 0).getTime(),
+  },
+  updated_asc: {
+    label: 'Edición (más antiguas)',
+    compare: (left, right) => new Date(left.updated_at || left.created_at || 0).getTime() - new Date(right.updated_at || right.created_at || 0).getTime(),
+  },
+  name_asc: {
+    label: 'Nombre (A → Z)',
+    compare: (left, right) => String(left.curso_nombre || '').localeCompare(String(right.curso_nombre || ''), 'es', { sensitivity: 'base' }),
+  },
+  name_desc: {
+    label: 'Nombre (Z → A)',
+    compare: (left, right) => String(right.curso_nombre || '').localeCompare(String(left.curso_nombre || ''), 'es', { sensitivity: 'base' }),
+  },
+};
+
+const createCourseManagedSelectorFields = [
+  { key: 'tipologia', label: 'Tipología' },
+  { key: 'inscripcion', label: 'Inscripción' },
+  { key: 'materia', label: 'Materia' },
+  { key: 'curso_instructor', label: 'Instructor' },
+];
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -181,6 +214,8 @@ export default function ScormsCursosTable({ userSession }) {
   });
   const [scormSearchText, setScormSearchText] = useState('');
   const [selectedScormIds, setSelectedScormIds] = useState([]);
+  const [detailScormSearchText, setDetailScormSearchText] = useState('');
+  const [detailSelectedScormIds, setDetailSelectedScormIds] = useState([]);
   const [planCourseSearchText, setPlanCourseSearchText] = useState('');
   const [selectedPlanCourseIds, setSelectedPlanCourseIds] = useState([]);
   const [createPlanDraft, setCreatePlanDraft] = useState({
@@ -193,10 +228,13 @@ export default function ScormsCursosTable({ userSession }) {
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
   const [selectedValidationCourseIds, setSelectedValidationCourseIds] = useState([]);
+  const [courseSortOrder, setCourseSortOrder] = useState('created_desc');
+  const [createManagedFieldMode, setCreateManagedFieldMode] = useState({});
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
   const canAccessValidationView = userSession?.admin === true || canValidateCourses;
+  const canCreateManagedValues = userSession?.admin === true;
 
   const getDefaultCreateDraft = useCallback(
     () => ({
@@ -348,6 +386,33 @@ export default function ScormsCursosTable({ userSession }) {
     });
   }, [rows, filters, myCoursesOnly, scopedInstructorAgents, getScormSearchableText]);
 
+
+  const createManagedFieldOptions = useMemo(() => {
+    return createCourseManagedSelectorFields.reduce((acc, field) => {
+      const values = rows
+        .map((row) => String(row[field.key] || '').trim())
+        .filter(Boolean)
+        .filter((value, index, array) => array.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index)
+        .sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' }));
+
+      acc[field.key] = values;
+      return acc;
+    }, {});
+  }, [rows]);
+
+  const sortedGeneralRows = useMemo(() => {
+    const sorter = COURSE_SORT_OPTIONS[courseSortOrder] || COURSE_SORT_OPTIONS.created_desc;
+
+    return [...filteredRows].sort((left, right) => {
+      const primary = sorter.compare(left, right);
+      if (primary !== 0) {
+        return primary;
+      }
+
+      return Number(left.id || 0) - Number(right.id || 0);
+    });
+  }, [courseSortOrder, filteredRows]);
+
   const activeScormMatches = useMemo(() => {
     if (scormsModalRows.length === 0) {
       return [];
@@ -424,6 +489,7 @@ export default function ScormsCursosTable({ userSession }) {
     setCreateSubmitting(false);
     setScormSearchText('');
     setSelectedScormIds([]);
+    setCreateManagedFieldMode({});
     setCreateDraft(getDefaultCreateDraft());
   };
 
@@ -687,9 +753,60 @@ export default function ScormsCursosTable({ userSession }) {
       .sort((left, right) => left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' }));
   }, [filteredRows]);
 
+
+  const parseScormIdsFromContenido = useCallback(
+    (contenido) => {
+      const references = extractScormReferencesFromContenido(contenido);
+
+      const ids = references
+        .flatMap((reference) =>
+          masterRows
+            .filter((masterRow) => {
+              const code = String(masterRow.scorm_code || '').trim().toUpperCase();
+              const language = String(masterRow.scorm_idioma || '').trim().toUpperCase();
+
+              if (code !== reference.code) {
+                return false;
+              }
+
+              if (reference.language && language && reference.language !== language) {
+                return false;
+              }
+
+              return true;
+            })
+            .map((masterRow) => masterRow.id),
+        )
+        .filter(Boolean);
+
+      return Array.from(new Set(ids));
+    },
+    [masterRows],
+  );
+
+  const filteredDetailMasterScormRows = useMemo(() => {
+    const search = String(detailScormSearchText || '').trim().toLowerCase();
+
+    if (!search) {
+      return masterRows;
+    }
+
+    return masterRows.filter((row) =>
+      [row.scorm_code, row.scorm_name, row.scorm_responsable, row.scorm_categoria]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(search)),
+    );
+  }, [detailScormSearchText, masterRows]);
+
+  const toggleDetailSelectedScorm = (scormId) => {
+    setDetailSelectedScormIds((previous) => (previous.includes(scormId) ? previous.filter((id) => id !== scormId) : [...previous, scormId]));
+  };
+
   const openDetailModal = (row) => {
     setDetailModalRow(row);
     setDetailDraft({ ...row });
+    setDetailScormSearchText('');
+    setDetailSelectedScormIds(parseScormIdsFromContenido(row?.contenido));
   };
 
   const closeDetailModal = () => {
@@ -699,6 +816,8 @@ export default function ScormsCursosTable({ userSession }) {
 
     setDetailModalRow(null);
     setDetailDraft(null);
+    setDetailScormSearchText('');
+    setDetailSelectedScormIds([]);
   };
 
   const saveDetailModal = async () => {
@@ -710,6 +829,14 @@ export default function ScormsCursosTable({ userSession }) {
       acc[column.key] = detailDraft[column.key] ?? null;
       return acc;
     }, {});
+
+    payload.curso_observaciones = payload.observaciones;
+    payload.contenido = detailSelectedScormIds
+      .map((id) => masterRows.find((row) => row.id === id))
+      .filter(Boolean)
+      .map((row) => getScormReferenceLabel(row))
+      .filter(Boolean)
+      .join(', ');
 
     if (String(payload.curso_estado || '').trim() === COURSE_STATUS_PENDING && !canValidateCourses) {
       setError('Solo los usuarios validador pueden pasar cursos a "Pendiente de publicar".');
@@ -937,6 +1064,7 @@ export default function ScormsCursosTable({ userSession }) {
 
     const payload = {
       ...createDraft,
+      curso_observaciones: createDraft.observaciones,
       IDUnico: getNextAvailableUniqueId(),
       relacion_tipo: DEFAULT_RELATION_TYPE_PARENT,
       contenido: contenidoScorm,
@@ -1309,7 +1437,7 @@ export default function ScormsCursosTable({ userSession }) {
             >
               Mis cursos
             </button>
-            <button type="button" className="secondary action-select-button" onClick={() => setCreateModalOpen(true)}>
+            <button type="button" className="secondary action-select-button" onClick={() => { setCreateManagedFieldMode({}); setCreateModalOpen(true); }}>
               Crear Curso
             </button>
             {cursosSubView === 'planes' ? (
@@ -1416,6 +1544,18 @@ export default function ScormsCursosTable({ userSession }) {
 
       {cursosSubView === 'general' ? (
         <>
+          <div className="details-grid" style={{ marginBottom: '0.8rem' }}>
+            <label>
+              <span>Ordenar cursos</span>
+              <select value={courseSortOrder} onChange={(event) => setCourseSortOrder(event.target.value)}>
+                {Object.entries(COURSE_SORT_OPTIONS).map(([key, config]) => (
+                  <option key={`course-sort-${key}`} value={key}>
+                    {config.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="table-wrapper">
             <table className="cursos-table compact-rows">
               <thead>
@@ -1429,7 +1569,7 @@ export default function ScormsCursosTable({ userSession }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row) => (
+                {sortedGeneralRows.map((row) => (
                     <tr key={`row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
                       <td>
                             <button type="button" className="secondary" onClick={() => setScormsModalRows([row])}>
@@ -1480,7 +1620,7 @@ export default function ScormsCursosTable({ userSession }) {
               </tbody>
             </table>
           </div>
-          {filteredRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
+          {sortedGeneralRows.length === 0 ? <p className="status">No hay registros que coincidan con los filtros actuales.</p> : null}
         </>
       ) : cursosSubView === 'planes' ? (
         <section className="individuales-view">
@@ -2074,21 +2214,109 @@ export default function ScormsCursosTable({ userSession }) {
             </div>
 
             <div className="details-grid">
-              {Object.keys(createDraft).map((key) => (
-                <label key={`create-curso-${key}`}>
-                  <span>{formatFieldLabel(key)}</span>
-                  <input
-                    type="text"
-                    value={String(createDraft[key] || '')}
-                    onChange={(event) =>
-                      setCreateDraft((previous) => ({
-                        ...previous,
-                        [key]: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-              ))}
+              <label>
+                <span>IDUnico</span>
+                <input type="text" value={getNextAvailableUniqueId()} disabled />
+              </label>
+              <label>
+                <span>URL curso</span>
+                <input type="text" value={String(createDraft.curso_url || '')} disabled />
+              </label>
+              <label>
+                <span>Link inscripción</span>
+                <input type="text" value={String(createDraft.link_inscripcion || '')} disabled />
+              </label>
+
+              {Object.keys(createDraft)
+                .filter((key) => !['curso_observaciones', 'curso_url', 'link_inscripcion'].includes(key))
+                .map((key) => {
+                  const managedFieldConfig = createCourseManagedSelectorFields.find((field) => field.key === key);
+
+                  if (managedFieldConfig) {
+                    const isCustomMode = createManagedFieldMode[key] === true;
+                    const options = createManagedFieldOptions[key] || [];
+
+                    return (
+                      <label key={`create-curso-${key}`}>
+                        <span>{managedFieldConfig.label}</span>
+                        {isCustomMode ? (
+                          <input
+                            type="text"
+                            value={String(createDraft[key] || '')}
+                            onChange={(event) =>
+                              setCreateDraft((previous) => ({
+                                ...previous,
+                                [key]: event.target.value,
+                              }))
+                            }
+                            placeholder={`Nuevo valor para ${managedFieldConfig.label}`}
+                          />
+                        ) : (
+                          <select
+                            value={String(createDraft[key] || '')}
+                            onChange={(event) =>
+                              setCreateDraft((previous) => ({
+                                ...previous,
+                                [key]: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona...</option>
+                            {options.map((option) => (
+                              <option key={`create-option-${key}-${option}`} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {canCreateManagedValues ? (
+                          <button
+                            type="button"
+                            className="secondary"
+                            style={{ marginTop: '0.35rem' }}
+                            onClick={() =>
+                              setCreateManagedFieldMode((previous) => ({
+                                ...previous,
+                                [key]: !previous[key],
+                              }))
+                            }
+                          >
+                            {isCustomMode ? 'Usar lista BDD' : 'Crear nuevo valor'}
+                          </button>
+                        ) : null}
+                      </label>
+                    );
+                  }
+
+                  return (
+                    <label key={`create-curso-${key}`}>
+                      <span>{formatFieldLabel(key)}</span>
+                      {key === 'observaciones' ? (
+                        <textarea
+                          className="field-observaciones-textarea"
+                          value={String(createDraft[key] || '')}
+                          onChange={(event) =>
+                            setCreateDraft((previous) => ({
+                              ...previous,
+                              [key]: event.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={String(createDraft[key] || '')}
+                          onChange={(event) =>
+                            setCreateDraft((previous) => ({
+                              ...previous,
+                              [key]: event.target.value,
+                            }))
+                          }
+                        />
+                      )}
+                    </label>
+                  );
+                })}
             </div>
 
             <section className="card-soft">
@@ -2390,7 +2618,7 @@ export default function ScormsCursosTable({ userSession }) {
             </div>
 
             <div className="details-grid">
-              {detailModalColumns.map((column) => (
+              {detailModalColumns.filter((column) => column.key !== 'curso_observaciones').map((column) => (
                 <label key={`detail-modal-${column.key}`}>
                   <span>{column.label}</span>
                   {column.key === 'curso_observaciones' ? (
@@ -2419,6 +2647,45 @@ export default function ScormsCursosTable({ userSession }) {
                 </label>
               ))}
             </div>
+
+            <section className="card-soft" style={{ marginTop: '0.8rem' }}>
+              <h4>Asociar SCORMs al curso</h4>
+              <input
+                type="text"
+                placeholder="Buscar SCORM..."
+                value={detailScormSearchText}
+                onChange={(event) => setDetailScormSearchText(event.target.value)}
+              />
+              <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                <table className="compact-rows">
+                  <thead>
+                    <tr>
+                      <th>Sel.</th>
+                      <th>Código</th>
+                      <th>Nombre</th>
+                      <th>Responsable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDetailMasterScormRows.slice(0, 40).map((row) => (
+                      <tr key={`detail-scorm-${row.id}`}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={detailSelectedScormIds.includes(row.id)}
+                            onChange={() => toggleDetailSelectedScorm(row.id)}
+                          />
+                        </td>
+                        <td>{getScormReferenceLabel(row)}</td>
+                        <td>{String(row.scorm_name || '-')}</td>
+                        <td>{String(row.scorm_responsable || '-')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="status">Seleccionados: {detailSelectedScormIds.length} · Se guardan en contenido al guardar cambios.</p>
+            </section>
 
             <footer className="modal-footer">
               <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
