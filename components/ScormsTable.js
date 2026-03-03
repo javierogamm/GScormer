@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { APP_VERSION } from '../lib/appVersion';
 import { exportRowsToExcel } from '../lib/excelExport';
+import { getScormImportKey, parseScormExcelRows } from '../lib/scormExcelImport';
 
 const columns = [
   { key: 'scorm_idioma', label: 'Idioma', editable: true },
@@ -413,6 +414,8 @@ export default function ScormsTable({ userSession }) {
   const [testQuestionsModalRow, setTestQuestionsModalRow] = useState(null);
   const [testQuestionsDraft, setTestQuestionsDraft] = useState('');
   const [testQuestionsSubmitting, setTestQuestionsSubmitting] = useState(false);
+  const [importSubmitting, setImportSubmitting] = useState(false);
+  const importFileInputRef = useRef(null);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
   const canValidateScorms = userSession?.validador === true;
@@ -2012,6 +2015,86 @@ export default function ScormsTable({ userSession }) {
     setStatusMessage(`SCORM ${code} creado correctamente.`);
   };
 
+  const openExcelImport = () => {
+    importFileInputRef.current?.click();
+  };
+
+  const handleExcelImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setImportSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    try {
+      const parsedRows = await parseScormExcelRows(file);
+
+      if (parsedRows.length === 0) {
+        setError('No se detectaron filas válidas en el fichero. Revisa cabeceras y datos mínimos (Código SCORM y Nombre del SCORM).');
+        return;
+      }
+
+      const existingKeys = new Set(rows.map(getScormImportKey));
+      const uniqueRows = [];
+      const skippedDuplicates = [];
+      const restrictedStateRows = [];
+
+      parsedRows.forEach((row) => {
+        const key = getScormImportKey(row);
+        const normalizedState = String(row.scorm_estado || '').trim();
+        const blockedByAdminState = normalizedState === 'Publicado' && !canPublishAsAdmin;
+        const blockedByValidationState = normalizedState === 'Pendiente de publicar' && !canMoveToPendingPublish;
+
+        if (blockedByAdminState || blockedByValidationState) {
+          restrictedStateRows.push(`${row.scorm_idioma || 'SIN_IDIOMA'}-${row.scorm_code}`);
+          return;
+        }
+
+        if (existingKeys.has(key)) {
+          skippedDuplicates.push(`${row.scorm_idioma || 'SIN_IDIOMA'}-${row.scorm_code}`);
+          return;
+        }
+
+        existingKeys.add(key);
+        uniqueRows.push(row);
+      });
+
+      if (uniqueRows.length === 0) {
+        setError('No hay nuevos SCORMs para importar. Todos están duplicados o tienen estados restringidos por permisos.');
+        return;
+      }
+
+      const { data, error: importError } = await supabase.from('scorms_master').insert(uniqueRows).select('*');
+
+      if (importError) {
+        setError(`No se pudo completar la importación: ${importError.message}`);
+        return;
+      }
+
+      if (data?.length > 0) {
+        setRows((previous) => [...previous, ...data]);
+      }
+
+      const summary = [`Importación completada: ${data?.length || 0} SCORM(s) creados.`];
+      if (skippedDuplicates.length > 0) {
+        summary.push(`${skippedDuplicates.length} duplicado(s) omitidos.`);
+      }
+      if (restrictedStateRows.length > 0) {
+        summary.push(`${restrictedStateRows.length} fila(s) omitidas por estado restringido según permisos.`);
+      }
+
+      setStatusMessage(summary.join(' '));
+    } catch (importException) {
+      setError(`No se pudo leer el Excel: ${importException.message}`);
+    } finally {
+      event.target.value = '';
+      setImportSubmitting(false);
+    }
+  };
+
   const publishScorm = async (row) => {
     if (!row?.id) {
       return;
@@ -2367,6 +2450,9 @@ export default function ScormsTable({ userSession }) {
               <button type="button" onClick={openCreateModal}>
                 Crear SCORM
               </button>
+              <button type="button" className="secondary" onClick={openExcelImport} disabled={importSubmitting}>
+                {importSubmitting ? 'Importando Excel...' : 'Importar SCORMs (Excel)'}
+              </button>
               <button
                 type="button"
                 className="secondary"
@@ -2382,6 +2468,14 @@ export default function ScormsTable({ userSession }) {
                 REHACER →
               </button>
             </div>
+
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".xls,.xml,.csv,.tsv,.txt"
+              style={{ display: 'none' }}
+              onChange={handleExcelImport}
+            />
 
           </div>
 
