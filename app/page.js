@@ -24,6 +24,7 @@ const isBooleanFlagEnabled = (value) => {
 
 const isAdminFlagEnabled = (value) => isBooleanFlagEnabled(value);
 const isAlertadorFlagEnabled = (value) => isBooleanFlagEnabled(value);
+const isValidadorFlagEnabled = (value) => isBooleanFlagEnabled(value);
 
 const parseAgentList = (value) =>
   String(value || '')
@@ -118,6 +119,7 @@ export default function HomePage() {
           ...parsed,
           admin: isAdminFlagEnabled(parsed.admin),
           alertador: isAlertadorFlagEnabled(parsed.alertador),
+          validador: isValidadorFlagEnabled(parsed.validador),
           agent: parsed.agent || parsed.agente || '',
           agente: parsedConfig.responsables.join(', '),
           agentFilters: parsedConfig,
@@ -166,6 +168,7 @@ export default function HomePage() {
       name: response.data.name,
       admin: isAdminFlagEnabled(response.data.admin),
       alertador: isAlertadorFlagEnabled(response.data.alertador),
+      validador: isValidadorFlagEnabled(response.data.validador),
       agent: agentRawValue,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
@@ -193,7 +196,7 @@ export default function HomePage() {
 
     const response = await supabase
       .from('scorms_users')
-      .select('id, name, admin, alertador, agent, agente')
+      .select('id, name, admin, alertador, validador, agent, agente')
       .eq('id', userSession.id)
       .limit(1)
       .maybeSingle();
@@ -211,6 +214,7 @@ export default function HomePage() {
       name: response.data.name || userSession.name,
       admin: isAdminFlagEnabled(response.data.admin),
       alertador: isAlertadorFlagEnabled(response.data.alertador),
+      validador: isValidadorFlagEnabled(response.data.validador),
       agent: linkedAgent,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,

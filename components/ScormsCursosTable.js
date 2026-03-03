@@ -40,6 +40,7 @@ const detailModalColumns = [
   ...columns.filter((column) => column.key !== 'curso_observaciones'),
   ...columns.filter((column) => column.key === 'curso_observaciones'),
 ];
+const COURSE_STATUS_PENDING_VALIDATION = 'Pendiente de validación';
 const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
@@ -191,8 +192,11 @@ export default function ScormsCursosTable({ userSession }) {
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
+  const [selectedValidationCourseIds, setSelectedValidationCourseIds] = useState([]);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
-  const canDeleteAsAdmin = String(userSession?.role || '').trim().toUpperCase() === 'ADMIN';
+  const canDeleteAsAdmin = userSession?.admin === true;
+  const canValidateCourses = userSession?.validador === true;
+  const canAccessValidationView = userSession?.admin === true || canValidateCourses;
 
   const getDefaultCreateDraft = useCallback(
     () => ({
@@ -707,6 +711,11 @@ export default function ScormsCursosTable({ userSession }) {
       return acc;
     }, {});
 
+    if (String(payload.curso_estado || '').trim() === COURSE_STATUS_PENDING && !canValidateCourses) {
+      setError('Solo los usuarios validador pueden pasar cursos a "Pendiente de publicar".');
+      return;
+    }
+
     setDetailSaving(true);
     setError('');
 
@@ -764,12 +773,28 @@ export default function ScormsCursosTable({ userSession }) {
     [filteredRows],
   );
 
+  const pendingValidationRows = useMemo(
+    () => filteredRows.filter((row) => String(row.curso_estado || '').trim() === COURSE_STATUS_PENDING_VALIDATION),
+    [filteredRows],
+  );
+
+  useEffect(() => {
+    const ids = new Set(pendingValidationRows.map((row) => row.id));
+    setSelectedValidationCourseIds((previous) => previous.filter((rowId) => ids.has(rowId)));
+  }, [pendingValidationRows]);
+
   const publishCoursesCount = pendingPublishRows.length;
+  const validationCoursesCount = pendingValidationRows.length;
 
   const changeCourseStatus = async (row, nextStatus, successMessage) => {
     const currentStatus = String(row.curso_estado || '').trim() || COURSE_STATUS_IN_PROGRESS;
 
     if (currentStatus === nextStatus) {
+      return;
+    }
+
+    if (nextStatus === COURSE_STATUS_PENDING && !canValidateCourses) {
+      setError('Solo los usuarios validador pueden pasar cursos a "Pendiente de publicar".');
       return;
     }
 
@@ -797,12 +822,36 @@ export default function ScormsCursosTable({ userSession }) {
     setError('');
   };
 
-  const setCoursePendingPublication = async (row) => {
+  const setCoursePendingValidation = async (row) => {
+    await changeCourseStatus(
+      row,
+      COURSE_STATUS_PENDING_VALIDATION,
+      `Curso movido a pendiente de validación: ${row.curso_nombre || row.curso_codigo || `ID ${row.id}`}`,
+    );
+  };
+
+  const moveCourseToPendingPublish = async (row) => {
     await changeCourseStatus(
       row,
       COURSE_STATUS_PENDING,
-      `Curso movido a pendiente de publicar: ${row.curso_nombre || row.curso_codigo || `ID ${row.id}`}`,
+      `Curso validado y movido a pendiente de publicar: ${row.curso_nombre || row.curso_codigo || `ID ${row.id}`}`,
     );
+  };
+
+  const moveSelectedValidationCoursesToPendingPublish = async () => {
+    if (selectedValidationCourseIds.length === 0) {
+      setError('Selecciona uno o más cursos pendientes de validación.');
+      return;
+    }
+
+    const rowsToMove = pendingValidationRows.filter((row) => selectedValidationCourseIds.includes(row.id));
+
+    for (const row of rowsToMove) {
+      // eslint-disable-next-line no-await-in-loop
+      await moveCourseToPendingPublish(row);
+    }
+
+    setSelectedValidationCourseIds([]);
   };
 
   const publishCourse = async (row) => {
@@ -892,6 +941,11 @@ export default function ScormsCursosTable({ userSession }) {
       relacion_tipo: DEFAULT_RELATION_TYPE_PARENT,
       contenido: contenidoScorm,
     };
+
+    if (String(payload.curso_estado || '').trim() === COURSE_STATUS_PENDING && !canValidateCourses) {
+      setError('Solo los usuarios validador pueden crear cursos en "Pendiente de publicar".');
+      return;
+    }
 
     setCreateSubmitting(true);
     setError('');
@@ -1182,7 +1236,9 @@ export default function ScormsCursosTable({ userSession }) {
                     ? 'Cursos relacionados'
                     : cursosSubView === 'traducciones'
                       ? 'Traducciones'
-                      : 'Publicación pendiente'}
+                       : cursosSubView === 'validacion'
+                        ? 'Validación pendiente'
+                        : 'Publicación pendiente'}
           </h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
@@ -1216,6 +1272,18 @@ export default function ScormsCursosTable({ userSession }) {
             >
               Traducciones
             </button>
+            {canAccessValidationView ? (
+              <button
+                type="button"
+                className={`secondary view-select-button ${cursosSubView === 'validacion' ? 'is-selected' : ''} ${validationCoursesCount > 0 ? 'pending-highlight' : ''}`}
+                onClick={() => setCursosSubView('validacion')}
+              >
+                Validación pendiente
+                <span className="preset-kpi-badge" title="Cursos pendientes de validación">
+                  {validationCoursesCount}
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`secondary view-select-button ${cursosSubView === 'publicacion' ? 'is-selected' : ''} ${publishCoursesCount > 0 ? 'pending-highlight' : ''}`}
@@ -1398,8 +1466,8 @@ export default function ScormsCursosTable({ userSession }) {
                       <td className="first-col-detail">
                         <div className="row-actions">
                           {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
-                            <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
-                              Pasar a pendiente de publicar
+                            <button type="button" className="secondary action-button" onClick={() => setCoursePendingValidation(row)}>
+                              Pasar a pendiente de validación
                             </button>
                           ) : null}
                           <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
@@ -1463,8 +1531,8 @@ export default function ScormsCursosTable({ userSession }) {
                           <td>
                             <div className="row-actions">
                               {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
-                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
-                                  Pasar a pendiente de publicar
+                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingValidation(row)}>
+                                  Pasar a pendiente de validación
                                 </button>
                               ) : null}
                               <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
@@ -1529,8 +1597,8 @@ export default function ScormsCursosTable({ userSession }) {
                           <td>
                             <div className="row-actions">
                               {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
-                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingPublication(row)}>
-                                  Pasar a pendiente de publicar
+                                <button type="button" className="secondary action-button" onClick={() => setCoursePendingValidation(row)}>
+                                  Pasar a pendiente de validación
                                 </button>
                               ) : null}
                               <button type="button" className="secondary" onClick={() => openDetailModal(row)}>
@@ -1658,6 +1726,90 @@ export default function ScormsCursosTable({ userSession }) {
                           ) : null}
                           <button type="button" className="secondary" onClick={() => openDetailModal(item.row)}>
                             Ver detalle
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : cursosSubView === 'validacion' ? (
+        <section className="publish-view">
+          <div className="status-board-actions">
+            <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
+              ← DESHACER
+            </button>
+            <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
+              REHACER →
+            </button>
+            <button
+              type="button"
+              disabled={selectedValidationCourseIds.length === 0 || !canValidateCourses}
+              onClick={moveSelectedValidationCoursesToPendingPublish}
+            >
+              Validar selección ({selectedValidationCourseIds.length})
+            </button>
+          </div>
+
+          {!canValidateCourses ? <p className="status">Solo los usuarios con <strong>validador: true</strong> pueden mover cursos a "Pendiente de publicar".</p> : null}
+
+          {pendingValidationRows.length === 0 ? (
+            <p className="status">No hay cursos en estado &quot;Pendiente de validación&quot; para los filtros actuales.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Sel.</th>
+                    {compactColumns.map((columnKey) => {
+                      const column = columns.find((item) => item.key === columnKey);
+                      return <th key={`validation-head-${column.key}`}>{column.label}</th>;
+                    })}
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingValidationRows.map((row) => (
+                    <tr key={`validation-row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedValidationCourseIds.includes(row.id)}
+                          onChange={() =>
+                            setSelectedValidationCourseIds((previous) =>
+                              previous.includes(row.id) ? previous.filter((id) => id !== row.id) : [...previous, row.id],
+                            )
+                          }
+                        />
+                      </td>
+                      {compactColumns.map((columnKey) => {
+                        const value = row[columnKey];
+
+                        return (
+                          <td key={`validation-${row.id}-${columnKey}`}>
+                            {columnKey === 'curso_url' && isUrl(value) ? (
+                              <a className="table-link" href={value} target="_blank" rel="noreferrer">LINK</a>
+                            ) : (
+                              String(value || '-')
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="secondary action-button" onClick={() => openDetailModal(row)}>
+                            Detalles
+                          </button>
+                          <button
+                            type="button"
+                            className="publish-button action-button"
+                            disabled={!canValidateCourses}
+                            onClick={() => moveCourseToPendingPublish(row)}
+                          >
+                            VALIDAR CURSO
                           </button>
                         </div>
                       </td>
