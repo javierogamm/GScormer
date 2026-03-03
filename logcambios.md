@@ -1,3 +1,21 @@
+## v1.63.0 - Alta de cursos con selectores BDD, ordenación y asociación SCORM en detalle
+
+### Cambios consolidados
+- En **Crear Curso**, los campos `tipologia`, `inscripcion`, `materia` e `instructor` pasan a funcionar con desplegables alimentados por valores existentes en BDD (tabla de cursos cargada).
+- Solo usuarios **admin** pueden crear nuevos valores para esos cuatro campos desde el alta (toggle de modo lista/valor nuevo).
+- En **Crear Curso**, `IDUnico`, `curso_url` y `link_inscripcion` se muestran en gris/no editables; se mantienen editables posteriormente en detalle.
+- Se deja un único campo operativo de observaciones en el alta (`observaciones`), sincronizando su contenido también hacia `curso_observaciones` al guardar para mantener compatibilidad.
+- `IDUnico` se sigue generando automáticamente con correlativo siguiente al mayor existente con formato `CUNNNN`.
+- En **Editar detalle de curso** se añade bloque para asociar/desasociar SCORMs con buscador y checkboxes, persistiendo en `contenido` al guardar.
+- En la **vista general de cursos** se añade ordenación por creación, edición o nombre, en ascendente/descendente; por defecto queda creación descendente (más recientes primero).
+- Se actualiza versión visible de APP y `package.json` a `1.63.0`.
+
+### Versionado
+- Versión anterior: `1.62.0`
+- Nueva versión consolidada: `1.63.0`
+
+---
+
 ## v1.62.0 - Flujo de validación para SCORMs y cursos
 
 ### Cambios consolidados
