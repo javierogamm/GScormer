@@ -1,3 +1,20 @@
+## v1.62.0 - Flujo de validación para SCORMs y cursos
+
+### Cambios consolidados
+- Se añade la nueva columna booleana `validador` en `scorms_users` mediante migración para habilitar permisos de validación.
+- Se extiende la sesión de usuario para cargar y propagar el flag `validador` desde `scorms_users`.
+- En SCORMs se incorpora la nueva vista **Validación pendiente** (acceso: `ADMIN` o `validador: true`) con validación individual y múltiple a estado **Pendiente de publicar**.
+- Se añaden restricciones para que solo usuarios con `validador: true` puedan mover SCORMs al estado **Pendiente de publicar** (desde vista, edición o alta).
+- En cursos se incorpora la nueva vista **Validación pendiente** (acceso: `ADMIN` o `validador: true`) con validación individual y múltiple a estado **Pendiente de publicar**.
+- En cursos, los botones operativos previos pasan el estado a **Pendiente de validación** y la transición a **Pendiente de publicar** queda reservada a `validador: true`.
+- Se actualizó la versión visible de la APP a **v1.62.0** y el versionado de `package.json` a `1.62.0`.
+
+### Versionado
+- Versión anterior: `1.61.0`
+- Nueva versión consolidada: `1.62.0`
+
+---
+
 ## v1.61.0 - Selectores SCORM dinámicos y alta de nuevos valores
 
 ### Cambios consolidados

@@ -52,7 +52,7 @@ const alertColumns = [
 
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
-const STATUS_ORDER = ['En proceso', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar'];
+const STATUS_ORDER = ['En proceso', 'Pendiente de validación', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar'];
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT', 'GAL', 'IT'];
 const LANGUAGE_LABELS = {
   ES: 'Español',
@@ -68,6 +68,7 @@ const UPDATE_TYPES = [
   'Actualización de storyline',
 ];
 const PUBLISH_PENDING_STATES = ['Pendiente de publicar', 'Actualizado pendiente de publicar'];
+const VALIDATION_PENDING_STATE = 'Pendiente de validación';
 const SCORM_CODE_REGEX = /(?:\b([a-z]{2,3})\s*[-_]\s*)?\b(SCR\d{4})\b/gi;
 
 const normalizeLanguage = (language) => {
@@ -398,6 +399,7 @@ export default function ScormsTable({ userSession }) {
   const [historyRecords, setHistoryRecords] = useState([]);
   const [publishPreset, setPublishPreset] = useState('todos');
   const [selectedPublishIds, setSelectedPublishIds] = useState([]);
+  const [selectedValidationIds, setSelectedValidationIds] = useState([]);
   const [latestUpdateByCode, setLatestUpdateByCode] = useState({});
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
   const [coursesRows, setCoursesRows] = useState([]);
@@ -413,6 +415,9 @@ export default function ScormsTable({ userSession }) {
   const [testQuestionsSubmitting, setTestQuestionsSubmitting] = useState(false);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
+  const canValidateScorms = userSession?.validador === true;
+  const canAccessValidationView = canPublishAsAdmin || canValidateScorms;
+  const canMoveToPendingPublish = canValidateScorms;
   const canDeleteAsAdmin = userSession?.admin === true;
   const canGenerateAlerts = userSession?.alertador === true;
 
@@ -549,6 +554,10 @@ export default function ScormsTable({ userSession }) {
       const values = rows
         .map((row) => String(row[fieldKey] || '').trim())
         .filter(Boolean);
+
+      if (fieldKey === 'scorm_estado') {
+        values.push(...STATUS_ORDER);
+      }
 
       acc[fieldKey] = [...new Set(values)].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       return acc;
@@ -691,10 +700,20 @@ export default function ScormsTable({ userSession }) {
     [filteredRows]
   );
 
+  const pendingValidationRows = useMemo(
+    () => filteredRows.filter((row) => getRowState(row) === VALIDATION_PENDING_STATE),
+    [filteredRows],
+  );
+
   useEffect(() => {
     const pendingIds = new Set(pendingPublishRows.map((row) => row.id));
     setSelectedPublishIds((previous) => previous.filter((rowId) => pendingIds.has(rowId)));
   }, [pendingPublishRows]);
+
+  useEffect(() => {
+    const pendingIds = new Set(pendingValidationRows.map((row) => row.id));
+    setSelectedValidationIds((previous) => previous.filter((rowId) => pendingIds.has(rowId)));
+  }, [pendingValidationRows]);
 
   const tagsByCode = useMemo(() => {
     return tagCatalogRows.reduce((acc, tagRow) => {
@@ -777,7 +796,9 @@ export default function ScormsTable({ userSession }) {
 
   const publishUpdatesCount = pendingPublishRows.filter((row) => getRowState(row) === 'Actualizado pendiente de publicar').length;
   const publishPendingCount = pendingPublishRows.filter((row) => getRowState(row) === 'Pendiente de publicar').length;
+  const validationPendingCount = pendingValidationRows.length;
   const hasItemsPendingPublication = pendingPublishRows.length > 0;
+  const hasItemsPendingValidation = pendingValidationRows.length > 0;
 
   const publicationRows = useMemo(() => {
     const now = Date.now();
@@ -1244,6 +1265,12 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
+    if (payload.scorm_estado === 'Pendiente de publicar' && !canMoveToPendingPublish) {
+      setStatusMessage('');
+      setError('Solo los usuarios validador pueden pasar SCORMs a "Pendiente de publicar".');
+      return;
+    }
+
     const { error: updateError } = await supabase
       .from('scorms_master')
       .update(payload)
@@ -1294,6 +1321,12 @@ export default function ScormsTable({ userSession }) {
     );
   };
 
+  const toggleValidationSelection = (rowId) => {
+    setSelectedValidationIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]
+    );
+  };
+
   const toggleAllPendingPublishRows = () => {
     const pendingIds = publicationRows.map((row) => row.id);
     const areAllSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedPublishIds.includes(id));
@@ -1304,6 +1337,18 @@ export default function ScormsTable({ userSession }) {
     }
 
     setSelectedPublishIds((previous) => [...new Set([...previous, ...pendingIds])]);
+  };
+
+  const toggleAllPendingValidationRows = () => {
+    const pendingIds = pendingValidationRows.map((row) => row.id);
+    const areAllSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedValidationIds.includes(id));
+
+    if (areAllSelected) {
+      setSelectedValidationIds((previous) => previous.filter((id) => !pendingIds.includes(id)));
+      return;
+    }
+
+    setSelectedValidationIds((previous) => [...new Set([...previous, ...pendingIds])]);
   };
 
   const persistStatusUpdates = async (statusByRowId) => {
@@ -1333,6 +1378,12 @@ export default function ScormsTable({ userSession }) {
     if (nextState === 'Publicado' && !canPublishAsAdmin) {
       setStatusMessage('');
       setError('Solo los usuarios ADMIN pueden poner un SCORM en estado "Publicado".');
+      return;
+    }
+
+    if (nextState === 'Pendiente de publicar' && !canMoveToPendingPublish) {
+      setStatusMessage('');
+      setError('Solo los usuarios validador pueden pasar SCORMs a "Pendiente de publicar".');
       return;
     }
 
@@ -1938,6 +1989,12 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
+    if (payload.scorm_estado === 'Pendiente de publicar' && !canMoveToPendingPublish) {
+      setCreateSubmitting(false);
+      setError('Solo los usuarios validador pueden crear SCORMs en estado "Pendiente de publicar".');
+      return;
+    }
+
     const { data, error: insertError } = await supabase.from('scorms_master').insert(payload).select('*').single();
 
     if (insertError) {
@@ -2039,6 +2096,19 @@ export default function ScormsTable({ userSession }) {
     setSelectedPublishIds([]);
   };
 
+  const moveSelectedScormsToPendingPublish = async () => {
+    const selectedRows = pendingValidationRows.filter((row) => selectedValidationIds.includes(row.id));
+
+    if (selectedRows.length === 0) {
+      setError('Selecciona uno o más SCORMs pendientes de validación.');
+      setStatusMessage('');
+      return;
+    }
+
+    await updateRowsStatus(selectedRows.map((row) => row.id), 'Pendiente de publicar');
+    setSelectedValidationIds([]);
+  };
+
   const deleteScorm = async (row) => {
     if (!canDeleteAsAdmin) {
       setError('Solo los usuarios ADMIN pueden eliminar SCORMs.');
@@ -2113,6 +2183,17 @@ export default function ScormsTable({ userSession }) {
             >
               Publicación pendiente
               <span className="kpi-badge">{pendingPublishRows.length}</span>
+            </button>
+          )}
+          {canAccessValidationView && (
+            <button
+              type="button"
+              className={`secondary ${hasItemsPendingValidation ? 'pending-highlight' : ''}`}
+              onClick={() => setViewMode('validation')}
+              disabled={viewMode === 'validation'}
+            >
+              Validación pendiente
+              <span className="kpi-badge">{validationPendingCount}</span>
             </button>
           )}
           <button
@@ -2820,6 +2901,115 @@ export default function ScormsTable({ userSession }) {
                           </button>
                           <button type="button" className="publish-button action-button" onClick={() => publishScorm(row)}>
                             PUBLICAR SCORM
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+
+      {!loading && canAccessValidationView && viewMode === 'validation' && (
+        <section className="publish-view">
+          <div className="status-board-actions">
+            <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
+              ← DESHACER
+            </button>
+            <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
+              REHACER →
+            </button>
+            <button
+              type="button"
+              onClick={moveSelectedScormsToPendingPublish}
+              disabled={selectedValidationIds.length === 0 || !canMoveToPendingPublish}
+              title={canMoveToPendingPublish ? 'Mover selección a pendiente de publicar' : 'Solo usuarios validador'}
+            >
+              Validar selección ({selectedValidationIds.length})
+            </button>
+          </div>
+
+          {!canMoveToPendingPublish ? (
+            <p className="status">Solo los usuarios con <strong>validador: true</strong> pueden mover SCORMs a "Pendiente de publicar".</p>
+          ) : null}
+
+          {pendingValidationRows.length === 0 ? (
+            <p className="status">No hay SCORMs en estado "Pendiente de validación" para los filtros actuales.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th className="col-selector">
+                      <input
+                        type="checkbox"
+                        checked={pendingValidationRows.length > 0 && pendingValidationRows.every((row) => selectedValidationIds.includes(row.id))}
+                        onChange={toggleAllPendingValidationRows}
+                        aria-label="Seleccionar todos los SCORMs pendientes de validación"
+                      />
+                    </th>
+                    {publishColumns.map((column) => (
+                      <th key={`validation-head-${column.key}`} className={`col-${column.key}`}>
+                        {column.label}
+                      </th>
+                    ))}
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingValidationRows.map((row) => (
+                    <tr key={`validation-row-${row.id}`}>
+                      <td className="col-selector">
+                        <input
+                          type="checkbox"
+                          checked={selectedValidationIds.includes(row.id)}
+                          onChange={() => toggleValidationSelection(row.id)}
+                          aria-label={`Seleccionar ${getInternationalizedCode(row)} para validación`}
+                        />
+                      </td>
+                      {publishColumns.map((column) => (
+                        <td key={`validation-${row.id}-${column.key}`} className={`col-${column.key}`}>
+                          {column.key === 'publication_date' ? (
+                            <span>{formatDateDDMMYYYY(getRowDateMs(row))}</span>
+                          ) : column.key === 'publication_update_type' ? (
+                            <span>Pendiente de validación</span>
+                          ) : column.key === 'scorm_url' ? (
+                            row[column.key] ? (
+                              <a href={getExternalUrl(row[column.key])} target="_blank" rel="noreferrer" className="table-link">
+                                Abrir enlace
+                              </a>
+                            ) : (
+                              <span className="muted">Sin URL</span>
+                            )
+                          ) : column.key === 'scorm_categoria' ? (
+                            <span className="category-chip" style={getCategoryColor(row[column.key])}>
+                              {row[column.key] || 'Sin categoría'}
+                            </span>
+                          ) : column.key === 'scorm_name' ? (
+                            <span>{getOfficialName(row)}</span>
+                          ) : column.key === 'scorm_code' ? (
+                            <span>{getInternationalizedCode(row)}</span>
+                          ) : (
+                            <span>{row[column.key] || '-'}</span>
+                          )}
+                        </td>
+                      ))}
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
+                            Detalles
+                          </button>
+                          <button
+                            type="button"
+                            className="publish-button action-button"
+                            disabled={!canMoveToPendingPublish}
+                            onClick={() => updateRowsStatus([row.id], 'Pendiente de publicar')}
+                          >
+                            VALIDAR SCORM
                           </button>
                         </div>
                       </td>
