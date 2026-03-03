@@ -2472,7 +2472,7 @@ export default function ScormsTable({ userSession }) {
             <input
               ref={importFileInputRef}
               type="file"
-              accept=".xls,.xml,.csv,.tsv,.txt"
+              accept=".xlsx,.xls,.xml,.csv,.tsv,.txt"
               style={{ display: 'none' }}
               onChange={handleExcelImport}
             />

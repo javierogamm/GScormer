@@ -1,3 +1,22 @@
+## v1.65.0 - Importación real de archivos XLSX para SCORMs
+
+### Cambios consolidados
+- Se corrige la importación de SCORMs para soportar **ficheros Excel reales `.xlsx`** (no solo formatos XML/CSV exportados).
+- Se implementa lectura nativa de `.xlsx` en cliente:
+  - apertura del contenedor ZIP del XLSX,
+  - resolución de la primera hoja del libro,
+  - lectura de `sharedStrings` y celdas de hoja,
+  - transformación de filas a cabeceras funcionales del negocio.
+- Se mantiene el mapeo de cabeceras a columnas de `scorms_master` con prioridad de `Categoría Corregida` sobre `Categoría`, normalización de `test` y generación de código/idioma desde `Código Final` cuando aplica.
+- Se actualiza el selector de carga para aceptar explícitamente `.xlsx` en la UI de importación.
+- Se actualiza versión visible de APP y `package.json` a `1.65.0`.
+
+### Versionado
+- Versión anterior: `1.64.0`
+- Nueva versión consolidada: `1.65.0`
+
+---
+
 ## v1.64.0 - Importación masiva de SCORMs desde Excel (cabeceras negocio)
 
 ### Cambios consolidados
