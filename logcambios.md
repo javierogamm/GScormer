@@ -1,3 +1,21 @@
+## v1.66.0 - Modal de confirmación previa para importación Excel SCORM
+
+### Cambios consolidados
+- Se modifica el flujo de importación de SCORMs desde Excel para que **no inserte directamente** al seleccionar el archivo.
+- Tras cargar el fichero, la APP abre un **modal de previsualización** con el listado de SCORMs candidatos a importar.
+- En el modal se muestran también contadores de filas omitidas por:
+  - duplicados (`Idioma + Código`),
+  - estados restringidos por permisos de usuario.
+- La inserción en `scorms_master` se realiza **solo al pulsar “Confirmar importación”** dentro del modal.
+- Se mantiene el mapeo de cabeceras y soporte de `.xlsx` implementado en consolidaciones previas.
+- Se actualiza versión visible de APP y `package.json` a `1.66.0`.
+
+### Versionado
+- Versión anterior: `1.65.0`
+- Nueva versión consolidada: `1.66.0`
+
+---
+
 ## v1.65.0 - Importación real de archivos XLSX para SCORMs
 
 ### Cambios consolidados
