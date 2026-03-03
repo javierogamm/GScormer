@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { APP_VERSION } from '../lib/appVersion';
 import { exportRowsToExcel } from '../lib/excelExport';
+import { getScormImportKey, parseScormExcelRows } from '../lib/scormExcelImport';
 
 const columns = [
   { key: 'scorm_idioma', label: 'Idioma', editable: true },
@@ -413,6 +414,13 @@ export default function ScormsTable({ userSession }) {
   const [testQuestionsModalRow, setTestQuestionsModalRow] = useState(null);
   const [testQuestionsDraft, setTestQuestionsDraft] = useState('');
   const [testQuestionsSubmitting, setTestQuestionsSubmitting] = useState(false);
+  const [importSubmitting, setImportSubmitting] = useState(false);
+  const [importPreviewRows, setImportPreviewRows] = useState([]);
+  const [importPreviewDuplicates, setImportPreviewDuplicates] = useState([]);
+  const [importPreviewRestrictedRows, setImportPreviewRestrictedRows] = useState([]);
+  const [importPreviewFileName, setImportPreviewFileName] = useState('');
+  const [importPreviewModalOpen, setImportPreviewModalOpen] = useState(false);
+  const importFileInputRef = useRef(null);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
   const canValidateScorms = userSession?.validador === true;
@@ -2012,6 +2020,118 @@ export default function ScormsTable({ userSession }) {
     setStatusMessage(`SCORM ${code} creado correctamente.`);
   };
 
+  const openExcelImport = () => {
+    importFileInputRef.current?.click();
+  };
+
+  const closeImportPreviewModal = () => {
+    if (importSubmitting) {
+      return;
+    }
+
+    setImportPreviewModalOpen(false);
+    setImportPreviewRows([]);
+    setImportPreviewDuplicates([]);
+    setImportPreviewRestrictedRows([]);
+    setImportPreviewFileName('');
+  };
+
+  const handleExcelImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setImportSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    try {
+      const parsedRows = await parseScormExcelRows(file);
+
+      if (parsedRows.length === 0) {
+        setError('No se detectaron filas válidas en el fichero. Revisa cabeceras y datos mínimos (Código SCORM y Nombre del SCORM).');
+        return;
+      }
+
+      const existingKeys = new Set(rows.map(getScormImportKey));
+      const uniqueRows = [];
+      const skippedDuplicates = [];
+      const restrictedStateRows = [];
+
+      parsedRows.forEach((row) => {
+        const key = getScormImportKey(row);
+        const normalizedState = String(row.scorm_estado || '').trim();
+        const blockedByAdminState = normalizedState === 'Publicado' && !canPublishAsAdmin;
+        const blockedByValidationState = normalizedState === 'Pendiente de publicar' && !canMoveToPendingPublish;
+
+        if (blockedByAdminState || blockedByValidationState) {
+          restrictedStateRows.push(`${row.scorm_idioma || 'SIN_IDIOMA'}-${row.scorm_code}`);
+          return;
+        }
+
+        if (existingKeys.has(key)) {
+          skippedDuplicates.push(`${row.scorm_idioma || 'SIN_IDIOMA'}-${row.scorm_code}`);
+          return;
+        }
+
+        existingKeys.add(key);
+        uniqueRows.push(row);
+      });
+
+      if (uniqueRows.length === 0) {
+        setError('No hay nuevos SCORMs para importar. Todos están duplicados o tienen estados restringidos por permisos.');
+        return;
+      }
+
+      setImportPreviewRows(uniqueRows);
+      setImportPreviewDuplicates(skippedDuplicates);
+      setImportPreviewRestrictedRows(restrictedStateRows);
+      setImportPreviewFileName(file.name || 'fichero');
+      setImportPreviewModalOpen(true);
+    } catch (importException) {
+      setError(`No se pudo leer el Excel: ${importException.message}`);
+    } finally {
+      event.target.value = '';
+      setImportSubmitting(false);
+    }
+  };
+
+  const confirmExcelImport = async () => {
+    if (importPreviewRows.length === 0) {
+      setError('No hay filas preparadas para importar.');
+      return;
+    }
+
+    setImportSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const { data, error: importError } = await supabase.from('scorms_master').insert(importPreviewRows).select('*');
+
+    if (importError) {
+      setImportSubmitting(false);
+      setError(`No se pudo completar la importación: ${importError.message}`);
+      return;
+    }
+
+    if (data?.length > 0) {
+      setRows((previous) => [...previous, ...data]);
+    }
+
+    const summary = [`Importación completada: ${data?.length || 0} SCORM(s) creados.`];
+    if (importPreviewDuplicates.length > 0) {
+      summary.push(`${importPreviewDuplicates.length} duplicado(s) omitidos.`);
+    }
+    if (importPreviewRestrictedRows.length > 0) {
+      summary.push(`${importPreviewRestrictedRows.length} fila(s) omitidas por estado restringido según permisos.`);
+    }
+
+    setStatusMessage(summary.join(' '));
+    setImportSubmitting(false);
+    closeImportPreviewModal();
+  };
+
   const publishScorm = async (row) => {
     if (!row?.id) {
       return;
@@ -2367,6 +2487,9 @@ export default function ScormsTable({ userSession }) {
               <button type="button" onClick={openCreateModal}>
                 Crear SCORM
               </button>
+              <button type="button" className="secondary" onClick={openExcelImport} disabled={importSubmitting}>
+                {importSubmitting ? 'Importando Excel...' : 'Importar SCORMs (Excel)'}
+              </button>
               <button
                 type="button"
                 className="secondary"
@@ -2382,6 +2505,14 @@ export default function ScormsTable({ userSession }) {
                 REHACER →
               </button>
             </div>
+
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.xml,.csv,.tsv,.txt"
+              style={{ display: 'none' }}
+              onChange={handleExcelImport}
+            />
 
           </div>
 
@@ -3289,6 +3420,82 @@ export default function ScormsTable({ userSession }) {
               </button>
               <button type="button" onClick={submitCreateTranslations} disabled={translationSubmitting}>
                 {translationSubmitting ? 'Creando...' : 'Crear traducciones'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+
+      {importPreviewModalOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div
+            className="modal-content modal-content-large"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="importar-excel-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="importar-excel-titulo">Confirmar importación de SCORMs</h3>
+                <p>
+                  Archivo: <strong>{importPreviewFileName}</strong> · {importPreviewRows.length} fila(s) lista(s) para importar
+                </p>
+              </div>
+              <button type="button" className="secondary" onClick={closeImportPreviewModal} disabled={importSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <div className="status-banner-group">
+              {importPreviewDuplicates.length > 0 && (
+                <p className="status">{importPreviewDuplicates.length} duplicado(s) detectado(s), no se importarán.</p>
+              )}
+              {importPreviewRestrictedRows.length > 0 && (
+                <p className="status">{importPreviewRestrictedRows.length} fila(s) con estado restringido por permisos, no se importarán.</p>
+              )}
+            </div>
+
+            <div className="table-wrapper details-table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Idioma</th>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Responsable</th>
+                    <th>Categoría</th>
+                    <th>Subcategoría</th>
+                    <th>Estado</th>
+                    <th>Test</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreviewRows.map((row, index) => (
+                    <tr key={`import-preview-${row.scorm_idioma || 'SIN_IDIOMA'}-${row.scorm_code}-${index}`}>
+                      <td>{row.scorm_idioma || '-'}</td>
+                      <td>{row.scorm_code || '-'}</td>
+                      <td>{row.scorm_name || '-'}</td>
+                      <td>{row.scorm_tipo || '-'}</td>
+                      <td>{row.scorm_responsable || '-'}</td>
+                      <td>{row.scorm_categoria || '-'}</td>
+                      <td>{row.scorm_subcategoria || '-'}</td>
+                      <td>{row.scorm_estado || '-'}</td>
+                      <td>{row.scorm_test || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={closeImportPreviewModal} disabled={importSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" onClick={confirmExcelImport} disabled={importSubmitting || importPreviewRows.length === 0}>
+                {importSubmitting ? 'Importando...' : 'Confirmar importación'}
               </button>
             </footer>
           </div>

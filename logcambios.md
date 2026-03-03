@@ -1,3 +1,66 @@
+## v1.66.0 - Modal de confirmación previa para importación Excel SCORM
+
+### Cambios consolidados
+- Se modifica el flujo de importación de SCORMs desde Excel para que **no inserte directamente** al seleccionar el archivo.
+- Tras cargar el fichero, la APP abre un **modal de previsualización** con el listado de SCORMs candidatos a importar.
+- En el modal se muestran también contadores de filas omitidas por:
+  - duplicados (`Idioma + Código`),
+  - estados restringidos por permisos de usuario.
+- La inserción en `scorms_master` se realiza **solo al pulsar “Confirmar importación”** dentro del modal.
+- Se mantiene el mapeo de cabeceras y soporte de `.xlsx` implementado en consolidaciones previas.
+- Se actualiza versión visible de APP y `package.json` a `1.66.0`.
+
+### Versionado
+- Versión anterior: `1.65.0`
+- Nueva versión consolidada: `1.66.0`
+
+---
+
+## v1.65.0 - Importación real de archivos XLSX para SCORMs
+
+### Cambios consolidados
+- Se corrige la importación de SCORMs para soportar **ficheros Excel reales `.xlsx`** (no solo formatos XML/CSV exportados).
+- Se implementa lectura nativa de `.xlsx` en cliente:
+  - apertura del contenedor ZIP del XLSX,
+  - resolución de la primera hoja del libro,
+  - lectura de `sharedStrings` y celdas de hoja,
+  - transformación de filas a cabeceras funcionales del negocio.
+- Se mantiene el mapeo de cabeceras a columnas de `scorms_master` con prioridad de `Categoría Corregida` sobre `Categoría`, normalización de `test` y generación de código/idioma desde `Código Final` cuando aplica.
+- Se actualiza el selector de carga para aceptar explícitamente `.xlsx` en la UI de importación.
+- Se actualiza versión visible de APP y `package.json` a `1.65.0`.
+
+### Versionado
+- Versión anterior: `1.64.0`
+- Nueva versión consolidada: `1.65.0`
+
+---
+
+## v1.64.0 - Importación masiva de SCORMs desde Excel (cabeceras negocio)
+
+### Cambios consolidados
+- Se incorpora la importación masiva de SCORMs desde fichero Excel compatible (XML Spreadsheet 2003) y ficheros delimitados exportados de Excel (`.csv`, `.tsv`, `.txt`).
+- Se añade botón **Importar SCORMs (Excel)** en la vista de tabla de SCORMs para cargar el fichero y crear registros en `scorms_master` en bloque.
+- Se implementa el mapeo automático de cabeceras de negocio a columnas de BDD:
+  - `Código Final` / `Código SCORM` -> `scorm_code` (con soporte de extracción desde código final).
+  - `Idioma` -> `scorm_idioma`.
+  - `Nombre del SCORM` -> `scorm_name`.
+  - `Tipo` -> `scorm_tipo`.
+  - `Responsable` -> `scorm_responsable`.
+  - `Categoría Corregida` (prioritaria) o `Categoría` -> `scorm_categoria`.
+  - `Subcategoría` -> `scorm_subcategoria`.
+  - `URL` -> `scorm_url`.
+  - `Observaciones` -> `scorm_observaciones`.
+  - `ESTADO` -> `scorm_estado`.
+  - `test` -> `scorm_test` (normalizando valores tipo Sí/No).
+- La importación evita duplicados por combinación `Idioma + Código`, valida filas mínimas y muestra resumen de importación (creados, duplicados omitidos y omitidos por permisos de estado).
+- Se actualiza versión visible de APP y `package.json` a `1.64.0`.
+
+### Versionado
+- Versión anterior: `1.63.0`
+- Nueva versión consolidada: `1.64.0`
+
+---
+
 ## v1.63.0 - Alta de cursos con selectores BDD, ordenación y asociación SCORM en detalle
 
 ### Cambios consolidados
