@@ -1,3 +1,17 @@
+## v1.69.6 - Visibilidad de Validación pendiente para usuarios no admin
+
+### Cambios consolidados
+- En **SCORMs** la bandeja **Validación pendiente** pasa a ser visible para cualquier usuario autenticado (`admin: false` incluido).
+- En **Cursos** la bandeja **Validación pendiente** también pasa a ser visible para cualquier usuario autenticado (`admin: false` incluido).
+- Se mantiene la restricción funcional: solo usuarios con `validador: true` pueden cambiar el estado a **Pendiente de publicar** (tanto en SCORMs como en Cursos).
+- Se actualiza versión visible de APP y `package.json` a `1.69.6`.
+
+### Versionado
+- Versión anterior: `1.69.5`
+- Nueva versión consolidada: `1.69.6`
+
+---
+
 ## v1.69.5 - Campos obligatorios al crear SCORM
 
 ### Cambios consolidados
