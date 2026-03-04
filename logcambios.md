@@ -1,3 +1,21 @@
+## v1.69.0 - Backend Supabase por API Routes y sesión firmada en servidor
+
+### Cambios consolidados
+- Se elimina el acceso directo a Supabase desde el frontend para operaciones de datos; ahora las consultas y mutaciones pasan por API Routes de Next.js.
+- Se crea `lib/supabaseAdmin.ts` para inicializar Supabase únicamente en backend con `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+- Se incorpora validación básica de sesión mediante cookie HTTP-only firmada (`gscormer_session`) y utilidades en `lib/session.ts`.
+- Se añade login/logout por backend (`/api/auth/login`, `/api/auth/logout`) manteniendo el flujo de autenticación de usuarios sin cambios funcionales en UI.
+- Se añade API Route de ejemplo `/api/documentos` con método GET y validación de sesión previa.
+- Se implementa un proxy backend `/api/db` para que el cliente use `fetch` y no exponga claves de Supabase.
+- Se actualiza configuración y documentación de entorno para usar exclusivamente variables backend (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`).
+- Se actualiza versión visible de APP y `package.json` a `1.69.0`.
+
+### Versionado
+- Versión anterior: `1.68.0`
+- Nueva versión consolidada: `1.69.0`
+
+---
+
 ## v1.68.0 - Subcategoría SCORM como selector BDD en alta y edición
 
 ### Cambios consolidados
