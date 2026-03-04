@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 import { readSessionToken, SESSION_COOKIE_NAME } from '../../../lib/session';
 
-export async function GET(request: Request) {
+export async function GET(request) {
   const sessionToken = request.headers
     .get('cookie')
     ?.split(';')
@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Sesión no válida.' }, { status: 401 });
   }
 
+  const supabaseAdmin = getSupabaseAdminClient();
   const { data, error } = await supabaseAdmin
     .from('documentos')
     .select('*')

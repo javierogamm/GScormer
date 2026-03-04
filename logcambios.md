@@ -1,3 +1,19 @@
+## v1.69.1 - Corrección de build en deploy y rutas backend en JavaScript
+
+### Cambios consolidados
+- Se corrige el error de deploy en Vercel causado por el uso de ficheros TypeScript (`.ts`) sin dependencias TS instaladas en el proyecto.
+- Se migran a JavaScript (`.js`) los nuevos módulos de seguridad/backend: `lib/supabaseAdmin`, `lib/session` y rutas API creadas en `app/api/*`.
+- Se elimina tipado TypeScript residual en `app/api/db` para evitar errores de compilación en `next build`.
+- Se ajusta `lib/supabaseAdmin` para inicializar el cliente de forma diferida (lazy) con `getSupabaseAdminClient()`, evitando que el build falle por variables de entorno no definidas durante la fase de compilación.
+- Se actualizan importaciones servidoras para usar el nuevo helper lazy de Supabase Admin.
+- Se actualiza versión visible de APP y `package.json` a `1.69.1`.
+
+### Versionado
+- Versión anterior: `1.69.0`
+- Nueva versión consolidada: `1.69.1`
+
+---
+
 ## v1.69.0 - Backend Supabase por API Routes y sesión firmada en servidor
 
 ### Cambios consolidados

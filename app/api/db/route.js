@@ -1,19 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 import { readSessionToken, SESSION_COOKIE_NAME } from '../../../lib/session';
 
-type QueryBody = {
-  table: string;
-  action: 'select' | 'insert' | 'update' | 'delete';
-  payload?: unknown;
-  select?: string;
-  filters?: { type: 'eq' | 'in'; column: string; value: unknown }[];
-  orders?: { column: string; ascending?: boolean }[];
-  limit?: number;
-  expect?: 'single' | 'maybeSingle';
-};
-
-export async function POST(request: Request) {
+export async function POST(request) {
   const cookieHeader = request.headers.get('cookie') || '';
   const sessionCookie = cookieHeader
     .split(';')
@@ -27,12 +16,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { message: 'Sesión no válida.' } }, { status: 401 });
   }
 
-  const body = (await request.json()) as QueryBody;
+  const body = await request.json();
   if (!body?.table || !body?.action) {
     return NextResponse.json({ error: { message: 'Petición incompleta.' } }, { status: 400 });
   }
 
-  let query: any = supabaseAdmin.from(body.table);
+  const supabaseAdmin = getSupabaseAdminClient();
+  let query = supabaseAdmin.from(body.table);
 
   if (body.action === 'select') {
     query = query.select(body.select || '*');

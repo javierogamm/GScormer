@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { getSupabaseAdminClient } from '../../../../lib/supabaseAdmin';
 import { createSessionToken, SESSION_COOKIE_NAME } from '../../../../lib/session';
 
-const isFlagEnabled = (value: unknown) => {
+const isFlagEnabled = (value) => {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value === 1;
   const normalized = String(value || '').trim().toLowerCase();
   return ['true', 't', '1', 'yes', 'si', 'sí'].includes(normalized);
 };
 
-export async function POST(request: Request) {
+export async function POST(request) {
   const { name, pass } = await request.json();
 
   const trimmedName = String(name || '').trim();
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Usuario y contraseña son obligatorios.' }, { status: 400 });
   }
 
+  const supabaseAdmin = getSupabaseAdminClient();
   const response = await supabaseAdmin
     .from('scorms_users')
     .select('*')
