@@ -1,17 +1,3 @@
-## v1.69.5 - Bandeja de validación visible para usuarios no admin
-
-### Cambios consolidados
-- En SCORMs se habilita la visibilidad de la vista **Validación pendiente** para cualquier usuario autenticado, incluyendo perfiles con `admin: false`.
-- En cursos se habilita la visibilidad de la vista **Validación pendiente** para cualquier usuario autenticado, incluyendo perfiles con `admin: false`.
-- Se mantienen las restricciones de permisos: solo usuarios con `validador: true` pueden mover elementos a **Pendiente de publicar** (individual y selección múltiple).
-- Se actualiza versión visible de APP y `package.json` a `1.69.5`.
-
-### Versionado
-- Versión anterior: `1.69.4`
-- Nueva versión consolidada: `1.69.5`
-
----
-
 ## v1.69.4 - Bandeja de publicación visible para usuarios no admin
 
 ### Cambios consolidados
