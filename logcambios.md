@@ -1,3 +1,18 @@
+## v1.69.4 - Bandeja de publicación visible para usuarios no admin
+
+### Cambios consolidados
+- En SCORMs se habilita la visibilidad de la vista **Publicación pendiente** para usuarios autenticados con `admin: false`.
+- Los usuarios no admin pueden consultar la bandeja de pendientes de publicar, aplicar presets y abrir detalles.
+- Se bloquean en esa bandeja todas las acciones que cambian estado a **Publicado** para usuarios no admin (publicación individual, selección múltiple y checks de selección).
+- Se muestra un aviso explícito en la vista para indicar que solo `ADMIN` puede publicar.
+- Se actualiza versión visible de APP y `package.json` a `1.69.4`.
+
+### Versionado
+- Versión anterior: `1.69.3`
+- Nueva versión consolidada: `1.69.4`
+
+---
+
 ## v1.69.3 - Compatibilidad de clave backend sin romper login existente
 
 ### Cambios consolidados
