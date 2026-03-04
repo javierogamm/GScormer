@@ -1,3 +1,18 @@
+## v1.69.2 - Fix de login: manejo robusto de errores API y compatibilidad de URL Supabase
+
+### Cambios consolidados
+- Se corrige el fallo de login cuando `/api/auth/login` devolvía 500 sin cuerpo JSON parseable en frontend.
+- `app/page.js` ahora maneja de forma segura respuestas no-JSON del login, evitando el error `Unexpected end of JSON input` en consola.
+- `app/api/auth/login` se protege con `try/catch` y garantiza respuesta JSON también en errores internos, facilitando diagnóstico en UI.
+- `lib/supabaseAdmin` admite `NEXT_PUBLIC_SUPABASE_URL` como fallback de URL (solo URL pública), manteniendo `SUPABASE_SERVICE_ROLE_KEY` exclusivamente en backend.
+- Se actualiza versión visible de APP y `package.json` a `1.69.2`.
+
+### Versionado
+- Versión anterior: `1.69.1`
+- Nueva versión consolidada: `1.69.2`
+
+---
+
 ## v1.69.1 - Corrección de build en deploy y rutas backend en JavaScript
 
 ### Cambios consolidados

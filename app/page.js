@@ -153,10 +153,15 @@ export default function HomePage() {
       body: JSON.stringify({ name: trimmedName, pass: trimmedPass }),
     });
 
-    const loginJson = await loginResponse.json();
+    let loginJson = null;
+    try {
+      loginJson = await loginResponse.json();
+    } catch (_error) {
+      loginJson = null;
+    }
 
     if (!loginResponse.ok || !loginJson?.user) {
-      setLoginError(loginJson?.error || 'Credenciales no válidas.');
+      setLoginError(loginJson?.error || 'No se pudo iniciar sesión. Revisa configuración del backend.');
       setLoginLoading(false);
       return;
     }
