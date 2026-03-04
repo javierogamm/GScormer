@@ -1,3 +1,16 @@
+## v1.68.0 - Subcategoría SCORM como selector BDD en alta y edición
+
+### Cambios consolidados
+- En la gestión de **SCORMs**, el campo **Subcategoría** se mantiene como selector en los formularios de **creación** y **edición de detalle**, mostrando valores existentes de BDD.
+- Se ajusta el comportamiento del selector para `scorm_subcategoria` para que utilice únicamente opciones provenientes de datos existentes, sin alta manual desde el propio desplegable.
+- Se actualiza versión visible de APP y `package.json` a `1.68.0`.
+
+### Versionado
+- Versión anterior: `1.67.0`
+- Nueva versión consolidada: `1.68.0`
+
+---
+
 ## v1.67.0 - Persistencia del panel de filtros sin resultados
 
 ### Cambios consolidados
