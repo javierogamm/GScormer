@@ -11,8 +11,10 @@ Aplicación base para gestionar SCORMs con Next.js + Supabase, preparada para de
 
 1. Copia `.env.example` a `.env.local`.
 2. Configura estas variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SESSION_SECRET`
+   - *(Compatibilidad temporal, opcional)* `SUPABASE_ANON_KEY` solo en backend si aún no configuraste la service role
 
 ## Desarrollo
 
@@ -34,8 +36,11 @@ npm run start
 - Build command: `npm run build`
 - Output: `.next`
 - Variables de entorno recomendadas:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Compatibilidad adicional: si en Vercel solo defines `SUPABASE_URL` y `SUPABASE_ANON_KEY`, `next.config.mjs` las mapea automáticamente a `NEXT_PUBLIC_*` durante el build.
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SESSION_SECRET`
+- Compatibilidad temporal:
+  - `SUPABASE_ANON_KEY` (solo backend) si todavía no has cargado `SUPABASE_SERVICE_ROLE_KEY`.
+- Seguridad: no expongas `SUPABASE_SERVICE_ROLE_KEY` en variables `NEXT_PUBLIC_*` ni en código cliente.
 
 La aplicación carga por defecto una vista tabla editable para todos los registros de `scorms_master`.

@@ -146,29 +146,35 @@ export default function HomePage() {
     setLoginLoading(true);
     setLoginError('');
 
-    const response = await supabase
-      .from('scorms_users')
-      .select('*')
-      .eq('name', trimmedName)
-      .eq('pass', trimmedPass)
-      .limit(1)
-      .maybeSingle();
+    const loginResponse = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name: trimmedName, pass: trimmedPass }),
+    });
 
-    if (response.error || !response.data) {
-      setLoginError('Credenciales no válidas.');
+    let loginJson = null;
+    try {
+      loginJson = await loginResponse.json();
+    } catch (_error) {
+      loginJson = null;
+    }
+
+    if (!loginResponse.ok || !loginJson?.user) {
+      setLoginError(loginJson?.error || 'No se pudo iniciar sesión. Revisa configuración del backend.');
       setLoginLoading(false);
       return;
     }
 
-    const agentRawValue = String(response.data.agent || response.data.agente || '').trim();
+    const agentRawValue = String(loginJson.user.agent || loginJson.user.agente || '').trim();
     const parsedConfig = parseAgentConfig(agentRawValue);
 
     const nextSession = {
-      id: response.data.id,
-      name: response.data.name,
-      admin: isAdminFlagEnabled(response.data.admin),
-      alertador: isAlertadorFlagEnabled(response.data.alertador),
-      validador: isValidadorFlagEnabled(response.data.validador),
+      id: loginJson.user.id,
+      name: loginJson.user.name,
+      admin: isAdminFlagEnabled(loginJson.user.admin),
+      alertador: isAlertadorFlagEnabled(loginJson.user.alertador),
+      validador: isValidadorFlagEnabled(loginJson.user.validador),
       agent: agentRawValue,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
@@ -212,9 +218,9 @@ export default function HomePage() {
     const nextSession = {
       ...userSession,
       name: response.data.name || userSession.name,
-      admin: isAdminFlagEnabled(response.data.admin),
-      alertador: isAlertadorFlagEnabled(response.data.alertador),
-      validador: isValidadorFlagEnabled(response.data.validador),
+      admin: isAdminFlagEnabled(loginJson.user.admin),
+      alertador: isAlertadorFlagEnabled(loginJson.user.alertador),
+      validador: isValidadorFlagEnabled(loginJson.user.validador),
       agent: linkedAgent,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
@@ -304,7 +310,7 @@ export default function HomePage() {
     setAgentSaveLoading(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setUserSession(null);
     setPasswordModalOpen(false);
     setAgentModalOpen(false);
@@ -315,6 +321,7 @@ export default function HomePage() {
     setSelectedResponsables([]);
     setSelectedInstructores([]);
     globalThis?.localStorage?.removeItem(SESSION_STORAGE_KEY);
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   };
 
   const handleChangePassword = async (event) => {

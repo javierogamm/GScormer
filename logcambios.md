@@ -1,3 +1,67 @@
+## v1.69.3 - Compatibilidad de clave backend sin romper login existente
+
+### Cambios consolidados
+- Se corrige el bloqueo de login por falta de `SUPABASE_SERVICE_ROLE_KEY` en entornos donde aún no estaba configurada.
+- `lib/supabaseAdmin` mantiene prioridad de `SUPABASE_SERVICE_ROLE_KEY`, pero añade fallback backend a `SUPABASE_ANON_KEY` para preservar la lógica de login anterior mientras se migra la configuración.
+- Se mantiene la nueva arquitectura segura (frontend sin acceso directo a Supabase), sin cambios en la lógica funcional de autenticación del usuario.
+- Se actualizan `.env.example` y `README.md` para documentar claramente el modo recomendado y el fallback temporal de compatibilidad.
+- Se actualiza versión visible de APP y `package.json` a `1.69.3`.
+
+### Versionado
+- Versión anterior: `1.69.2`
+- Nueva versión consolidada: `1.69.3`
+
+---
+
+## v1.69.2 - Fix de login: manejo robusto de errores API y compatibilidad de URL Supabase
+
+### Cambios consolidados
+- Se corrige el fallo de login cuando `/api/auth/login` devolvía 500 sin cuerpo JSON parseable en frontend.
+- `app/page.js` ahora maneja de forma segura respuestas no-JSON del login, evitando el error `Unexpected end of JSON input` en consola.
+- `app/api/auth/login` se protege con `try/catch` y garantiza respuesta JSON también en errores internos, facilitando diagnóstico en UI.
+- `lib/supabaseAdmin` admite `NEXT_PUBLIC_SUPABASE_URL` como fallback de URL (solo URL pública), manteniendo `SUPABASE_SERVICE_ROLE_KEY` exclusivamente en backend.
+- Se actualiza versión visible de APP y `package.json` a `1.69.2`.
+
+### Versionado
+- Versión anterior: `1.69.1`
+- Nueva versión consolidada: `1.69.2`
+
+---
+
+## v1.69.1 - Corrección de build en deploy y rutas backend en JavaScript
+
+### Cambios consolidados
+- Se corrige el error de deploy en Vercel causado por el uso de ficheros TypeScript (`.ts`) sin dependencias TS instaladas en el proyecto.
+- Se migran a JavaScript (`.js`) los nuevos módulos de seguridad/backend: `lib/supabaseAdmin`, `lib/session` y rutas API creadas en `app/api/*`.
+- Se elimina tipado TypeScript residual en `app/api/db` para evitar errores de compilación en `next build`.
+- Se ajusta `lib/supabaseAdmin` para inicializar el cliente de forma diferida (lazy) con `getSupabaseAdminClient()`, evitando que el build falle por variables de entorno no definidas durante la fase de compilación.
+- Se actualizan importaciones servidoras para usar el nuevo helper lazy de Supabase Admin.
+- Se actualiza versión visible de APP y `package.json` a `1.69.1`.
+
+### Versionado
+- Versión anterior: `1.69.0`
+- Nueva versión consolidada: `1.69.1`
+
+---
+
+## v1.69.0 - Backend Supabase por API Routes y sesión firmada en servidor
+
+### Cambios consolidados
+- Se elimina el acceso directo a Supabase desde el frontend para operaciones de datos; ahora las consultas y mutaciones pasan por API Routes de Next.js.
+- Se crea `lib/supabaseAdmin.ts` para inicializar Supabase únicamente en backend con `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+- Se incorpora validación básica de sesión mediante cookie HTTP-only firmada (`gscormer_session`) y utilidades en `lib/session.ts`.
+- Se añade login/logout por backend (`/api/auth/login`, `/api/auth/logout`) manteniendo el flujo de autenticación de usuarios sin cambios funcionales en UI.
+- Se añade API Route de ejemplo `/api/documentos` con método GET y validación de sesión previa.
+- Se implementa un proxy backend `/api/db` para que el cliente use `fetch` y no exponga claves de Supabase.
+- Se actualiza configuración y documentación de entorno para usar exclusivamente variables backend (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`).
+- Se actualiza versión visible de APP y `package.json` a `1.69.0`.
+
+### Versionado
+- Versión anterior: `1.68.0`
+- Nueva versión consolidada: `1.69.0`
+
+---
+
 ## v1.68.0 - Subcategoría SCORM como selector BDD en alta y edición
 
 ### Cambios consolidados
