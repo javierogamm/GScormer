@@ -1,3 +1,16 @@
+## v1.67.0 - Persistencia del panel de filtros sin resultados
+
+### Cambios consolidados
+- Se corrige un bug en la vista de **SCORMs** donde el panel global de filtros desaparecía cuando una combinación de filtros devolvía 0 resultados.
+- El panel de filtros ahora permanece visible mientras la vista no esté cargando datos, permitiendo ajustar o limpiar filtros sin perder acceso al panel.
+- Se actualiza versión visible de APP y `package.json` a `1.67.0`.
+
+### Versionado
+- Versión anterior: `1.66.0`
+- Nueva versión consolidada: `1.67.0`
+
+---
+
 ## v1.66.0 - Modal de confirmación previa para importación Excel SCORM
 
 ### Cambios consolidados
