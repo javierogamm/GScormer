@@ -34,6 +34,7 @@ const FILTER_LABELS = {
 
 const SCORM_SELECTOR_FIELDS = ['scorm_responsable', 'scorm_tipo', 'scorm_categoria', 'scorm_subcategoria', 'scorm_estado', 'scorm_test'];
 const NEW_SELECTOR_OPTION_VALUE = '__new_option__';
+const ALLOW_NEW_SELECTOR_FIELDS = SCORM_SELECTOR_FIELDS.filter((fieldKey) => fieldKey !== 'scorm_subcategoria');
 
 const publishColumns = [
   ...columns.filter((column) => !['scorm_subcategoria', 'scorm_etiquetas'].includes(column.key)),
@@ -3552,7 +3553,9 @@ export default function ScormsTable({ userSession }) {
                                 {optionValue}
                               </option>
                             ))}
-                            <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                            {ALLOW_NEW_SELECTOR_FIELDS.includes(column.key) ? (
+                              <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                            ) : null}
                           </select>
                         ) : (
                           <input
@@ -3788,7 +3791,9 @@ export default function ScormsTable({ userSession }) {
                           {optionValue}
                         </option>
                       ))}
-                      <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                      {ALLOW_NEW_SELECTOR_FIELDS.includes(column.key) ? (
+                        <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                      ) : null}
                     </select>
                   ) : (
                     <input
