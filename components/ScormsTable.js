@@ -35,6 +35,7 @@ const FILTER_LABELS = {
 const SCORM_SELECTOR_FIELDS = ['scorm_responsable', 'scorm_tipo', 'scorm_categoria', 'scorm_subcategoria', 'scorm_estado', 'scorm_test'];
 const NEW_SELECTOR_OPTION_VALUE = '__new_option__';
 const ALLOW_NEW_SELECTOR_FIELDS = SCORM_SELECTOR_FIELDS.filter((fieldKey) => fieldKey !== 'scorm_subcategoria');
+const REQUIRED_CREATE_FIELDS = ['scorm_name', 'scorm_url', 'scorm_test'];
 
 const publishColumns = [
   ...columns.filter((column) => !['scorm_subcategoria', 'scorm_etiquetas'].includes(column.key)),
@@ -1969,9 +1970,11 @@ export default function ScormsTable({ userSession }) {
 
     const code = String(createDraft.scorm_code || '').trim().toUpperCase();
     const name = String(createDraft.scorm_name || '').trim();
+    const url = String(createDraft.scorm_url || '').trim();
+    const test = String(createDraft.scorm_test || '').trim();
 
-    if (!code || !name) {
-      setError('Para crear el SCORM debes informar, como mínimo, Código y Nombre.');
+    if (!code || !name || !url || !test) {
+      setError('Para crear el SCORM debes informar, como mínimo, Código, Nombre, URL y Test.');
       return;
     }
 
@@ -3790,11 +3793,15 @@ export default function ScormsTable({ userSession }) {
             <div className="details-grid">
               {columns.filter((column) => column.editable).map((column) => (
                 <label key={`create-${column.key}`}>
-                  <span>{column.label}</span>
+                  <span>
+                    {column.label}
+                    {REQUIRED_CREATE_FIELDS.includes(column.key) ? ' (obligatorio)' : ''}
+                  </span>
                   {SCORM_SELECTOR_FIELDS.includes(column.key) ? (
                     <select
                       value={createDraft[column.key] || ''}
                       onChange={(event) => handleSelectorFieldChange('create', column.key, event.target.value)}
+                      required={REQUIRED_CREATE_FIELDS.includes(column.key)}
                     >
                       <option value="">Selecciona una opción</option>
                       {(selectorOptionsByField[column.key] || []).map((optionValue) => (
@@ -3811,6 +3818,7 @@ export default function ScormsTable({ userSession }) {
                       type="text"
                       value={createDraft[column.key] || ''}
                       onChange={(event) => updateCreateDraft(column.key, event.target.value)}
+                      required={REQUIRED_CREATE_FIELDS.includes(column.key)}
                     />
                   )}
                 </label>
