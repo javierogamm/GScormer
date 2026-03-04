@@ -1,3 +1,17 @@
+## v1.69.5 - Campos obligatorios al crear SCORM
+
+### Cambios consolidados
+- En el alta de SCORM ahora son obligatorios los campos **Nombre**, **URL** y **Test**.
+- Se refuerza la validación de creación para impedir el guardado si falta alguno de esos campos (además de Código).
+- En el modal de creación se marca visualmente **(obligatorio)** en Nombre, URL y Test.
+- Se actualiza versión visible de APP y `package.json` a `1.69.5`.
+
+### Versionado
+- Versión anterior: `1.69.4`
+- Nueva versión consolidada: `1.69.5`
+
+---
+
 ## v1.69.4 - Bandeja de publicación visible para usuarios no admin
 
 ### Cambios consolidados
