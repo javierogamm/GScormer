@@ -14,6 +14,7 @@ Aplicación base para gestionar SCORMs con Next.js + Supabase, preparada para de
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SESSION_SECRET`
+   - *(Compatibilidad temporal, opcional)* `SUPABASE_ANON_KEY` solo en backend si aún no configuraste la service role
 
 ## Desarrollo
 
@@ -38,6 +39,8 @@ npm run start
   - `SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `SESSION_SECRET`
+- Compatibilidad temporal:
+  - `SUPABASE_ANON_KEY` (solo backend) si todavía no has cargado `SUPABASE_SERVICE_ROLE_KEY`.
 - Seguridad: no expongas `SUPABASE_SERVICE_ROLE_KEY` en variables `NEXT_PUBLIC_*` ni en código cliente.
 
 La aplicación carga por defecto una vista tabla editable para todos los registros de `scorms_master`.

@@ -1,3 +1,18 @@
+## v1.69.3 - Compatibilidad de clave backend sin romper login existente
+
+### Cambios consolidados
+- Se corrige el bloqueo de login por falta de `SUPABASE_SERVICE_ROLE_KEY` en entornos donde aún no estaba configurada.
+- `lib/supabaseAdmin` mantiene prioridad de `SUPABASE_SERVICE_ROLE_KEY`, pero añade fallback backend a `SUPABASE_ANON_KEY` para preservar la lógica de login anterior mientras se migra la configuración.
+- Se mantiene la nueva arquitectura segura (frontend sin acceso directo a Supabase), sin cambios en la lógica funcional de autenticación del usuario.
+- Se actualizan `.env.example` y `README.md` para documentar claramente el modo recomendado y el fallback temporal de compatibilidad.
+- Se actualiza versión visible de APP y `package.json` a `1.69.3`.
+
+### Versionado
+- Versión anterior: `1.69.2`
+- Nueva versión consolidada: `1.69.3`
+
+---
+
 ## v1.69.2 - Fix de login: manejo robusto de errores API y compatibilidad de URL Supabase
 
 ### Cambios consolidados
