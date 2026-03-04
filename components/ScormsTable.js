@@ -424,6 +424,7 @@ export default function ScormsTable({ userSession }) {
   const importFileInputRef = useRef(null);
   const scopedResponsibleAgents = userSession?.agentFilters?.responsables || [];
   const canPublishAsAdmin = userSession?.admin === true;
+  const canAccessPublishView = Boolean(userSession);
   const canValidateScorms = userSession?.validador === true;
   const canAccessValidationView = canPublishAsAdmin || canValidateScorms;
   const canMoveToPendingPublish = canValidateScorms;
@@ -2295,7 +2296,7 @@ export default function ScormsTable({ userSession }) {
           <button type="button" className="secondary" onClick={() => setViewMode('status')} disabled={viewMode === 'status'}>
             Vista por estado
           </button>
-          {canPublishAsAdmin && (
+          {canAccessPublishView && (
             <button
               type="button"
               className={`secondary ${hasItemsPendingPublication ? 'pending-highlight' : ''}`}
@@ -2906,8 +2907,11 @@ export default function ScormsTable({ userSession }) {
         </section>
       )}
 
-      {!loading && canPublishAsAdmin && viewMode === 'publish' && (
+      {!loading && canAccessPublishView && viewMode === 'publish' && (
         <section className="publish-view">
+          {!canPublishAsAdmin ? (
+            <p className="status">Puedes ver esta bandeja, pero solo ADMIN puede cambiar el estado a "Publicado".</p>
+          ) : null}
           <div className="translation-presets">
             <button
               type="button"
@@ -2954,7 +2958,7 @@ export default function ScormsTable({ userSession }) {
             <button type="button" className="secondary" disabled={redoHistory.length === 0} onClick={handleRedo}>
               REHACER →
             </button>
-            <button type="button" onClick={publishSelectedScorms} disabled={selectedPublishIds.length === 0}>
+            <button type="button" onClick={publishSelectedScorms} disabled={!canPublishAsAdmin || selectedPublishIds.length === 0}>
               Publicar selección ({selectedPublishIds.length})
             </button>
           </div>
@@ -2971,6 +2975,7 @@ export default function ScormsTable({ userSession }) {
                         type="checkbox"
                         checked={publicationRows.length > 0 && publicationRows.every((row) => selectedPublishIds.includes(row.id))}
                         onChange={toggleAllPendingPublishRows}
+                        disabled={!canPublishAsAdmin}
                         aria-label="Seleccionar todos los SCORMs pendientes de publicación"
                       />
                     </th>
@@ -2996,6 +3001,7 @@ export default function ScormsTable({ userSession }) {
                           type="checkbox"
                           checked={selectedPublishIds.includes(row.id)}
                           onChange={() => togglePublishSelection(row.id)}
+                          disabled={!canPublishAsAdmin}
                           aria-label={`Seleccionar ${getInternationalizedCode(row)} para publicación`}
                         />
                       </td>
@@ -3031,7 +3037,12 @@ export default function ScormsTable({ userSession }) {
                           <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
                             Detalles
                           </button>
-                          <button type="button" className="publish-button action-button" onClick={() => publishScorm(row)}>
+                          <button
+                            type="button"
+                            className="publish-button action-button"
+                            onClick={() => publishScorm(row)}
+                            disabled={!canPublishAsAdmin}
+                          >
                             PUBLICAR SCORM
                           </button>
                         </div>
