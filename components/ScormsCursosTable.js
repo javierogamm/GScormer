@@ -233,7 +233,7 @@ export default function ScormsCursosTable({ userSession }) {
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
-  const canAccessValidationView = userSession?.admin === true || canValidateCourses;
+  const canAccessValidationView = Boolean(userSession);
   const canCreateManagedValues = userSession?.admin === true;
 
   const getDefaultCreateDraft = useCallback(
