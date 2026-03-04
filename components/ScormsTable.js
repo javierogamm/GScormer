@@ -2371,7 +2371,7 @@ export default function ScormsTable({ userSession }) {
         <p className="status">No hay registros que coincidan con los filtros actuales.</p>
       )}
 
-      {!loading && canRenderTable && (
+      {!loading && (
         <section className="table-filters-toggle global-filters-toggle">
           <div
             className="filter-panel-title filter-panel-title-interactive"
