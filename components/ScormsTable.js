@@ -426,7 +426,7 @@ export default function ScormsTable({ userSession }) {
   const canPublishAsAdmin = userSession?.admin === true;
   const canAccessPublishView = Boolean(userSession);
   const canValidateScorms = userSession?.validador === true;
-  const canAccessValidationView = Boolean(userSession);
+  const canAccessValidationView = canPublishAsAdmin || canValidateScorms;
   const canMoveToPendingPublish = canValidateScorms;
   const canDeleteAsAdmin = userSession?.admin === true;
   const canGenerateAlerts = userSession?.alertador === true;
