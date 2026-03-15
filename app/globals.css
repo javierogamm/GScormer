@@ -406,6 +406,31 @@ select {
   height: 16px;
 }
 
+.pa-status-button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pa-status-button.ok {
+  background: #e6f8ef;
+  border-color: #b9e7d0;
+  color: #167147;
+}
+
+.pa-status-button.error {
+  background: #ffe9e9;
+  border-color: #f2b7b7;
+  color: #ad2020;
+}
+
+.pa-status-button:hover {
+  opacity: 0.88;
+}
+
 .table-filters-toggle summary {
   list-style: none;
   padding: 0.7rem;

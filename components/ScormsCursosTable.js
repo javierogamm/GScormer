@@ -87,6 +87,8 @@ const TIPOLOGY_VISIBILITY_OPTIONS = [
   { key: 'GENERAL', label: 'Tipología GENERAL' },
 ];
 
+const SELECT_FILTER_PRIORITY = ['curso_estado', 'tipologia', 'curso_instructor', 'materia', 'categoria'];
+
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
 
@@ -113,6 +115,24 @@ const rowIsPlanChild = (row) => {
 };
 
 const rowIsTranslationChild = (row) => normalizeText(row.relacion_tipo) === 'TRADUCCION';
+
+const resolveTipologyGroup = (tipologia) => {
+  const normalized = normalizeTipologia(tipologia);
+
+  if (normalized.includes('ESPUBLICO')) {
+    return 'ESPUBLICO';
+  }
+
+  if (normalized.includes('CERTIFICACION')) {
+    return 'CERTIFICACION';
+  }
+
+  if (normalized.includes('USO INTERNO') || normalized.includes('INTERNO')) {
+    return 'INTERNO';
+  }
+
+  return 'GENERAL';
+};
 
 const isUrl = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -260,6 +280,7 @@ export default function ScormsCursosTable({ userSession }) {
     INTERNO: true,
     GENERAL: true,
   });
+  const [paDetailsModalRow, setPaDetailsModalRow] = useState(null);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
@@ -346,13 +367,28 @@ export default function ScormsCursosTable({ userSession }) {
   }, [detailModalRow]);
 
   const prioritizedFilterColumns = useMemo(() => {
+    const prioritizedSelectorColumns = SELECT_FILTER_PRIORITY
+      .map((key) => columns.find((column) => column.key === key))
+      .filter(Boolean);
     const highlightedKeys = ['curso_codigo', 'curso_nombre'];
     const highlighted = highlightedKeys
       .map((key) => columns.find((column) => column.key === key))
       .filter(Boolean);
-    const rest = columns.filter((column) => !highlightedKeys.includes(column.key));
-    return [...highlighted, { key: '__scorms__', label: 'SCORMS' }, ...rest];
+    const hiddenSet = new Set([...SELECT_FILTER_PRIORITY, ...highlightedKeys]);
+    const rest = columns.filter((column) => !hiddenSet.has(column.key));
+    return [...prioritizedSelectorColumns, ...highlighted, { key: '__scorms__', label: 'SCORMS' }, ...rest];
   }, []);
+
+  const selectorFilterOptions = useMemo(() => {
+    return SELECT_FILTER_PRIORITY.reduce((acc, key) => {
+      acc[key] = rows
+        .map((row) => String(row[key] || '').trim())
+        .filter(Boolean)
+        .filter((value, index, array) => array.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index)
+        .sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' }));
+      return acc;
+    }, {});
+  }, [rows]);
 
   const scormsByCode = useMemo(() => {
     return masterRows.reduce((acc, row) => {
@@ -458,12 +494,8 @@ export default function ScormsCursosTable({ userSession }) {
     const visibleRows = filteredRows
       .filter((row) => !rowIsPlanChild(row) && !rowIsTranslationChild(row))
       .filter((row) => {
-        const normalizedTipologia = normalizeTipologia(row.tipologia);
-        if (!Object.prototype.hasOwnProperty.call(tipologyVisibility, normalizedTipologia)) {
-          return true;
-        }
-
-        return tipologyVisibility[normalizedTipologia] === true;
+        const tipologyGroup = resolveTipologyGroup(row.tipologia);
+        return tipologyVisibility[tipologyGroup] === true;
       })
       .map((row) => {
         const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
@@ -471,7 +503,7 @@ export default function ScormsCursosTable({ userSession }) {
 
         return {
           ...row,
-          pa_nombre: `PA ${paCount > 0 ? '✓' : '✕'} (${paCount})`,
+          pa_nombre: `${paCount > 0 ? '✓' : '✕'} (${paCount})`,
         };
       });
 
@@ -1352,6 +1384,47 @@ export default function ScormsCursosTable({ userSession }) {
     }));
   };
 
+  const openPaDetailsModal = (row) => {
+    const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
+
+    const paRows = rows.filter((candidate) => {
+      const candidateUniqueId = String(candidate.IDUnico ?? candidate.idunico ?? candidate.id_unico ?? '').trim();
+      return candidateUniqueId === uniqueId && rowIsPlanChild(candidate);
+    });
+
+    const groupedPa = paRows.reduce((acc, paRow) => {
+      const key = String(paRow.pa_codigo || paRow.pa_nombre || '').trim();
+      if (!key) {
+        return acc;
+      }
+
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          paCodigo: String(paRow.pa_codigo || '-').trim() || '-',
+          paNombre: String(paRow.pa_nombre || '-').trim() || '-',
+          paUrl: String(paRow.pa_url || '').trim(),
+        };
+      }
+
+      if (!acc[key].paUrl) {
+        acc[key].paUrl = String(paRow.pa_url || '').trim();
+      }
+
+      return acc;
+    }, {});
+
+    setPaDetailsModalRow({
+      cursoNombre: String(row.curso_nombre || row.curso_codigo || '-'),
+      uniqueId,
+      paGroups: Object.values(groupedPa).sort((left, right) => {
+        const leftLabel = `${left.paCodigo} ${left.paNombre}`;
+        const rightLabel = `${right.paCodigo} ${right.paNombre}`;
+        return leftLabel.localeCompare(rightLabel, 'es', { sensitivity: 'base' });
+      }),
+    });
+  };
+
   const removeFilter = (columnKey, valueToRemove) => {
     setFilters((previous) => {
       const nextValues = (previous[columnKey] || []).filter((value) => value !== valueToRemove);
@@ -1570,18 +1643,29 @@ export default function ScormsCursosTable({ userSession }) {
                 </div>
                 <div className="filter-dropdown-content">
                   <div className="filter-controls">
-                    <input
-                      type="text"
-                      value={filterInputs[column.key] || ''}
-                      onChange={(event) => handleFilterInputChange(column.key, event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addFilter(column.key);
-                        }
-                      }}
-                      placeholder={`Añadir filtro en ${column.label}`}
-                    />
+                    {SELECT_FILTER_PRIORITY.includes(column.key) ? (
+                      <select value={filterInputs[column.key] || ''} onChange={(event) => handleFilterInputChange(column.key, event.target.value)}>
+                        <option value="">Selecciona...</option>
+                        {(selectorFilterOptions[column.key] || []).map((option) => (
+                          <option key={`filter-option-${column.key}-${option}`} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={filterInputs[column.key] || ''}
+                        onChange={(event) => handleFilterInputChange(column.key, event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            addFilter(column.key);
+                          }
+                        }}
+                        placeholder={`Añadir filtro en ${column.label}`}
+                      />
+                    )}
                     <button type="button" className="secondary" onClick={() => addFilter(column.key)}>
                       Añadir
                     </button>
@@ -1689,7 +1773,18 @@ export default function ScormsCursosTable({ userSession }) {
                             }}
                             title={isPaSummaryColumn ? '' : 'Click para filtrar por este valor'}
                           >
-                            {columnKey === 'curso_url' && isUrl(value) ? (
+                            {columnKey === 'pa_nombre' ? (
+                              <button
+                                type="button"
+                                className={`pa-status-button ${String(value || '').trim().startsWith('✓') ? 'ok' : 'error'}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openPaDetailsModal(row);
+                                }}
+                              >
+                                {String(value || '-')}
+                              </button>
+                            ) : columnKey === 'curso_url' && isUrl(value) ? (
                               <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                                 LINK
                               </a>
@@ -2690,6 +2785,55 @@ export default function ScormsCursosTable({ userSession }) {
                 {translationCreateSubmitting ? 'Creando...' : 'Guardar traducción'}
               </button>
             </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {paDetailsModalRow ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setPaDetailsModalRow(null)}>
+          <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Planes de aprendizaje relacionados</h3>
+                <p>{paDetailsModalRow.cursoNombre} · IDUnico: {paDetailsModalRow.uniqueId || '-'}</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setPaDetailsModalRow(null)}>
+                Cerrar
+              </button>
+            </div>
+
+            {paDetailsModalRow.paGroups.length === 0 ? (
+              <p className="status">No hay planes de aprendizaje relacionados para este curso.</p>
+            ) : (
+              <div className="table-wrapper">
+                <table className="compact-rows">
+                  <thead>
+                    <tr>
+                      <th>PA Código</th>
+                      <th>PA Nombre</th>
+                      <th>PA URL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paDetailsModalRow.paGroups.map((group) => (
+                      <tr key={`pa-group-${group.key}`}>
+                        <td>{group.paCodigo}</td>
+                        <td>{group.paNombre}</td>
+                        <td>
+                          {isUrl(group.paUrl) ? (
+                            <a className="table-link" href={group.paUrl} target="_blank" rel="noreferrer">
+                              LINK
+                            </a>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         </div>
       ) : null}

@@ -1,3 +1,31 @@
+## v1.70.1 - Ajustes PA visuales, modal y filtros por selector en Cursos
+
+### Cambios consolidados
+- En la columna **PA Nombre** de la vista **Cursos > General** se elimina el texto `PA` y se muestra únicamente el indicador con formato `✓ (N)` o `✕ (N)`.
+- El indicador de PA pasa a ser **clicable** con estilo de color:
+  - verde para `✓`,
+  - rojo para `✕`.
+- Al pulsar el indicador se abre un **modal** con los planes de aprendizaje relacionados al curso (agrupados por `pa_codigo`/`pa_nombre`) mostrando código, nombre y URL.
+- En el panel de filtros se priorizan y muestran los campos pedidos al inicio con formato de **selector**:
+  - Estado curso,
+  - Tipología,
+  - Curso instructor,
+  - Materia,
+  - Categoría.
+- Se ajusta la lógica de checks de tipología para filtrar por el valor real de Supabase (`tipologia`) mediante agrupación:
+  - `INTERNO` cuando contiene `USO INTERNO` (o `INTERNO`),
+  - `ESPUBLICO` cuando contiene `ESPUBLICO`,
+  - `CERTIFICACIÓN` cuando contiene `CERTIFICACION`,
+  - resto de valores en `GENERAL`.
+- Se mantiene la configuración por defecto solicitada: **ESPUBLICO desmarcado** y el resto marcadas.
+- Se actualiza versión visible de APP y `package.json` a `1.70.1`.
+
+### Versionado
+- Versión anterior: `1.70.0`
+- Nueva versión consolidada: `1.70.1`
+
+---
+
 ## v1.70.0 - Ajustes en vista Cursos: exclusiones de PA/traducciones y checks de tipología
 
 ### Cambios consolidados
