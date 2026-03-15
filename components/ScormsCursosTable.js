@@ -116,18 +116,20 @@ const rowIsPlanChild = (row) => {
 
 const rowIsTranslationChild = (row) => normalizeText(row.relacion_tipo) === 'TRADUCCION';
 
+const rowIsParentCourse = (row) => normalizeText(row.relacion_tipo) === 'PADRE';
+
 const resolveTipologyGroup = (tipologia) => {
   const normalized = normalizeTipologia(tipologia);
 
-  if (normalized.includes('ESPUBLICO')) {
+  if (normalized === 'ESPUBLICO') {
     return 'ESPUBLICO';
   }
 
-  if (normalized.includes('CERTIFICACION')) {
+  if (normalized === 'CERTIFICACION') {
     return 'CERTIFICACION';
   }
 
-  if (normalized.includes('USO INTERNO') || normalized.includes('INTERNO')) {
+  if (normalized === 'INTERNO' || normalized === 'USO INTERNO') {
     return 'INTERNO';
   }
 
@@ -492,7 +494,7 @@ export default function ScormsCursosTable({ userSession }) {
     const sorter = COURSE_SORT_OPTIONS[courseSortOrder] || COURSE_SORT_OPTIONS.created_desc;
 
     const visibleRows = filteredRows
-      .filter((row) => !rowIsPlanChild(row) && !rowIsTranslationChild(row))
+      .filter((row) => rowIsParentCourse(row))
       .filter((row) => {
         const tipologyGroup = resolveTipologyGroup(row.tipologia);
         return tipologyVisibility[tipologyGroup] === true;

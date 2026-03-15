@@ -1,3 +1,21 @@
+## v1.70.2 - Corrección de filtros check por tipología y listado solo PADRE en Cursos
+
+### Cambios consolidados
+- Se corrige la lógica del listado **Cursos > General** para que muestre únicamente cursos con `relacion_tipo = PADRE`, tal como se esperaba en la vista principal.
+- Se ajusta la clasificación de checks de tipología para evitar recortes de resultados:
+  - **CERTIFICACIÓN** solo incluye `tipologia = Certificación` (normalizado sin acentos).
+  - **ESPUBLICO** solo incluye `tipologia = Espublico`.
+  - **INTERNO** incluye `tipologia = Interno` (y compatibilidad con `USO INTERNO`).
+  - El resto de valores se asignan a **GENERAL**.
+- Se mantiene el comportamiento de checks como filtro directo sobre el campo `tipologia` de Supabase y la configuración por defecto: ESPUBLICO desmarcado, resto marcadas.
+- Se actualiza versión visible de APP y `package.json` a `1.70.2`.
+
+### Versionado
+- Versión anterior: `1.70.1`
+- Nueva versión consolidada: `1.70.2`
+
+---
+
 ## v1.70.1 - Ajustes PA visuales, modal y filtros por selector en Cursos
 
 ### Cambios consolidados
