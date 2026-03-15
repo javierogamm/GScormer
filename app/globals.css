@@ -377,6 +377,60 @@ select {
   margin: 0.5rem 0 0.9rem;
 }
 
+.tipology-visibility-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.7rem;
+  margin: 0 0 0.9rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tipology-visibility-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1rem;
+}
+
+.tipology-visibility-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  font-size: 0.88rem;
+  color: #2f496c;
+}
+
+.tipology-visibility-item input {
+  width: 16px;
+  height: 16px;
+}
+
+.pa-status-button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pa-status-button.ok {
+  background: #e6f8ef;
+  border-color: #b9e7d0;
+  color: #167147;
+}
+
+.pa-status-button.error {
+  background: #ffe9e9;
+  border-color: #f2b7b7;
+  color: #ad2020;
+}
+
+.pa-status-button:hover {
+  opacity: 0.88;
+}
+
 .table-filters-toggle summary {
   list-style: none;
   padding: 0.7rem;

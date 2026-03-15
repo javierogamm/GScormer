@@ -1,3 +1,69 @@
+## v1.70.2 - Corrección de filtros check por tipología y listado solo PADRE en Cursos
+
+### Cambios consolidados
+- Se corrige la lógica del listado **Cursos > General** para que muestre únicamente cursos con `relacion_tipo = PADRE`, tal como se esperaba en la vista principal.
+- Se ajusta la clasificación de checks de tipología para evitar recortes de resultados:
+  - **CERTIFICACIÓN** solo incluye `tipologia = Certificación` (normalizado sin acentos).
+  - **ESPUBLICO** solo incluye `tipologia = Espublico`.
+  - **INTERNO** incluye `tipologia = Interno` (y compatibilidad con `USO INTERNO`).
+  - El resto de valores se asignan a **GENERAL**.
+- Se mantiene el comportamiento de checks como filtro directo sobre el campo `tipologia` de Supabase y la configuración por defecto: ESPUBLICO desmarcado, resto marcadas.
+- Se actualiza versión visible de APP y `package.json` a `1.70.2`.
+
+### Versionado
+- Versión anterior: `1.70.1`
+- Nueva versión consolidada: `1.70.2`
+
+---
+
+## v1.70.1 - Ajustes PA visuales, modal y filtros por selector en Cursos
+
+### Cambios consolidados
+- En la columna **PA Nombre** de la vista **Cursos > General** se elimina el texto `PA` y se muestra únicamente el indicador con formato `✓ (N)` o `✕ (N)`.
+- El indicador de PA pasa a ser **clicable** con estilo de color:
+  - verde para `✓`,
+  - rojo para `✕`.
+- Al pulsar el indicador se abre un **modal** con los planes de aprendizaje relacionados al curso (agrupados por `pa_codigo`/`pa_nombre`) mostrando código, nombre y URL.
+- En el panel de filtros se priorizan y muestran los campos pedidos al inicio con formato de **selector**:
+  - Estado curso,
+  - Tipología,
+  - Curso instructor,
+  - Materia,
+  - Categoría.
+- Se ajusta la lógica de checks de tipología para filtrar por el valor real de Supabase (`tipologia`) mediante agrupación:
+  - `INTERNO` cuando contiene `USO INTERNO` (o `INTERNO`),
+  - `ESPUBLICO` cuando contiene `ESPUBLICO`,
+  - `CERTIFICACIÓN` cuando contiene `CERTIFICACION`,
+  - resto de valores en `GENERAL`.
+- Se mantiene la configuración por defecto solicitada: **ESPUBLICO desmarcado** y el resto marcadas.
+- Se actualiza versión visible de APP y `package.json` a `1.70.1`.
+
+### Versionado
+- Versión anterior: `1.70.0`
+- Nueva versión consolidada: `1.70.1`
+
+---
+
+## v1.70.0 - Ajustes en vista Cursos: exclusiones de PA/traducciones y checks de tipología
+
+### Cambios consolidados
+- En la vista **Cursos > General** se excluyen los cursos que forman parte de un **Plan de aprendizaje** (`pa_formaparte` afirmativo), ya que se gestionan en su apartado específico.
+- En la vista **Cursos > General** también se excluyen los cursos cuyo `relacion_tipo` corresponde a **Traducción**; se mantienen únicamente en la subvista **TRADUCCIONES**.
+- La columna **PA Nombre** en la vista general deja de mostrar el nombre del plan y pasa a mostrar un resumen: `PA` con indicador visual (`✓` si tiene PA, `✕` si no) y el número de **PA distintos** asociados al padre por `IDUnico`.
+- Se añade un bloque de **checks de tipología** debajo de los filtros en la vista general con estas opciones:
+  - Tipología ESPUBLICO
+  - Tipología CERTIFICACIÓN
+  - Tipología INTERNO
+  - Tipología GENERAL
+- Configuración por defecto aplicada: **ESPUBLICO desmarcado** (no se muestra inicialmente) y el resto marcadas (sí se muestran).
+- Se actualiza versión visible de APP y `package.json` a `1.70.0`.
+
+### Versionado
+- Versión anterior: `1.69.5`
+- Nueva versión consolidada: `1.70.0`
+
+---
+
 ## v1.69.5 - Campos obligatorios al crear SCORM
 
 ### Cambios consolidados
