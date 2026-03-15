@@ -1,3 +1,23 @@
+## v1.70.0 - Ajustes en vista Cursos: exclusiones de PA/traducciones y checks de tipología
+
+### Cambios consolidados
+- En la vista **Cursos > General** se excluyen los cursos que forman parte de un **Plan de aprendizaje** (`pa_formaparte` afirmativo), ya que se gestionan en su apartado específico.
+- En la vista **Cursos > General** también se excluyen los cursos cuyo `relacion_tipo` corresponde a **Traducción**; se mantienen únicamente en la subvista **TRADUCCIONES**.
+- La columna **PA Nombre** en la vista general deja de mostrar el nombre del plan y pasa a mostrar un resumen: `PA` con indicador visual (`✓` si tiene PA, `✕` si no) y el número de **PA distintos** asociados al padre por `IDUnico`.
+- Se añade un bloque de **checks de tipología** debajo de los filtros en la vista general con estas opciones:
+  - Tipología ESPUBLICO
+  - Tipología CERTIFICACIÓN
+  - Tipología INTERNO
+  - Tipología GENERAL
+- Configuración por defecto aplicada: **ESPUBLICO desmarcado** (no se muestra inicialmente) y el resto marcadas (sí se muestran).
+- Se actualiza versión visible de APP y `package.json` a `1.70.0`.
+
+### Versionado
+- Versión anterior: `1.69.5`
+- Nueva versión consolidada: `1.70.0`
+
+---
+
 ## v1.69.5 - Campos obligatorios al crear SCORM
 
 ### Cambios consolidados

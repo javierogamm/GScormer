@@ -80,6 +80,13 @@ const createCourseManagedSelectorFields = [
   { key: 'curso_instructor', label: 'Instructor' },
 ];
 
+const TIPOLOGY_VISIBILITY_OPTIONS = [
+  { key: 'ESPUBLICO', label: 'Tipología ESPUBLICO' },
+  { key: 'CERTIFICACION', label: 'Tipología CERTIFICACIÓN' },
+  { key: 'INTERNO', label: 'Tipología INTERNO' },
+  { key: 'GENERAL', label: 'Tipología GENERAL' },
+];
+
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
 
@@ -89,6 +96,23 @@ const normalizeLanguage = (language) => {
 
   return normalized;
 };
+
+const normalizeText = (value) => {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toUpperCase();
+};
+
+const normalizeTipologia = (tipologia) => normalizeText(tipologia);
+
+const rowIsPlanChild = (row) => {
+  const normalizedMembership = normalizeText(row.pa_formaparte).toLowerCase();
+  return ['si', 'sí', 'yes', 'true', '1', 'x'].includes(normalizedMembership);
+};
+
+const rowIsTranslationChild = (row) => normalizeText(row.relacion_tipo) === 'TRADUCCION';
 
 const isUrl = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -230,6 +254,12 @@ export default function ScormsCursosTable({ userSession }) {
   const [selectedValidationCourseIds, setSelectedValidationCourseIds] = useState([]);
   const [courseSortOrder, setCourseSortOrder] = useState('created_desc');
   const [createManagedFieldMode, setCreateManagedFieldMode] = useState({});
+  const [tipologyVisibility, setTipologyVisibility] = useState({
+    ESPUBLICO: false,
+    CERTIFICACION: true,
+    INTERNO: true,
+    GENERAL: true,
+  });
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
@@ -401,9 +431,51 @@ export default function ScormsCursosTable({ userSession }) {
   }, [rows]);
 
   const sortedGeneralRows = useMemo(() => {
+    const paChildrenCountByUniqueId = rows.reduce((acc, row) => {
+      if (!rowIsPlanChild(row)) {
+        return acc;
+      }
+
+      const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
+      if (!uniqueId) {
+        return acc;
+      }
+
+      if (!acc[uniqueId]) {
+        acc[uniqueId] = new Set();
+      }
+
+      const paKey = String(row.pa_codigo || row.pa_nombre || '').trim();
+      if (paKey) {
+        acc[uniqueId].add(paKey);
+      }
+
+      return acc;
+    }, {});
+
     const sorter = COURSE_SORT_OPTIONS[courseSortOrder] || COURSE_SORT_OPTIONS.created_desc;
 
-    return [...filteredRows].sort((left, right) => {
+    const visibleRows = filteredRows
+      .filter((row) => !rowIsPlanChild(row) && !rowIsTranslationChild(row))
+      .filter((row) => {
+        const normalizedTipologia = normalizeTipologia(row.tipologia);
+        if (!Object.prototype.hasOwnProperty.call(tipologyVisibility, normalizedTipologia)) {
+          return true;
+        }
+
+        return tipologyVisibility[normalizedTipologia] === true;
+      })
+      .map((row) => {
+        const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
+        const paCount = uniqueId && paChildrenCountByUniqueId[uniqueId] ? paChildrenCountByUniqueId[uniqueId].size : 0;
+
+        return {
+          ...row,
+          pa_nombre: `PA ${paCount > 0 ? '✓' : '✕'} (${paCount})`,
+        };
+      });
+
+    return visibleRows.sort((left, right) => {
       const primary = sorter.compare(left, right);
       if (primary !== 0) {
         return primary;
@@ -411,7 +483,7 @@ export default function ScormsCursosTable({ userSession }) {
 
       return Number(left.id || 0) - Number(right.id || 0);
     });
-  }, [courseSortOrder, filteredRows]);
+  }, [courseSortOrder, filteredRows, rows, tipologyVisibility]);
 
   const activeScormMatches = useMemo(() => {
     if (scormsModalRows.length === 0) {
@@ -1543,6 +1615,29 @@ export default function ScormsCursosTable({ userSession }) {
       </section>
 
       {cursosSubView === 'general' ? (
+        <section className="tipology-visibility-panel">
+          <strong>Mostrar tipologías</strong>
+          <div className="tipology-visibility-grid">
+            {TIPOLOGY_VISIBILITY_OPTIONS.map((option) => (
+              <label key={`tipology-visibility-${option.key}`} className="tipology-visibility-item">
+                <input
+                  type="checkbox"
+                  checked={tipologyVisibility[option.key] === true}
+                  onChange={() => {
+                    setTipologyVisibility((previous) => ({
+                      ...previous,
+                      [option.key]: !previous[option.key],
+                    }));
+                  }}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {cursosSubView === 'general' ? (
         <>
           <div className="details-grid" style={{ marginBottom: '0.8rem' }}>
             <label>
@@ -1578,6 +1673,7 @@ export default function ScormsCursosTable({ userSession }) {
                       </td>
                       {compactColumns.map((columnKey) => {
                         const value = row[columnKey];
+                        const isPaSummaryColumn = columnKey === 'pa_nombre';
                         const hasActiveValueFilter = (filters[columnKey] || []).some(
                           (filterValue) => filterValue.toLowerCase() === String(value || '').trim().toLowerCase(),
                         );
@@ -1585,9 +1681,13 @@ export default function ScormsCursosTable({ userSession }) {
                         return (
                           <td
                             key={`${row.id}-${columnKey}`}
-                            className={`${columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''} cell-selectable ${hasActiveValueFilter ? 'cell-selected' : ''}`}
-                            onClick={() => toggleCellFilter(columnKey, value)}
-                            title="Click para filtrar por este valor"
+                            className={`${columnKey === 'curso_nombre' ? 'col-curso_nombre' : ''} ${isPaSummaryColumn ? '' : 'cell-selectable'} ${hasActiveValueFilter && !isPaSummaryColumn ? 'cell-selected' : ''}`}
+                            onClick={() => {
+                              if (!isPaSummaryColumn) {
+                                toggleCellFilter(columnKey, value);
+                              }
+                            }}
+                            title={isPaSummaryColumn ? '' : 'Click para filtrar por este valor'}
                           >
                             {columnKey === 'curso_url' && isUrl(value) ? (
                               <a className="table-link" href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
