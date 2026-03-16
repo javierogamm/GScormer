@@ -99,6 +99,17 @@ const normalizeLanguage = (language) => {
   return normalized;
 };
 
+const sanitizeCursoDraftForInsert = (draft) => {
+  const nextDraft = { ...(draft || {}) };
+  const prOrdenValue = String(nextDraft.pr_orden ?? '').trim();
+
+  if (!prOrdenValue) {
+    nextDraft.pr_orden = null;
+  }
+
+  return nextDraft;
+};
+
 const normalizeText = (value) => {
   return String(value || '')
     .normalize('NFD')
@@ -1281,7 +1292,7 @@ export default function ScormsCursosTable({ userSession }) {
     }
 
     const payload = {
-      ...relatedCreateDraft,
+      ...sanitizeCursoDraftForInsert(relatedCreateDraft),
       IDUnico: uniqueId,
       relacion_tipo: relationType,
     };
@@ -1319,7 +1330,7 @@ export default function ScormsCursosTable({ userSession }) {
       const cursoNombre = String(row.name || '').trim();
 
       return {
-        ...row.draft,
+        ...sanitizeCursoDraftForInsert(row.draft),
         IDUnico: row.uniqueId,
         relacion_tipo: 'Traducción',
         curso_idioma: language,

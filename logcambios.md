@@ -1,3 +1,17 @@
+## v1.70.4 - Corrección de creación de traducciones con `pr_orden` vacío
+
+### Cambios consolidados
+- Se corrige la creación de traducciones en **Cursos > Traducciones** cuando el campo `pr_orden` llega vacío desde el borrador.
+- Antes se enviaba `pr_orden: ""` al insertar, lo que provocaba el error de PostgreSQL: `invalid input syntax for type numeric: ""`.
+- Ahora, en inserciones de cursos relacionados y traducciones, `pr_orden` se normaliza a `null` cuando está vacío para respetar el tipo `numeric` de la tabla `scorms_cursos`.
+- Se actualiza versión visible de APP y `package.json` a `1.70.4`.
+
+### Versionado
+- Versión anterior: `1.70.3`
+- Nueva versión consolidada: `1.70.4`
+
+---
+
 ## v1.70.3 - Edición de PA y asociación de cursos desde la vista PA
 
 ### Cambios consolidados
