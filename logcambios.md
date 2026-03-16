@@ -1640,3 +1640,15 @@
 ### Versionado
 - Versión anterior: `1.1.1`
 - Nueva versión consolidada: `1.1.2`
+
+## v1.70.5 - Edición de PA con cursos PADRE y traducciones
+
+### Cambios consolidados
+- En el modal **Editar Plan de aprendizaje**, la lista de cursos para añadir ahora muestra todos los cursos de nivel **PADRE** y también sus cursos hijos de tipo **TRADUCCION**.
+- Al abrir la edición de un PA, los cursos que ya están asociados a ese PA se cargan automáticamente marcados con check.
+- Se ajustó el guardado del PA para evitar duplicar cursos ya asociados: solo se insertan como nuevos los cursos seleccionados que todavía no pertenecen al PA actual.
+- En la tabla de selección de cursos del modal de edición se añadieron columnas de **Nivel** (relación) e **Idioma** para facilitar la identificación de PADRE/traducciones.
+
+### Versionado
+- Versión anterior: `1.70.4`
+- Nueva versión consolidada: `1.70.5`
