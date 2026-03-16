@@ -608,19 +608,29 @@ export default function ScormsCursosTable({ userSession }) {
     );
   }, [selectablePlanCourses, planCourseSearchText]);
 
+  const editPlanAvailableCourses = useMemo(() => {
+    return rows
+      .filter((row) => rowIsParentCourse(row) || rowIsTranslationChild(row))
+      .sort((left, right) => {
+        const leftCode = String(left.curso_codigo || left.curso_nombre || left.id || '');
+        const rightCode = String(right.curso_codigo || right.curso_nombre || right.id || '');
+        return leftCode.localeCompare(rightCode, 'es', { sensitivity: 'base' });
+      });
+  }, [rows]);
+
   const filteredEditPlanCourses = useMemo(() => {
     const search = String(editPlanCourseSearchText || '').trim().toLowerCase();
 
     if (!search) {
-      return selectablePlanCourses;
+      return editPlanAvailableCourses;
     }
 
-    return selectablePlanCourses.filter((row) =>
-      [row.curso_codigo, row.curso_nombre]
+    return editPlanAvailableCourses.filter((row) =>
+      [row.curso_codigo, row.curso_nombre, row.codigo_individual, row.tipologia, row.curso_idioma, row.relacion_tipo]
         .map((value) => String(value || '').toLowerCase())
         .some((value) => value.includes(search)),
     );
-  }, [editPlanCourseSearchText, selectablePlanCourses]);
+  }, [editPlanAvailableCourses, editPlanCourseSearchText]);
 
   const toggleSelectedPlanCourse = (rowId) => {
     setSelectedPlanCourseIds((previous) => (previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]));
@@ -667,7 +677,7 @@ export default function ScormsCursosTable({ userSession }) {
     });
     setEditPlanRowIds(group.rows.map((row) => row.id));
     setEditPlanCourseSearchText('');
-    setSelectedEditPlanCourseIds([]);
+    setSelectedEditPlanCourseIds(group.rows.map((row) => row.id));
     setEditPlanSubmitting(false);
     setEditPlanModalOpen(true);
   };
@@ -1456,7 +1466,8 @@ export default function ScormsCursosTable({ userSession }) {
       return;
     }
 
-    const selectedRows = rows.filter((row) => selectedEditPlanCourseIds.includes(row.id));
+    const currentPlanRowIdSet = new Set(editPlanRowIds);
+    const selectedRows = rows.filter((row) => selectedEditPlanCourseIds.includes(row.id) && !currentPlanRowIdSet.has(row.id));
     const payload = selectedRows.map((row) => {
       const baseCode = String(row.curso_codigo || '').trim();
       const nextCourseCode = baseCode ? `${paAcronimo}-${baseCode}` : paAcronimo;
@@ -2647,7 +2658,7 @@ export default function ScormsCursosTable({ userSession }) {
 
             <section className="card-soft">
               <h4>Añadir cursos al PA</h4>
-              <p className="status">Se muestran cursos que todavía no forman parte de un plan de aprendizaje.</p>
+              <p className="status">Se muestran cursos PADRE y cursos de traducción. Los cursos ya asociados a este PA aparecen marcados.</p>
               <input
                 type="text"
                 placeholder="Buscar curso por código o nombre..."
@@ -2662,6 +2673,8 @@ export default function ScormsCursosTable({ userSession }) {
                       <th>Sel.</th>
                       <th>Código</th>
                       <th>Nombre</th>
+                      <th>Nivel</th>
+                      <th>Idioma</th>
                       <th>Tipología</th>
                     </tr>
                   </thead>
@@ -2677,6 +2690,8 @@ export default function ScormsCursosTable({ userSession }) {
                         </td>
                         <td>{String(row.curso_codigo || '-')}</td>
                         <td>{String(row.curso_nombre || '-')}</td>
+                        <td>{String(row.relacion_tipo || '-')}</td>
+                        <td>{String(row.curso_idioma || '-')}</td>
                         <td>{String(row.tipologia || '-')}</td>
                       </tr>
                     ))}
