@@ -993,10 +993,12 @@ export default function ScormsCursosTable({ userSession }) {
   };
 
   const openDetailModal = (row) => {
-    setDetailModalRow(row);
-    setDetailDraft({ ...row });
+    const sourceRow = rows.find((candidate) => Number(candidate.id) === Number(row?.id)) || row;
+
+    setDetailModalRow(sourceRow);
+    setDetailDraft({ ...sourceRow });
     setDetailScormSearchText('');
-    setDetailSelectedScormIds(parseScormIdsFromContenido(row?.contenido));
+    setDetailSelectedScormIds(parseScormIdsFromContenido(sourceRow?.contenido));
   };
 
   const closeDetailModal = () => {

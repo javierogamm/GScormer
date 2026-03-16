@@ -1,3 +1,17 @@
+## v1.70.6 - PA Nombre real en detalle de curso
+
+### Cambios consolidados
+- En **Cursos > General** se mantiene la columna `PA Nombre` en formato resumen (`✓/✕`) para el listado principal.
+- Al abrir **Ver detalle** de un curso desde la vista general, el campo `PA Nombre` ahora toma el valor real de la fila en base de datos (`scorms_cursos.pa_nombre`) y deja de mostrar el resumen con check/X.
+- El ajuste se limita solo al modal de detalle, tal y como se solicitó.
+- Se actualiza versión visible de APP y `package.json` a `1.70.6`.
+
+### Versionado
+- Versión anterior: `1.70.5`
+- Nueva versión consolidada: `1.70.6`
+
+---
+
 ## v1.70.4 - Corrección de creación de traducciones con `pr_orden` vacío
 
 ### Cambios consolidados
