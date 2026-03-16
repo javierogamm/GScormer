@@ -1,3 +1,23 @@
+## v1.70.3 - Edición de PA y asociación de cursos desde la vista PA
+
+### Cambios consolidados
+- En la vista **PA** se añadió un botón **Editar** en el nivel 1 del acordeón de cada plan de aprendizaje.
+- El botón **Editar** abre un modal de edición del PA con la misma estructura funcional que la creación:
+  - edición de `PA Nombre`, `PA Código`, `PA URL` y `Acrónimo PA`.
+- En el modal de edición se añadió la opción de **asociar cursos nuevos** al PA existente.
+- Se incorporó buscador de cursos en el modal de edición por:
+  - **código** de curso,
+  - **nombre** del curso.
+- Al guardar edición:
+  - se actualizan los metadatos del PA en los cursos ya asociados,
+  - se insertan nuevas filas para los cursos añadidos al PA (con prefijo por acrónimo en `curso_codigo`).
+
+### Versionado
+- Versión anterior: `1.70.2`
+- Nueva versión consolidada: `1.70.3`
+
+---
+
 ## v1.70.2 - Corrección de filtros check por tipología y listado solo PADRE en Cursos
 
 ### Cambios consolidados

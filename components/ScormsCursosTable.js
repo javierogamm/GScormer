@@ -231,6 +231,17 @@ export default function ScormsCursosTable({ userSession }) {
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createPlanModalOpen, setCreatePlanModalOpen] = useState(false);
   const [createPlanSubmitting, setCreatePlanSubmitting] = useState(false);
+  const [editPlanModalOpen, setEditPlanModalOpen] = useState(false);
+  const [editPlanSubmitting, setEditPlanSubmitting] = useState(false);
+  const [editPlanCourseSearchText, setEditPlanCourseSearchText] = useState('');
+  const [selectedEditPlanCourseIds, setSelectedEditPlanCourseIds] = useState([]);
+  const [editPlanRowIds, setEditPlanRowIds] = useState([]);
+  const [editPlanDraft, setEditPlanDraft] = useState({
+    pa_nombre: '',
+    pa_codigo: '',
+    pa_url: '',
+    pa_acronimo: '',
+  });
   const [relatedCreateModalOpen, setRelatedCreateModalOpen] = useState(false);
   const [relatedCreateSubmitting, setRelatedCreateSubmitting] = useState(false);
   const [relatedCreateUniqueId, setRelatedCreateUniqueId] = useState('');
@@ -586,8 +597,28 @@ export default function ScormsCursosTable({ userSession }) {
     );
   }, [selectablePlanCourses, planCourseSearchText]);
 
+  const filteredEditPlanCourses = useMemo(() => {
+    const search = String(editPlanCourseSearchText || '').trim().toLowerCase();
+
+    if (!search) {
+      return selectablePlanCourses;
+    }
+
+    return selectablePlanCourses.filter((row) =>
+      [row.curso_codigo, row.curso_nombre]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(search)),
+    );
+  }, [editPlanCourseSearchText, selectablePlanCourses]);
+
   const toggleSelectedPlanCourse = (rowId) => {
     setSelectedPlanCourseIds((previous) => (previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId]));
+  };
+
+  const toggleSelectedEditPlanCourse = (rowId) => {
+    setSelectedEditPlanCourseIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId],
+    );
   };
 
   const resetCreateCursoState = () => {
@@ -605,6 +636,38 @@ export default function ScormsCursosTable({ userSession }) {
     setPlanCourseSearchText('');
     setSelectedPlanCourseIds([]);
     setCreatePlanDraft({
+      pa_nombre: '',
+      pa_codigo: '',
+      pa_url: '',
+      pa_acronimo: '',
+    });
+  };
+
+
+  const openEditPlanModal = (group) => {
+    const sampleCourseCode = String(group.rows?.[0]?.curso_codigo || '').trim();
+    const detectedAcronym = sampleCourseCode.includes('-') ? sampleCourseCode.split('-')[0] : '';
+
+    setEditPlanDraft({
+      pa_nombre: String(group.paNombre || ''),
+      pa_codigo: String(group.paCodigo || ''),
+      pa_url: String(group.paUrl || ''),
+      pa_acronimo: detectedAcronym,
+    });
+    setEditPlanRowIds(group.rows.map((row) => row.id));
+    setEditPlanCourseSearchText('');
+    setSelectedEditPlanCourseIds([]);
+    setEditPlanSubmitting(false);
+    setEditPlanModalOpen(true);
+  };
+
+  const resetEditPlanState = () => {
+    setEditPlanModalOpen(false);
+    setEditPlanSubmitting(false);
+    setEditPlanCourseSearchText('');
+    setSelectedEditPlanCourseIds([]);
+    setEditPlanRowIds([]);
+    setEditPlanDraft({
       pa_nombre: '',
       pa_codigo: '',
       pa_url: '',
@@ -1354,6 +1417,98 @@ export default function ScormsCursosTable({ userSession }) {
     );
     resetCreatePlanState();
   };
+
+
+  const submitEditPlan = async () => {
+    const paNombre = String(editPlanDraft.pa_nombre || '').trim();
+    const paCodigo = String(editPlanDraft.pa_codigo || '').trim();
+    const paUrl = String(editPlanDraft.pa_url || '').trim();
+    const paAcronimo = String(editPlanDraft.pa_acronimo || '').trim().toUpperCase();
+
+    if (!paNombre) {
+      setError('El nombre del plan de aprendizaje es obligatorio.');
+      return;
+    }
+
+    if (!paCodigo) {
+      setError('El código del plan de aprendizaje es obligatorio.');
+      return;
+    }
+
+    if (!paAcronimo) {
+      setError('El acrónimo del PA es obligatorio para generar el nuevo código del curso.');
+      return;
+    }
+
+    if (editPlanRowIds.length === 0) {
+      setError('No se pudieron resolver los cursos actuales del plan de aprendizaje.');
+      return;
+    }
+
+    const selectedRows = rows.filter((row) => selectedEditPlanCourseIds.includes(row.id));
+    const payload = selectedRows.map((row) => {
+      const baseCode = String(row.curso_codigo || '').trim();
+      const nextCourseCode = baseCode ? `${paAcronimo}-${baseCode}` : paAcronimo;
+
+      return {
+        ...columns.reduce((acc, column) => {
+          acc[column.key] = row[column.key] ?? null;
+          return acc;
+        }, {}),
+        pa_formaparte: 'Sí',
+        pa_codigo: paCodigo,
+        pa_nombre: paNombre,
+        pa_url: paUrl,
+        curso_codigo: nextCourseCode,
+      };
+    });
+
+    setEditPlanSubmitting(true);
+    setError('');
+
+    const updateResponse = await supabase
+      .from('scorms_cursos')
+      .update({
+        pa_codigo: paCodigo,
+        pa_nombre: paNombre,
+        pa_url: paUrl,
+      })
+      .in('id', editPlanRowIds)
+      .select('*');
+
+    if (updateResponse.error) {
+      setEditPlanSubmitting(false);
+      setError(`No se pudo editar el plan de aprendizaje: ${updateResponse.error.message}`);
+      return;
+    }
+
+    let insertedRows = [];
+    if (payload.length > 0) {
+      const insertResponse = await supabase.from('scorms_cursos').insert(payload).select('*');
+
+      if (insertResponse.error) {
+        setEditPlanSubmitting(false);
+        setError(`El PA se actualizó, pero no se pudieron añadir cursos nuevos: ${insertResponse.error.message}`);
+        return;
+      }
+
+      insertedRows = insertResponse.data || [];
+    }
+
+    const updatedRows = updateResponse.data || [];
+    const updatedIdSet = new Set(updatedRows.map((row) => row.id));
+
+    setRows((previous) => [
+      ...previous.filter((row) => !updatedIdSet.has(row.id)),
+      ...updatedRows,
+      ...insertedRows,
+    ]);
+
+    setStatusMessage(
+      `Plan de aprendizaje editado: ${paNombre} · Cursos actualizados: ${updatedRows.length} · Cursos añadidos: ${insertedRows.length}`,
+    );
+    resetEditPlanState();
+  };
   const handleFilterInputChange = (columnKey, value) => {
     setFilterInputs((previous) => ({
       ...previous,
@@ -1826,25 +1981,38 @@ export default function ScormsCursosTable({ userSession }) {
             {learningPlanGroups.map((group) => (
               <details key={`plan-${group.key}`} className="scorms-accordion-item individual-course-group">
                 <summary>
-                  <span className="individual-summary-grid">
-                    <strong>{group.paCodigo}</strong>
-                    <span>{group.paNombre}</span>
-                    <span>
-                      {isUrl(group.paUrl) ? (
-                        <a
-                          className="table-link"
-                          href={group.paUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          LINK
-                        </a>
-                      ) : (
-                        'LINK'
-                      )}{' '}
-                      ({group.rows.length})
+                  <span className="individual-summary-actions">
+                    <span className="individual-summary-grid">
+                      <strong>{group.paCodigo}</strong>
+                      <span>{group.paNombre}</span>
+                      <span>
+                        {isUrl(group.paUrl) ? (
+                          <a
+                            className="table-link"
+                            href={group.paUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            LINK
+                          </a>
+                        ) : (
+                          'LINK'
+                        )}{' '}
+                        ({group.rows.length})
+                      </span>
                     </span>
+                    <button
+                      type="button"
+                      className="secondary action-select-button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openEditPlanModal(group);
+                      }}
+                    >
+                      Editar
+                    </button>
                   </span>
                 </summary>
                 <div className="table-wrapper individual-inner-table-wrapper">
@@ -2391,6 +2559,128 @@ export default function ScormsCursosTable({ userSession }) {
             <footer className="modal-footer">
               <button type="button" onClick={submitCreatePlan} disabled={createPlanSubmitting}>
                 {createPlanSubmitting ? 'Creando PA...' : 'Crear Plan de aprendizaje'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+
+      {editPlanModalOpen ? (
+        <div className="modal-overlay" role="presentation">
+          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Editar Plan de aprendizaje</h3>
+                <p>Actualiza los datos del PA y añade cursos existentes.</p>
+              </div>
+              <button type="button" className="secondary" onClick={resetEditPlanState} disabled={editPlanSubmitting}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="details-grid">
+              <label>
+                <span>PA Nombre</span>
+                <input
+                  type="text"
+                  value={editPlanDraft.pa_nombre}
+                  onChange={(event) =>
+                    setEditPlanDraft((previous) => ({
+                      ...previous,
+                      pa_nombre: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>PA Código</span>
+                <input
+                  type="text"
+                  value={editPlanDraft.pa_codigo}
+                  onChange={(event) =>
+                    setEditPlanDraft((previous) => ({
+                      ...previous,
+                      pa_codigo: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>PA URL</span>
+                <input
+                  type="text"
+                  value={editPlanDraft.pa_url}
+                  onChange={(event) =>
+                    setEditPlanDraft((previous) => ({
+                      ...previous,
+                      pa_url: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>Acrónimo PA (para código curso)</span>
+                <input
+                  type="text"
+                  value={editPlanDraft.pa_acronimo}
+                  onChange={(event) =>
+                    setEditPlanDraft((previous) => ({
+                      ...previous,
+                      pa_acronimo: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+
+            <section className="card-soft">
+              <h4>Añadir cursos al PA</h4>
+              <p className="status">Se muestran cursos que todavía no forman parte de un plan de aprendizaje.</p>
+              <input
+                type="text"
+                placeholder="Buscar curso por código o nombre..."
+                value={editPlanCourseSearchText}
+                onChange={(event) => setEditPlanCourseSearchText(event.target.value)}
+              />
+
+              <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                <table className="compact-rows">
+                  <thead>
+                    <tr>
+                      <th>Sel.</th>
+                      <th>Código</th>
+                      <th>Nombre</th>
+                      <th>Tipología</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEditPlanCourses.slice(0, 80).map((row) => (
+                      <tr key={`edit-plan-course-${row.id}`}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedEditPlanCourseIds.includes(row.id)}
+                            onChange={() => toggleSelectedEditPlanCourse(row.id)}
+                          />
+                        </td>
+                        <td>{String(row.curso_codigo || '-')}</td>
+                        <td>{String(row.curso_nombre || '-')}</td>
+                        <td>{String(row.tipologia || '-')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="status">
+                Seleccionados para añadir: {selectedEditPlanCourseIds.length}
+              </p>
+            </section>
+
+            <footer className="modal-footer">
+              <button type="button" onClick={submitEditPlan} disabled={editPlanSubmitting}>
+                {editPlanSubmitting ? 'Guardando PA...' : 'Guardar cambios del PA'}
               </button>
             </footer>
           </section>
