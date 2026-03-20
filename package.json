@@ -1,6 +1,6 @@
 {
   "name": "gscormer",
-  "version": "1.70.7",
+  "version": "1.70.8",
   "private": true,
   "scripts": {
     "dev": "next dev",
