@@ -1265,18 +1265,25 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
+    const currentStoredRow = rows.find((row) => row.id === detailDraft.id) || activeRow || null;
+    const previousState = String(currentStoredRow?.scorm_estado || '').trim();
+
     const payload = editableColumns.reduce((acc, key) => {
       acc[key] = detailDraft[key] || null;
       return acc;
     }, {});
 
-    if (payload.scorm_estado === 'Publicado' && !canPublishAsAdmin) {
+    const nextState = String(payload.scorm_estado || '').trim();
+    const isChangingToPublished = nextState === 'Publicado' && previousState !== 'Publicado';
+    const isChangingToPendingPublish = nextState === 'Pendiente de publicar' && previousState !== 'Pendiente de publicar';
+
+    if (isChangingToPublished && !canPublishAsAdmin) {
       setStatusMessage('');
       setError('Solo los usuarios ADMIN pueden poner un SCORM en estado "Publicado".');
       return;
     }
 
-    if (payload.scorm_estado === 'Pendiente de publicar' && !canMoveToPendingPublish) {
+    if (isChangingToPendingPublish && !canMoveToPendingPublish) {
       setStatusMessage('');
       setError('Solo los usuarios validador pueden pasar SCORMs a "Pendiente de publicar".');
       return;

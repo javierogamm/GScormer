@@ -1,3 +1,18 @@
+## v1.70.7 - Edición de detalle SCORM permitida para no admin sin cambiar estado
+
+### Cambios consolidados
+- Se corrige el guardado del modal de **detalle SCORM** para usuarios no admin y no validador cuando el registro ya está en estados restringidos como `Publicado` o `Pendiente de publicar`.
+- Hasta ahora, aunque el usuario solo modificara campos de detalle, el guardado se bloqueaba porque la validación interpretaba el estado existente como si fuera un cambio de estado.
+- A partir de esta consolidación, los usuarios no admin pueden editar los demás detalles del SCORM **independientemente del estado actual del registro**, siempre que no intenten cambiarlo a un estado restringido.
+- Se mantiene la restricción de permisos para las transiciones de estado a `Publicado` (solo `ADMIN`) y a `Pendiente de publicar` (solo `validador`).
+- Se actualiza versión visible de APP y `package.json` a `1.70.7`.
+
+### Versionado
+- Versión anterior: `1.70.6`
+- Nueva versión consolidada: `1.70.7`
+
+---
+
 ## v1.70.6 - PA Nombre real en detalle de curso
 
 ### Cambios consolidados
