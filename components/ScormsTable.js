@@ -431,6 +431,7 @@ export default function ScormsTable({ userSession }) {
   const canMoveToPendingPublish = canValidateScorms;
   const canDeleteAsAdmin = userSession?.admin === true;
   const canGenerateAlerts = userSession?.alertador === true;
+  const defaultUpdateUser = String(userSession?.name || '').trim();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1112,7 +1113,7 @@ export default function ScormsTable({ userSession }) {
     setUpdateForm({
       cambio_tipo: '',
       fecha_modif: new Date().toISOString().slice(0, 10),
-      cambio_user: '',
+      cambio_user: defaultUpdateUser,
       cambio_notas: '',
     });
   };
@@ -3750,11 +3751,11 @@ export default function ScormsTable({ userSession }) {
               </label>
 
               <label>
-                <span>Usuario (opcional)</span>
+                <span>Usuario</span>
                 <input
                   type="text"
                   value={updateForm.cambio_user}
-                  placeholder="Indicar manualmente"
+                  placeholder={defaultUpdateUser || 'Indicar manualmente'}
                   onChange={(event) => updateUpdateFormField('cambio_user', event.target.value)}
                 />
               </label>

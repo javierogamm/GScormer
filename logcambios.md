@@ -1,3 +1,16 @@
+## v1.70.8 - Autorrelleno de usuario al actualizar SCORM
+
+### Cambios consolidados
+- En el modal **Actualizar SCORM**, el campo `Usuario` se rellena automáticamente con el nombre del usuario autenticado que lanza la actualización.
+- El valor sigue siendo editable manualmente por si se necesita ajustar el dato antes de registrar la actualización.
+- Se actualiza versión visible de APP y `package.json` a `1.70.8`.
+
+### Versionado
+- Versión anterior: `1.70.7`
+- Nueva versión consolidada: `1.70.8`
+
+---
+
 ## v1.70.7 - Edición de detalle SCORM permitida para no admin sin cambiar estado
 
 ### Cambios consolidados
