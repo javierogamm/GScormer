@@ -1,3 +1,18 @@
+## v1.70.9 - Notas de actualización visibles en detalle de SCORM
+
+### Cambios consolidados
+- En el modal de **DETALLES** de SCORM se muestra ahora, a la derecha de la tabla principal, un panel destacado con el campo **Notas de la actualización**.
+- El panel consulta la última fila registrada en `scorms_actualizacion` para el `scorm_codigo` abierto y muestra el contenido de `cambio_notas`.
+- Además de la nota, se muestran como contexto el **tipo de cambio**, la **fecha** y el **usuario** de la última actualización registrada.
+- Se añade estilo visual específico para que el bloque sea claramente visible y quede alineado a la derecha de la tabla principal del modal, adaptándose a una sola columna en pantallas más estrechas.
+- Se actualiza versión visible de APP y `package.json` a `1.70.9`.
+
+### Versionado
+- Versión anterior: `1.70.8`
+- Nueva versión consolidada: `1.70.9`
+
+---
+
 ## v1.70.8 - Autorrelleno de usuario al actualizar SCORM
 
 ### Cambios consolidados
