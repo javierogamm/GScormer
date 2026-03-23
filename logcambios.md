@@ -1,3 +1,18 @@
+## v1.71.0 - Edición de notas de actualización desde Detalles
+
+### Cambios consolidados
+- En el modal de **DETALLES** del SCORM, el campo **Notas de la actualización** pasa de solo lectura a editable sobre la última fila cargada desde `scorms_actualizacion`.
+- El botón **Guardar cambios** del modal ahora persiste también la edición de `cambio_notas` en la tabla `scorms_actualizacion`, además de conservar el guardado habitual del registro en `scorms_master`.
+- La carga de la última actualización incorpora el `id` del registro para poder actualizar exactamente la fila mostrada en el panel lateral.
+- Se ajustan estilos del panel lateral para que la edición de notas use un `textarea` integrado con el diseño existente.
+- Se actualiza versión visible de APP y `package.json` a `1.71.0`.
+
+### Versionado
+- Versión anterior: `1.70.9`
+- Nueva versión consolidada: `1.71.0`
+
+---
+
 ## v1.70.9 - Notas de actualización visibles en detalle de SCORM
 
 ### Cambios consolidados

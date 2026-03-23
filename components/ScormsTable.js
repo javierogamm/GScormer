@@ -401,6 +401,7 @@ export default function ScormsTable({ userSession }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRecords, setHistoryRecords] = useState([]);
   const [detailLatestUpdate, setDetailLatestUpdate] = useState(null);
+  const [detailLatestUpdateDraft, setDetailLatestUpdateDraft] = useState('');
   const [detailLatestUpdateLoading, setDetailLatestUpdateLoading] = useState(false);
   const [publishPreset, setPublishPreset] = useState('todos');
   const [selectedPublishIds, setSelectedPublishIds] = useState([]);
@@ -543,7 +544,7 @@ export default function ScormsTable({ userSession }) {
 
       const { data, error: latestUpdateError } = await supabase
         .from('scorms_actualizacion')
-        .select('cambio_tipo, cambio_user, cambio_notas, fecha_modif, created_at')
+        .select('id, cambio_tipo, cambio_user, cambio_notas, fecha_modif, created_at')
         .eq('scorm_codigo', scormCode)
         .order('fecha_modif', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
@@ -562,6 +563,7 @@ export default function ScormsTable({ userSession }) {
       }
 
       setDetailLatestUpdate(data || null);
+      setDetailLatestUpdateDraft(String(data?.cambio_notas || ''));
       setDetailLatestUpdateLoading(false);
     };
 
@@ -1042,6 +1044,7 @@ export default function ScormsTable({ userSession }) {
     setActiveRow(null);
     setDetailDraft(null);
     setDetailLatestUpdate(null);
+    setDetailLatestUpdateDraft('');
     setDetailLatestUpdateLoading(false);
     setHistoryModalOpen(false);
     setHistoryRecords([]);
@@ -1350,10 +1353,36 @@ export default function ScormsTable({ userSession }) {
       return;
     }
 
+    const normalizedLatestNotes = String(detailLatestUpdateDraft || '').trim();
+    const previousLatestNotes = String(detailLatestUpdate?.cambio_notas || '').trim();
+
+    if (detailLatestUpdate?.id && normalizedLatestNotes !== previousLatestNotes) {
+      const { error: latestUpdateSaveError } = await supabase
+        .from('scorms_actualizacion')
+        .update({
+          cambio_notas: normalizedLatestNotes || null,
+        })
+        .eq('id', detailLatestUpdate.id);
+
+      if (latestUpdateSaveError) {
+        setStatusMessage('');
+        setError(`Se guardó el SCORM, pero no se pudieron actualizar las notas del cambio: ${latestUpdateSaveError.message}`);
+        return;
+      }
+    }
+
     setRows((previousRows) =>
       previousRows.map((row) => (row.id === detailDraft.id ? { ...row, ...detailDraft } : row))
     );
     setActiveRow((previous) => (previous ? { ...previous, ...detailDraft } : previous));
+    setDetailLatestUpdate((previous) => (
+      previous
+        ? {
+            ...previous,
+            cambio_notas: normalizedLatestNotes || null,
+          }
+        : previous
+    ));
     setStatusMessage(`Fila ${detailDraft.id} actualizada correctamente.`);
     setError('');
     closeDetails();
@@ -3649,8 +3678,13 @@ export default function ScormsTable({ userSession }) {
                   <h4>Notas de la actualización</h4>
                   {detailLatestUpdateLoading ? (
                     <p className="status">Cargando notas…</p>
-                  ) : detailLatestUpdate?.cambio_notas ? (
-                    <p className="detail-update-notes-text">{detailLatestUpdate.cambio_notas}</p>
+                  ) : detailLatestUpdate ? (
+                    <textarea
+                      className="detail-update-notes-text detail-update-notes-textarea"
+                      value={detailLatestUpdateDraft}
+                      onChange={(event) => setDetailLatestUpdateDraft(event.target.value)}
+                      placeholder="Añade notas sobre la última actualización registrada"
+                    />
                   ) : (
                     <p className="detail-update-notes-empty">No hay notas de actualización registradas para este SCORM.</p>
                   )}
