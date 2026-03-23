@@ -827,6 +827,13 @@ input:focus {
   color: #17304f;
 }
 
+.detail-update-notes-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  font: inherit;
+}
+
 .detail-update-notes-empty {
   color: var(--muted);
 }
