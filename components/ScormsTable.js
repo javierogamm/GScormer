@@ -1355,20 +1355,48 @@ export default function ScormsTable({ userSession }) {
 
     const normalizedLatestNotes = String(detailLatestUpdateDraft || '').trim();
     const previousLatestNotes = String(detailLatestUpdate?.cambio_notas || '').trim();
+    const normalizedScormCode = String(detailDraft.scorm_code || '').trim();
 
-    if (detailLatestUpdate?.id && normalizedLatestNotes !== previousLatestNotes) {
-      const { error: latestUpdateSaveError } = await supabase
-        .from('scorms_actualizacion')
-        .update({
-          cambio_notas: normalizedLatestNotes || null,
-        })
-        .eq('id', detailLatestUpdate.id);
+    if (normalizedLatestNotes !== previousLatestNotes) {
+      let latestUpdateSaveError = null;
+      let latestUpdateRecord = detailLatestUpdate;
+
+      if (detailLatestUpdate?.id) {
+        const response = await supabase
+          .from('scorms_actualizacion')
+          .update({
+            cambio_notas: normalizedLatestNotes || null,
+          })
+          .eq('id', detailLatestUpdate.id)
+          .select('id, cambio_tipo, cambio_user, cambio_notas, fecha_modif, created_at')
+          .maybeSingle();
+
+        latestUpdateSaveError = response.error;
+        latestUpdateRecord = response.data || latestUpdateRecord;
+      } else if (normalizedLatestNotes && normalizedScormCode) {
+        const response = await supabase
+          .from('scorms_actualizacion')
+          .insert({
+            scorm_codigo: normalizedScormCode,
+            cambio_tipo: detailDraft.scorm_estado === 'Actualizado pendiente de publicar' ? 'Pendiente de actualización' : null,
+            fecha_modif: new Date().toISOString().slice(0, 10),
+            cambio_user: defaultUpdateUser || null,
+            cambio_notas: normalizedLatestNotes,
+          })
+          .select('id, cambio_tipo, cambio_user, cambio_notas, fecha_modif, created_at')
+          .maybeSingle();
+
+        latestUpdateSaveError = response.error;
+        latestUpdateRecord = response.data || latestUpdateRecord;
+      }
 
       if (latestUpdateSaveError) {
         setStatusMessage('');
         setError(`Se guardó el SCORM, pero no se pudieron actualizar las notas del cambio: ${latestUpdateSaveError.message}`);
         return;
       }
+
+      setDetailLatestUpdate(latestUpdateRecord || null);
     }
 
     setRows((previousRows) =>
@@ -3678,15 +3706,18 @@ export default function ScormsTable({ userSession }) {
                   <h4>Notas de la actualización</h4>
                   {detailLatestUpdateLoading ? (
                     <p className="status">Cargando notas…</p>
-                  ) : detailLatestUpdate ? (
-                    <textarea
-                      className="detail-update-notes-text detail-update-notes-textarea"
-                      value={detailLatestUpdateDraft}
-                      onChange={(event) => setDetailLatestUpdateDraft(event.target.value)}
-                      placeholder="Añade notas sobre la última actualización registrada"
-                    />
                   ) : (
-                    <p className="detail-update-notes-empty">No hay notas de actualización registradas para este SCORM.</p>
+                    <>
+                      <textarea
+                        className="detail-update-notes-text detail-update-notes-textarea"
+                        value={detailLatestUpdateDraft}
+                        onChange={(event) => setDetailLatestUpdateDraft(event.target.value)}
+                        placeholder="Añade notas sobre la última actualización registrada"
+                      />
+                      {!detailLatestUpdate ? (
+                        <p className="detail-update-notes-empty">Todavía no existe registro en <code>scorms_actualizacion</code>; al guardar se creará uno con estas notas.</p>
+                      ) : null}
+                    </>
                   )}
 
                   <dl className="detail-update-notes-meta">

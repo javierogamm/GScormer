@@ -1,3 +1,17 @@
+## v1.71.1 - Notas editables sin valor inicial en actualizaciones
+
+### Cambios consolidados
+- En el panel de **Notas de la actualización** del modal **DETALLES** el `textarea` queda editable también cuando todavía no existe una fila previa en `scorms_actualizacion`.
+- Al guardar un SCORM con notas escritas y sin registro previo de actualización, la aplicación crea automáticamente una nueva fila en `scorms_actualizacion` con `scorm_codigo`, `cambio_notas`, fecha actual y usuario por defecto si está disponible.
+- Cuando ya existe una fila previa, el guardado sigue actualizando `cambio_notas` sobre el último registro mostrado, sin alterar el flujo existente.
+- Se actualiza versión visible de APP y `package.json` a `1.71.1`.
+
+### Versionado
+- Versión anterior: `1.71.0`
+- Nueva versión consolidada: `1.71.1`
+
+---
+
 ## v1.71.0 - Edición de notas de actualización desde Detalles
 
 ### Cambios consolidados
