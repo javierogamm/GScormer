@@ -400,6 +400,8 @@ export default function ScormsTable({ userSession }) {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRecords, setHistoryRecords] = useState([]);
+  const [detailLatestUpdate, setDetailLatestUpdate] = useState(null);
+  const [detailLatestUpdateLoading, setDetailLatestUpdateLoading] = useState(false);
   const [publishPreset, setPublishPreset] = useState('todos');
   const [selectedPublishIds, setSelectedPublishIds] = useState([]);
   const [selectedValidationIds, setSelectedValidationIds] = useState([]);
@@ -524,6 +526,51 @@ export default function ScormsTable({ userSession }) {
       document.body.style.overflow = previousOverflow;
     };
   }, [activeRow]);
+
+  useEffect(() => {
+    const scormCode = String(detailDraft?.scorm_code || '').trim();
+
+    if (!activeRow || !scormCode) {
+      setDetailLatestUpdate(null);
+      setDetailLatestUpdateLoading(false);
+      return undefined;
+    }
+
+    let ignore = false;
+
+    const fetchLatestUpdateForDetail = async () => {
+      setDetailLatestUpdateLoading(true);
+
+      const { data, error: latestUpdateError } = await supabase
+        .from('scorms_actualizacion')
+        .select('cambio_tipo, cambio_user, cambio_notas, fecha_modif, created_at')
+        .eq('scorm_codigo', scormCode)
+        .order('fecha_modif', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (ignore) {
+        return;
+      }
+
+      if (latestUpdateError) {
+        setDetailLatestUpdate(null);
+        setDetailLatestUpdateLoading(false);
+        setError((previous) => previous || `No se pudo cargar la última actualización del SCORM: ${latestUpdateError.message}`);
+        return;
+      }
+
+      setDetailLatestUpdate(data || null);
+      setDetailLatestUpdateLoading(false);
+    };
+
+    fetchLatestUpdateForDetail();
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeRow, detailDraft?.scorm_code]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -994,6 +1041,8 @@ export default function ScormsTable({ userSession }) {
   const closeDetails = () => {
     setActiveRow(null);
     setDetailDraft(null);
+    setDetailLatestUpdate(null);
+    setDetailLatestUpdateLoading(false);
     setHistoryModalOpen(false);
     setHistoryRecords([]);
     setHistoryLoading(false);
@@ -3545,52 +3594,87 @@ export default function ScormsTable({ userSession }) {
               </button>
             </header>
 
-            <div className="table-wrapper details-table-wrapper">
-              <table className="details-edit-table">
-                <thead>
-                  <tr>
-                    <th>Campo</th>
-                    <th>Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {columns.filter((column) => column.editable).map((column) => (
-                    <tr key={`detail-${column.key}`}>
-                      <td>{column.label}</td>
-                      <td>
-                        {column.key === 'scorm_observaciones' ? (
-                          <textarea
-                            className="field-observaciones-textarea"
-                            value={detailDraft[column.key] || ''}
-                            onChange={(event) => updateDetailDraft(column.key, event.target.value)}
-                          />
-                        ) : SCORM_SELECTOR_FIELDS.includes(column.key) ? (
-                          <select
-                            value={detailDraft[column.key] || ''}
-                            onChange={(event) => handleSelectorFieldChange('detail', column.key, event.target.value)}
-                          >
-                            <option value="">Selecciona una opción</option>
-                            {(selectorOptionsByField[column.key] || []).map((optionValue) => (
-                              <option key={`detail-${column.key}-${optionValue}`} value={optionValue}>
-                                {optionValue}
-                              </option>
-                            ))}
-                            {ALLOW_NEW_SELECTOR_FIELDS.includes(column.key) ? (
-                              <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
-                            ) : null}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            value={detailDraft[column.key] || ''}
-                            onChange={(event) => updateDetailDraft(column.key, event.target.value)}
-                          />
-                        )}
-                      </td>
+            <div className="details-modal-layout">
+              <div className="table-wrapper details-table-wrapper">
+                <table className="details-edit-table">
+                  <thead>
+                    <tr>
+                      <th>Campo</th>
+                      <th>Valor</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {columns.filter((column) => column.editable).map((column) => (
+                      <tr key={`detail-${column.key}`}>
+                        <td>{column.label}</td>
+                        <td>
+                          {column.key === 'scorm_observaciones' ? (
+                            <textarea
+                              className="field-observaciones-textarea"
+                              value={detailDraft[column.key] || ''}
+                              onChange={(event) => updateDetailDraft(column.key, event.target.value)}
+                            />
+                          ) : SCORM_SELECTOR_FIELDS.includes(column.key) ? (
+                            <select
+                              value={detailDraft[column.key] || ''}
+                              onChange={(event) => handleSelectorFieldChange('detail', column.key, event.target.value)}
+                            >
+                              <option value="">Selecciona una opción</option>
+                              {(selectorOptionsByField[column.key] || []).map((optionValue) => (
+                                <option key={`detail-${column.key}-${optionValue}`} value={optionValue}>
+                                  {optionValue}
+                                </option>
+                              ))}
+                              {ALLOW_NEW_SELECTOR_FIELDS.includes(column.key) ? (
+                                <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                              ) : null}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={detailDraft[column.key] || ''}
+                              onChange={(event) => updateDetailDraft(column.key, event.target.value)}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <aside className="detail-update-notes-panel" aria-live="polite">
+                <div className="detail-update-notes-card">
+                  <span className="detail-update-notes-eyebrow">Última actualización registrada</span>
+                  <h4>Notas de la actualización</h4>
+                  {detailLatestUpdateLoading ? (
+                    <p className="status">Cargando notas…</p>
+                  ) : detailLatestUpdate?.cambio_notas ? (
+                    <p className="detail-update-notes-text">{detailLatestUpdate.cambio_notas}</p>
+                  ) : (
+                    <p className="detail-update-notes-empty">No hay notas de actualización registradas para este SCORM.</p>
+                  )}
+
+                  <dl className="detail-update-notes-meta">
+                    <div>
+                      <dt>Tipo</dt>
+                      <dd>{detailLatestUpdate?.cambio_tipo || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt>Fecha</dt>
+                      <dd>
+                        {detailLatestUpdate?.fecha_modif
+                          ? new Date(detailLatestUpdate.fecha_modif).toLocaleDateString('es-ES')
+                          : '-'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Usuario</dt>
+                      <dd>{detailLatestUpdate?.cambio_user || '-'}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </aside>
             </div>
 
             <footer className="modal-footer">

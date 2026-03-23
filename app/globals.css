@@ -776,6 +776,86 @@ input:focus {
   font-weight: 600;
 }
 
+.details-modal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.8fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.detail-update-notes-panel {
+  position: sticky;
+  top: 0;
+}
+
+.detail-update-notes-card {
+  padding: 1rem;
+  border: 1px solid #bfd8ff;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f4f9ff 0%, #eef5ff 100%);
+  box-shadow: 0 10px 26px rgba(49, 93, 151, 0.12);
+}
+
+.detail-update-notes-eyebrow {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #285ea8;
+}
+
+.detail-update-notes-card h4 {
+  margin: 0 0 0.8rem;
+  font-size: 1.1rem;
+}
+
+.detail-update-notes-text,
+.detail-update-notes-empty {
+  margin: 0 0 1rem;
+  padding: 0.9rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(40, 94, 168, 0.12);
+  white-space: pre-wrap;
+}
+
+.detail-update-notes-text {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #17304f;
+}
+
+.detail-update-notes-empty {
+  color: var(--muted);
+}
+
+.detail-update-notes-meta {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.detail-update-notes-meta div {
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(40, 94, 168, 0.14);
+}
+
+.detail-update-notes-meta dt {
+  margin-bottom: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #4a6b94;
+}
+
+.detail-update-notes-meta dd {
+  margin: 0;
+  font-weight: 600;
+  color: #17304f;
+}
+
 .scorms-accordion-list {
   display: grid;
   gap: 0.55rem;
@@ -1179,6 +1259,14 @@ textarea:focus {
 }
 
 @media (max-width: 1200px) {
+  .details-modal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-update-notes-panel {
+    position: static;
+  }
+
   .cursos-header-actions,
   .header-actions-row {
     width: 100%;
