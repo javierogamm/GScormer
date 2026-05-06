@@ -1,3 +1,24 @@
+# Log de cambios
+
+## v1.71.2 - Slides Archivo (medios) para herramientas del módulo de archivo
+
+### Cambios consolidados
+- Se añade una nueva vista **Archivo (medios)** dentro de SCORMs para mostrar una presentación visual de las herramientas del módulo de archivo.
+- Se incorpora una slide tipo diagrama con nodo central y cuatro nodos conectados, siguiendo la distribución y formas de la referencia aportada:
+  - Clasificación archivística (cuadro de clasificación y correlación a procedimientos).
+  - Descripción ENI extendido (metadatos para la transferencia a archivo).
+  - Control de accesos posterior al cierre (ver archivo todos/limitado).
+  - Preservación validez (resellado).
+- Se mantienen los colores propios de la presentación/aplicación mediante variables CSS existentes (`--primary`, `--primary-strong`, `--text`, `--muted`, `--border`).
+- Se incorporan animaciones de entrada, flotación del nodo central y pulso de nodos periféricos.
+- Se actualiza versión visible de APP y `package.json` a `1.71.2`.
+
+### Versionado
+- Versión anterior: `1.71.1`
+- Nueva versión consolidada: `1.71.2`
+
+---
+
 ## v1.71.1 - Notas editables sin valor inicial en actualizaciones
 
 ### Cambios consolidados

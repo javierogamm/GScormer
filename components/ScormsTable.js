@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { APP_VERSION } from '../lib/appVersion';
 import { exportRowsToExcel } from '../lib/excelExport';
+import ArchivoMediosPresentation from './ArchivoMediosPresentation';
 import { getScormImportKey, parseScormExcelRows } from '../lib/scormExcelImport';
 
 const columns = [
@@ -2445,6 +2446,14 @@ export default function ScormsTable({ userSession }) {
           </button>
           <button
             type="button"
+            className="secondary"
+            onClick={() => setViewMode('archiveMedia')}
+            disabled={viewMode === 'archiveMedia'}
+          >
+            Archivo (medios)
+          </button>
+          <button
+            type="button"
             className={`secondary ${alertScormsIndividualCount > 0 ? 'pending-highlight' : ''}`}
             onClick={() => setViewMode('alerts')}
             disabled={viewMode === 'alerts'}
@@ -2486,11 +2495,11 @@ export default function ScormsTable({ userSession }) {
 
       {loading && <p className="status">Cargando datos...</p>}
 
-      {!loading && !canRenderTable && !error && (
+      {!loading && !canRenderTable && !error && viewMode !== 'archiveMedia' && (
         <p className="status">No hay registros que coincidan con los filtros actuales.</p>
       )}
 
-      {!loading && (
+      {!loading && viewMode !== 'archiveMedia' && (
         <section className="table-filters-toggle global-filters-toggle">
           <div
             className="filter-panel-title filter-panel-title-interactive"
@@ -2598,6 +2607,8 @@ export default function ScormsTable({ userSession }) {
           </div>
         </section>
       )}
+
+      {!loading && viewMode === 'archiveMedia' && <ArchivoMediosPresentation />}
 
       {!loading && canRenderTable && viewMode === 'table' && (
         <div className="table-wrapper">
