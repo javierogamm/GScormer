@@ -1280,3 +1280,59 @@ textarea:focus {
     justify-content: flex-start;
   }
 }
+
+.rejected-row td {
+  background: #fff1f2;
+  border-bottom-color: #ffc7cf;
+}
+
+.rejected-row:hover td {
+  background: #ffe4e8;
+}
+
+.rejected-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #f39aaa;
+  border-radius: 999px;
+  background: #ffe4e8;
+  color: #a21634;
+  padding: 0.2rem 0.6rem;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.reject-button,
+.reject-confirm-button {
+  background: #ffe4e8 !important;
+  border: 1px solid #f39aaa !important;
+  color: #a21634 !important;
+}
+
+.reject-button:hover,
+.reject-confirm-button:hover {
+  background: #ffd4dc !important;
+}
+
+.comments-button {
+  border-color: #f39aaa !important;
+  color: #8c1630 !important;
+}
+
+.rejection-comment-box {
+  border: 1px solid #ffc7cf;
+  border-radius: 12px;
+  background: #fff6f7;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.rejection-comment-box p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.rejection-comment-box small {
+  color: var(--muted);
+}

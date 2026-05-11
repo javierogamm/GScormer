@@ -1,3 +1,19 @@
+## v1.71.2 - Bandeja MIS SCORMS y rechazo con comentarios
+
+### Cambios consolidados
+- Se añade la bandeja **MIS SCORMS** con los SCORMs asociados al usuario por agente que están pendientes de validación, pendientes de publicación, actualizados pendientes de publicación o rechazados.
+- Los usuarios validadores pueden rechazar SCORMs en validación y los usuarios ADMIN pueden rechazar SCORMs pendientes de publicación, obligando a registrar un comentario.
+- Los SCORMs rechazados se muestran resaltados en rojo en **MIS SCORMS** e incluyen botón **COMENTARIOS** para abrir un modal con el comentario, usuario y fecha del rechazo.
+- Desde **MIS SCORMS** el usuario puede reenviar sus SCORMs asociados a **Pendiente de validación** o **Pendiente de publicar**, limpiando los datos del rechazo al reactivar el flujo.
+- Se añade migración para guardar comentario, usuario, fecha y estado anterior del rechazo en `scorms_master`.
+- Se actualiza versión visible de APP y `package.json` a `1.71.2`.
+
+### Versionado
+- Versión anterior: `1.71.1`
+- Nueva versión consolidada: `1.71.2`
+
+---
+
 ## v1.71.1 - Notas editables sin valor inicial en actualizaciones
 
 ### Cambios consolidados
