@@ -1,3 +1,18 @@
+## v1.71.3 - Rechazo en columna scorm_rechazo y ajuste MIS SCORMS
+
+### Cambios consolidados
+- Se añade la columna `scorm_rechazo` a `scorms_master` para registrar directamente el comentario obligatorio cuando se rechaza una validación o una publicación.
+- El rechazo actualiza solo el estado a `Rechazado` y el comentario en `scorm_rechazo`, por lo que el SCORM sale de las bandejas **Pendiente validación** y **Pendiente publicación** al no conservar esos estados pendientes.
+- La bandeja **MIS SCORMS** lee el comentario desde `scorm_rechazo` y mantiene compatibilidad visual con registros antiguos que tuvieran `scorm_rechazo_comentario`.
+- Se ajusta la tabla de **MIS SCORMS** para que envuelva textos y botones dentro del ancho disponible, evitando el scroll lateral de la aplicación.
+- Se actualiza versión visible de APP y `package.json` a `1.71.3`.
+
+### Versionado
+- Versión anterior: `1.71.2`
+- Nueva versión consolidada: `1.71.3`
+
+---
+
 ## v1.71.2 - Bandeja MIS SCORMS y rechazo con comentarios
 
 ### Cambios consolidados

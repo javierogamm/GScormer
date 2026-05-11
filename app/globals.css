@@ -1336,3 +1336,42 @@ textarea:focus {
 .rejection-comment-box small {
   color: var(--muted);
 }
+
+.mine-table-wrapper {
+  overflow-x: hidden;
+}
+
+.mine-scorms-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.mine-scorms-table th,
+.mine-scorms-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding: 0.55rem;
+}
+
+.mine-scorms-table .col-scorm_name {
+  min-width: 0;
+  width: 16%;
+}
+
+.mine-scorms-table .col-scorm_url,
+.mine-scorms-table .col-scorm_observaciones {
+  width: 8%;
+}
+
+.mine-scorms-table .row-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+}
+
+.mine-scorms-table .action-button {
+  min-width: 0;
+  width: 100%;
+  padding-inline: 0.45rem;
+}
