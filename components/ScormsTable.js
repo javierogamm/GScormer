@@ -55,7 +55,7 @@ const alertColumns = [
 
 const editableColumns = columns.filter((column) => column.editable).map((column) => column.key);
 
-const STATUS_ORDER = ['En proceso', 'Pendiente de validación', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar'];
+const STATUS_ORDER = ['En proceso', 'Pendiente de validación', 'Pendiente de publicar', 'Publicado', 'Actualizado pendiente de publicar', 'Rechazado'];
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT', 'GAL', 'IT'];
 const LANGUAGE_LABELS = {
   ES: 'Español',
@@ -72,6 +72,8 @@ const UPDATE_TYPES = [
 ];
 const PUBLISH_PENDING_STATES = ['Pendiente de publicar', 'Actualizado pendiente de publicar'];
 const VALIDATION_PENDING_STATE = 'Pendiente de validación';
+const REJECTED_STATE = 'Rechazado';
+const MY_SCORMS_STATES = [...PUBLISH_PENDING_STATES, VALIDATION_PENDING_STATE, REJECTED_STATE];
 const SCORM_CODE_REGEX = /(?:\b([a-z]{2,3})\s*[-_]\s*)?\b(SCR\d{4})\b/gi;
 
 const normalizeLanguage = (language) => {
@@ -406,6 +408,10 @@ export default function ScormsTable({ userSession }) {
   const [publishPreset, setPublishPreset] = useState('todos');
   const [selectedPublishIds, setSelectedPublishIds] = useState([]);
   const [selectedValidationIds, setSelectedValidationIds] = useState([]);
+  const [rejectionTargetRows, setRejectionTargetRows] = useState([]);
+  const [rejectionComment, setRejectionComment] = useState('');
+  const [rejectionSubmitting, setRejectionSubmitting] = useState(false);
+  const [commentsModalRow, setCommentsModalRow] = useState(null);
   const [latestUpdateByCode, setLatestUpdateByCode] = useState({});
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
   const [coursesRows, setCoursesRows] = useState([]);
@@ -435,6 +441,20 @@ export default function ScormsTable({ userSession }) {
   const canDeleteAsAdmin = userSession?.admin === true;
   const canGenerateAlerts = userSession?.alertador === true;
   const defaultUpdateUser = String(userSession?.name || '').trim();
+  const canUseMyScormsTray = scopedResponsibleAgents.length > 0;
+  const canRejectScorm = (row) => {
+    const rowState = getRowState(row);
+
+    if (PUBLISH_PENDING_STATES.includes(rowState)) {
+      return canPublishAsAdmin;
+    }
+
+    if (rowState === VALIDATION_PENDING_STATE) {
+      return canMoveToPendingPublish;
+    }
+
+    return false;
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -766,6 +786,24 @@ export default function ScormsTable({ userSession }) {
     [filteredRows],
   );
 
+  const myScormRows = useMemo(
+    () =>
+      rows
+        .filter((row) => rowHasResponsibleAgents(row, scopedResponsibleAgents))
+        .filter((row) => MY_SCORMS_STATES.includes(getRowState(row)))
+        .sort((left, right) => {
+          const leftRejected = getRowState(left) === REJECTED_STATE ? 0 : 1;
+          const rightRejected = getRowState(right) === REJECTED_STATE ? 0 : 1;
+
+          if (leftRejected !== rightRejected) {
+            return leftRejected - rightRejected;
+          }
+
+          return getInternationalizedCode(left).localeCompare(getInternationalizedCode(right));
+        }),
+    [rows, scopedResponsibleAgents],
+  );
+
   useEffect(() => {
     const pendingIds = new Set(pendingPublishRows.map((row) => row.id));
     setSelectedPublishIds((previous) => previous.filter((rowId) => pendingIds.has(rowId)));
@@ -860,6 +898,7 @@ export default function ScormsTable({ userSession }) {
   const validationPendingCount = pendingValidationRows.length;
   const hasItemsPendingPublication = pendingPublishRows.length > 0;
   const hasItemsPendingValidation = pendingValidationRows.length > 0;
+  const myScormRowsCount = myScormRows.length;
 
   const publicationRows = useMemo(() => {
     const now = Date.now();
@@ -2251,6 +2290,177 @@ export default function ScormsTable({ userSession }) {
     closeImportPreviewModal();
   };
 
+  const openRejectionModal = (rowsToReject) => {
+    const normalizedRows = Array.isArray(rowsToReject) ? rowsToReject : [rowsToReject];
+    const validRows = normalizedRows.filter(Boolean);
+
+    if (validRows.length === 0) {
+      return;
+    }
+
+    const forbiddenRow = validRows.find((row) => !canRejectScorm(row));
+    if (forbiddenRow) {
+      setStatusMessage('');
+      setError(`No tienes permisos para rechazar el SCORM ${getInternationalizedCode(forbiddenRow)} en su estado actual.`);
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+    setRejectionTargetRows(validRows);
+    setRejectionComment('');
+  };
+
+  const closeRejectionModal = () => {
+    if (rejectionSubmitting) {
+      return;
+    }
+
+    setRejectionTargetRows([]);
+    setRejectionComment('');
+  };
+
+  const confirmRejectScorms = async () => {
+    const normalizedComment = String(rejectionComment || '').trim();
+
+    if (rejectionTargetRows.length === 0) {
+      return;
+    }
+
+    if (!normalizedComment) {
+      setError('Debes escribir un comentario para rechazar el SCORM.');
+      setStatusMessage('');
+      return;
+    }
+
+    const rejectedAt = new Date().toISOString();
+    const rejectedBy = defaultUpdateUser || null;
+    const previousStates = rejectionTargetRows.reduce((acc, row) => {
+      acc[row.id] = getRowState(row);
+      return acc;
+    }, {});
+
+    setRejectionSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const updates = rejectionTargetRows.map((row) =>
+      supabase
+        .from('scorms_master')
+        .update({
+          scorm_estado: REJECTED_STATE,
+          scorm_rechazo_comentario: normalizedComment,
+          scorm_rechazo_user: rejectedBy,
+          scorm_rechazo_fecha: rejectedAt,
+          scorm_rechazo_estado_anterior: getRowState(row),
+        })
+        .eq('id', row.id)
+    );
+
+    const results = await Promise.all(updates);
+    const failedUpdate = results.find((result) => result.error);
+
+    if (failedUpdate?.error) {
+      setRejectionSubmitting(false);
+      setError(`No se pudo rechazar el SCORM: ${failedUpdate.error.message}`);
+      return;
+    }
+
+    const rejectedIds = rejectionTargetRows.map((row) => row.id);
+    const patchRejectedRow = (row) =>
+      rejectedIds.includes(row.id)
+        ? {
+            ...row,
+            scorm_estado: REJECTED_STATE,
+            scorm_rechazo_comentario: normalizedComment,
+            scorm_rechazo_user: rejectedBy,
+            scorm_rechazo_fecha: rejectedAt,
+            scorm_rechazo_estado_anterior: previousStates[row.id],
+          }
+        : row;
+
+    setRows((previousRows) => previousRows.map((row) => patchRejectedRow(row)));
+    setDetailDraft((previous) => (previous ? patchRejectedRow(previous) : previous));
+    setActiveRow((previous) => (previous ? patchRejectedRow(previous) : previous));
+    setMoveHistory((previous) => [
+      ...previous,
+      {
+        rowIds: rejectedIds,
+        fromStates: previousStates,
+        toState: REJECTED_STATE,
+      },
+    ]);
+    setRedoHistory([]);
+    setSelectedPublishIds((previous) => previous.filter((id) => !rejectedIds.includes(id)));
+    setSelectedValidationIds((previous) => previous.filter((id) => !rejectedIds.includes(id)));
+    setRejectionSubmitting(false);
+    setRejectionTargetRows([]);
+    setRejectionComment('');
+    setStatusMessage(
+      rejectedIds.length === 1
+        ? 'SCORM rechazado correctamente.'
+        : `${rejectedIds.length} SCORMs rechazados correctamente.`
+    );
+  };
+
+  const resendMyScorm = async (row, nextState) => {
+    if (!row?.id || !MY_SCORMS_STATES.includes(nextState)) {
+      return;
+    }
+
+    if (!rowHasResponsibleAgents(row, scopedResponsibleAgents)) {
+      setStatusMessage('');
+      setError('Solo puedes reenviar SCORMs asociados a tus agentes.');
+      return;
+    }
+
+    const previousState = getRowState(row);
+    setError('');
+    setStatusMessage('');
+
+    const { error: resendError } = await supabase
+      .from('scorms_master')
+      .update({
+        scorm_estado: nextState,
+        scorm_rechazo_comentario: null,
+        scorm_rechazo_user: null,
+        scorm_rechazo_fecha: null,
+        scorm_rechazo_estado_anterior: null,
+      })
+      .eq('id', row.id);
+
+    if (resendError) {
+      setError(`No se pudo reenviar el SCORM: ${resendError.message}`);
+      return;
+    }
+
+    const patchRow = (currentRow) =>
+      currentRow.id === row.id
+        ? {
+            ...currentRow,
+            scorm_estado: nextState,
+            scorm_rechazo_comentario: null,
+            scorm_rechazo_user: null,
+            scorm_rechazo_fecha: null,
+            scorm_rechazo_estado_anterior: null,
+          }
+        : currentRow;
+
+    setRows((previousRows) => previousRows.map((currentRow) => patchRow(currentRow)));
+    setDetailDraft((previous) => (previous ? patchRow(previous) : previous));
+    setActiveRow((previous) => (previous ? patchRow(previous) : previous));
+    setMoveHistory((previous) => [
+      ...previous,
+      {
+        rowIds: [row.id],
+        fromStates: { [row.id]: previousState },
+        toState: nextState,
+      },
+    ]);
+    setRedoHistory([]);
+    setStatusMessage(`SCORM ${getInternationalizedCode(row)} reenviado a "${nextState}".`);
+  };
+
   const publishScorm = async (row) => {
     if (!row?.id) {
       return;
@@ -2463,16 +2673,17 @@ export default function ScormsTable({ userSession }) {
           )}
           <button
             type="button"
-            className={`secondary ${myScormsOnly ? 'active-preset' : ''}`}
-            onClick={() => setMyScormsOnly((previous) => !previous)}
-            disabled={scopedResponsibleAgents.length === 0}
+            className={`secondary ${myScormRowsCount > 0 ? 'pending-highlight' : ''}`}
+            onClick={() => setViewMode('mine')}
+            disabled={!canUseMyScormsTray || viewMode === 'mine'}
             title={
-              scopedResponsibleAgents.length > 0
-                ? `Filtrar por responsables asociados (${scopedResponsibleAgents.length})`
+              canUseMyScormsTray
+                ? `Ver SCORMs asociados a tus responsables (${scopedResponsibleAgents.length})`
                 : 'Tu usuario no tiene responsables asociados'
             }
           >
-            Mis scorms
+            MIS SCORMS
+            <span className="kpi-badge">{myScormRowsCount}</span>
           </button>
         </div>
       </header>
@@ -2486,7 +2697,7 @@ export default function ScormsTable({ userSession }) {
 
       {loading && <p className="status">Cargando datos...</p>}
 
-      {!loading && !canRenderTable && !error && (
+      {!loading && !canRenderTable && viewMode !== 'mine' && !error && (
         <p className="status">No hay registros que coincidan con los filtros actuales.</p>
       )}
 
@@ -2596,6 +2807,109 @@ export default function ScormsTable({ userSession }) {
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {!loading && viewMode === 'mine' && (
+        <section className="publish-view">
+          <div className="publish-controls">
+            <p className="status">
+              Bandeja personal con SCORMs pendientes de publicación, pendientes de validación y rechazados asociados a tus agentes:
+              {' '}<strong>{scopedResponsibleAgents.join(', ') || 'sin agentes asociados'}</strong>.
+            </p>
+          </div>
+
+          {myScormRows.length === 0 ? (
+            <p className="status">No hay SCORMs asociados a tus agentes en el flujo de validación/publicación.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    {publishColumns.map((column) => (
+                      <th key={`mine-head-${column.key}`} className={`col-${column.key}`}>
+                        {column.label}
+                      </th>
+                    ))}
+                    <th>Comentario rechazo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myScormRows.map((row) => {
+                    const isRejected = getRowState(row) === REJECTED_STATE;
+                    const hasRejectComment = String(row.scorm_rechazo_comentario || '').trim().length > 0;
+
+                    return (
+                      <tr key={`mine-row-${row.id}`} className={isRejected ? 'rejected-row' : ''}>
+                        {publishColumns.map((column) => (
+                          <td key={`mine-${row.id}-${column.key}`} className={`col-${column.key}`}>
+                            {column.key === 'publication_date' ? (
+                              <span>{formatDateDDMMYYYY(getPublicationDateMs(row, latestUpdateByCode))}</span>
+                            ) : column.key === 'publication_update_type' ? (
+                              <span>{isRejected ? 'Rechazado' : getPublicationUpdateType(row, latestUpdateByCode)}</span>
+                            ) : column.key === 'scorm_url' ? (
+                              row[column.key] ? (
+                                <a href={getExternalUrl(row[column.key])} target="_blank" rel="noreferrer" className="table-link">
+                                  Abrir enlace
+                                </a>
+                              ) : (
+                                <span className="muted">Sin URL</span>
+                              )
+                            ) : column.key === 'scorm_categoria' ? (
+                              <span className="category-chip" style={getCategoryColor(row[column.key])}>
+                                {row[column.key] || 'Sin categoría'}
+                              </span>
+                            ) : column.key === 'scorm_name' ? (
+                              <span>{getOfficialName(row)}</span>
+                            ) : column.key === 'scorm_code' ? (
+                              <span>{getInternationalizedCode(row)}</span>
+                            ) : column.key === 'scorm_estado' && isRejected ? (
+                              <span className="rejected-badge">Rechazado</span>
+                            ) : (
+                              <span>{row[column.key] || '-'}</span>
+                            )}
+                          </td>
+                        ))}
+                        <td>
+                          {hasRejectComment ? (
+                            <button type="button" className="secondary action-button comments-button" onClick={() => setCommentsModalRow(row)}>
+                              COMENTARIOS
+                            </button>
+                          ) : (
+                            <span className="muted">Sin comentarios</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            <button type="button" className="secondary action-button" onClick={() => openDetails(row)}>
+                              Detalles
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary action-button"
+                              onClick={() => resendMyScorm(row, VALIDATION_PENDING_STATE)}
+                              disabled={getRowState(row) === VALIDATION_PENDING_STATE}
+                            >
+                              Enviar a validar
+                            </button>
+                            <button
+                              type="button"
+                              className="publish-button action-button"
+                              onClick={() => resendMyScorm(row, 'Pendiente de publicar')}
+                              disabled={getRowState(row) === 'Pendiente de publicar'}
+                            >
+                              Enviar a publicar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
 
@@ -3162,6 +3476,14 @@ export default function ScormsTable({ userSession }) {
                           >
                             PUBLICAR SCORM
                           </button>
+                          <button
+                            type="button"
+                            className="secondary action-button reject-button"
+                            onClick={() => openRejectionModal(row)}
+                            disabled={!canRejectScorm(row)}
+                          >
+                            RECHAZAR
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -3270,6 +3592,14 @@ export default function ScormsTable({ userSession }) {
                             onClick={() => updateRowsStatus([row.id], 'Pendiente de publicar')}
                           >
                             VALIDAR SCORM
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary action-button reject-button"
+                            onClick={() => openRejectionModal(row)}
+                            disabled={!canRejectScorm(row)}
+                          >
+                            RECHAZAR
                           </button>
                         </div>
                       </td>
@@ -3987,6 +4317,83 @@ export default function ScormsTable({ userSession }) {
                 {createSubmitting ? 'Creando...' : 'Crear SCORM'}
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+
+      {rejectionTargetRows.length > 0 && (
+        <div className="modal-overlay" role="presentation">
+          <div
+            className="modal-content modal-content-narrow"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rechazar-scorm-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="rechazar-scorm-titulo">Rechazar SCORM</h3>
+                <p>El comentario es obligatorio y quedará visible en la bandeja MIS SCORMS.</p>
+              </div>
+              <button type="button" className="secondary" onClick={closeRejectionModal} disabled={rejectionSubmitting}>
+                Cerrar
+              </button>
+            </header>
+
+            <div className="details-grid details-grid-single">
+              <p className="status">
+                SCORM(s): {rejectionTargetRows.map((row) => getInternationalizedCode(row)).join(', ')}
+              </p>
+              <label>
+                <span>Comentario de rechazo (obligatorio)</span>
+                <textarea
+                  value={rejectionComment}
+                  placeholder="Describe qué debe corregirse antes de volver a enviar el SCORM."
+                  onChange={(event) => setRejectionComment(event.target.value)}
+                  required
+                />
+              </label>
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={closeRejectionModal} disabled={rejectionSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" className="reject-confirm-button" onClick={confirmRejectScorms} disabled={rejectionSubmitting}>
+                {rejectionSubmitting ? 'Rechazando...' : 'Confirmar rechazo'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {commentsModalRow && (
+        <div className="modal-overlay" role="presentation">
+          <div
+            className="modal-content modal-content-narrow"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="comentarios-rechazo-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <div>
+                <h3 id="comentarios-rechazo-titulo">Comentarios del rechazo</h3>
+                <p>{getOfficialName(commentsModalRow)} · {getInternationalizedCode(commentsModalRow)}</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setCommentsModalRow(null)}>
+                Cerrar
+              </button>
+            </header>
+
+            <div className="rejection-comment-box">
+              <p>{commentsModalRow.scorm_rechazo_comentario || 'Sin comentario registrado.'}</p>
+              <small>
+                {commentsModalRow.scorm_rechazo_user ? `Usuario: ${commentsModalRow.scorm_rechazo_user}` : 'Usuario no registrado'}
+                {' · '}
+                {commentsModalRow.scorm_rechazo_fecha ? `Fecha: ${formatDateDDMMYYYY(commentsModalRow.scorm_rechazo_fecha)}` : 'Fecha no registrada'}
+              </small>
+            </div>
           </div>
         </div>
       )}
