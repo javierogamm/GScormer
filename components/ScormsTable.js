@@ -138,6 +138,12 @@ const getRowState = (row) => row.scorm_estado || 'Sin estado';
 
 const getOfficialName = (row) => String(row.scorm_name || row.scorm_nombre || '').trim() || 'Sin nombre oficial';
 
+const getRejectionComment = (row) => String(row?.scorm_rechazo || row?.scorm_rechazo_comentario || '').trim();
+
+const getRejectionUser = (row) => String(row?.scorm_rechazo_user || '').trim();
+
+const getRejectionDate = (row) => row?.scorm_rechazo_fecha || null;
+
 const getInternationalizedCode = (row) => {
   const idioma = normalizeLanguage(row.scorm_idioma);
   const codigo = String(row.scorm_code || '').trim();
@@ -2349,10 +2355,7 @@ export default function ScormsTable({ userSession }) {
         .from('scorms_master')
         .update({
           scorm_estado: REJECTED_STATE,
-          scorm_rechazo_comentario: normalizedComment,
-          scorm_rechazo_user: rejectedBy,
-          scorm_rechazo_fecha: rejectedAt,
-          scorm_rechazo_estado_anterior: getRowState(row),
+          scorm_rechazo: normalizedComment,
         })
         .eq('id', row.id)
     );
@@ -2372,6 +2375,7 @@ export default function ScormsTable({ userSession }) {
         ? {
             ...row,
             scorm_estado: REJECTED_STATE,
+            scorm_rechazo: normalizedComment,
             scorm_rechazo_comentario: normalizedComment,
             scorm_rechazo_user: rejectedBy,
             scorm_rechazo_fecha: rejectedAt,
@@ -2422,10 +2426,7 @@ export default function ScormsTable({ userSession }) {
       .from('scorms_master')
       .update({
         scorm_estado: nextState,
-        scorm_rechazo_comentario: null,
-        scorm_rechazo_user: null,
-        scorm_rechazo_fecha: null,
-        scorm_rechazo_estado_anterior: null,
+        scorm_rechazo: null,
       })
       .eq('id', row.id);
 
@@ -2439,6 +2440,7 @@ export default function ScormsTable({ userSession }) {
         ? {
             ...currentRow,
             scorm_estado: nextState,
+            scorm_rechazo: null,
             scorm_rechazo_comentario: null,
             scorm_rechazo_user: null,
             scorm_rechazo_fecha: null,
@@ -2822,8 +2824,8 @@ export default function ScormsTable({ userSession }) {
           {myScormRows.length === 0 ? (
             <p className="status">No hay SCORMs asociados a tus agentes en el flujo de validación/publicación.</p>
           ) : (
-            <div className="table-wrapper">
-              <table>
+            <div className="table-wrapper mine-table-wrapper">
+              <table className="mine-scorms-table">
                 <thead>
                   <tr>
                     {publishColumns.map((column) => (
@@ -2838,7 +2840,7 @@ export default function ScormsTable({ userSession }) {
                 <tbody>
                   {myScormRows.map((row) => {
                     const isRejected = getRowState(row) === REJECTED_STATE;
-                    const hasRejectComment = String(row.scorm_rechazo_comentario || '').trim().length > 0;
+                    const hasRejectComment = getRejectionComment(row).length > 0;
 
                     return (
                       <tr key={`mine-row-${row.id}`} className={isRejected ? 'rejected-row' : ''}>
@@ -4387,11 +4389,11 @@ export default function ScormsTable({ userSession }) {
             </header>
 
             <div className="rejection-comment-box">
-              <p>{commentsModalRow.scorm_rechazo_comentario || 'Sin comentario registrado.'}</p>
+              <p>{getRejectionComment(commentsModalRow) || 'Sin comentario registrado.'}</p>
               <small>
-                {commentsModalRow.scorm_rechazo_user ? `Usuario: ${commentsModalRow.scorm_rechazo_user}` : 'Usuario no registrado'}
+                {getRejectionUser(commentsModalRow) ? `Usuario: ${getRejectionUser(commentsModalRow)}` : 'Usuario no registrado'}
                 {' · '}
-                {commentsModalRow.scorm_rechazo_fecha ? `Fecha: ${formatDateDDMMYYYY(commentsModalRow.scorm_rechazo_fecha)}` : 'Fecha no registrada'}
+                {getRejectionDate(commentsModalRow) ? `Fecha: ${formatDateDDMMYYYY(getRejectionDate(commentsModalRow))}` : 'Fecha no registrada'}
               </small>
             </div>
           </div>
