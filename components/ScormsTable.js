@@ -34,6 +34,7 @@ const FILTER_LABELS = {
 
 const SCORM_SELECTOR_FIELDS = ['scorm_responsable', 'scorm_tipo', 'scorm_categoria', 'scorm_subcategoria', 'scorm_estado', 'scorm_test'];
 const NEW_SELECTOR_OPTION_VALUE = '__new_option__';
+const ADMIN_MANAGED_SELECTOR_FIELDS = ['scorm_categoria', 'scorm_subcategoria'];
 const ALLOW_NEW_SELECTOR_FIELDS = SCORM_SELECTOR_FIELDS.filter((fieldKey) => fieldKey !== 'scorm_subcategoria');
 const REQUIRED_CREATE_FIELDS = ['scorm_name', 'scorm_url', 'scorm_test'];
 
@@ -411,6 +412,7 @@ export default function ScormsTable({ userSession }) {
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [createDraft, setCreateDraft] = useState(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [customSelectorOptionsByField, setCustomSelectorOptionsByField] = useState({});
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRecords, setHistoryRecords] = useState([]);
@@ -644,9 +646,10 @@ export default function ScormsTable({ userSession }) {
 
   const selectorOptionsByField = useMemo(() => {
     return SCORM_SELECTOR_FIELDS.reduce((acc, fieldKey) => {
-      const values = rows
-        .map((row) => String(row[fieldKey] || '').trim())
-        .filter(Boolean);
+      const values = [
+        ...rows.map((row) => String(row[fieldKey] || '').trim()).filter(Boolean),
+        ...(customSelectorOptionsByField[fieldKey] || []),
+      ];
 
       if (fieldKey === 'scorm_estado') {
         values.push(...STATUS_ORDER);
@@ -655,7 +658,7 @@ export default function ScormsTable({ userSession }) {
       acc[fieldKey] = [...new Set(values)].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       return acc;
     }, {});
-  }, [rows]);
+  }, [customSelectorOptionsByField, rows]);
 
   const orderedFilterColumns = useMemo(() => {
     const layoutKeys = FILTER_LAYOUT_ROWS.flat();
@@ -1329,7 +1332,21 @@ export default function ScormsTable({ userSession }) {
     }));
   };
 
+  const canAddNewSelectorValue = (fieldKey) => {
+    if (ADMIN_MANAGED_SELECTOR_FIELDS.includes(fieldKey)) {
+      return canPublishAsAdmin;
+    }
+
+    return ALLOW_NEW_SELECTOR_FIELDS.includes(fieldKey);
+  };
+
   const resolveNewSelectorValue = (fieldKey) => {
+    if (!canAddNewSelectorValue(fieldKey)) {
+      setStatusMessage('');
+      setError('Solo los usuarios ADMIN pueden crear nuevas categorías o subcategorías.');
+      return null;
+    }
+
     const fieldLabel = columns.find((column) => column.key === fieldKey)?.label || fieldKey;
     const typedValue = globalThis?.prompt(`Nuevo valor para ${fieldLabel}:`);
     const normalizedValue = String(typedValue || '').trim();
@@ -1337,6 +1354,20 @@ export default function ScormsTable({ userSession }) {
     if (!normalizedValue) {
       return null;
     }
+
+    setCustomSelectorOptionsByField((previous) => {
+      const previousValues = previous[fieldKey] || [];
+      const alreadyExists = previousValues.some((value) => value.toLowerCase() === normalizedValue.toLowerCase());
+
+      if (alreadyExists) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [fieldKey]: [...previousValues, normalizedValue],
+      };
+    });
 
     return normalizedValue;
   };
@@ -4067,8 +4098,8 @@ export default function ScormsTable({ userSession }) {
                                   {optionValue}
                                 </option>
                               ))}
-                              {ALLOW_NEW_SELECTOR_FIELDS.includes(column.key) ? (
-                                <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                              {canAddNewSelectorValue(column.key) ? (
+                                <option value={NEW_SELECTOR_OPTION_VALUE}>+ Añadir {column.label.toLowerCase()}…</option>
                               ) : null}
                             </select>
                           ) : (
@@ -4351,8 +4382,8 @@ export default function ScormsTable({ userSession }) {
                           {optionValue}
                         </option>
                       ))}
-                      {ALLOW_NEW_SELECTOR_FIELDS.includes(column.key) ? (
-                        <option value={NEW_SELECTOR_OPTION_VALUE}>+ Nuevo valor…</option>
+                      {canAddNewSelectorValue(column.key) ? (
+                        <option value={NEW_SELECTOR_OPTION_VALUE}>+ Añadir {column.label.toLowerCase()}…</option>
                       ) : null}
                     </select>
                   ) : (

@@ -1,3 +1,18 @@
+## v1.71.6 - Alta admin de categorías y subcategorías SCORM
+
+### Cambios consolidados
+- En los selectores del modal **Crear SCORM** se añade para usuarios ADMIN la opción final para crear nuevas categorías y subcategorías.
+- La opción de nueva categoría/subcategoría solicita el valor, lo selecciona automáticamente y lo incorpora a las opciones disponibles de la sesión para que aparezca de inmediato en los selectores.
+- Se aplica la misma gestión de nuevas categorías y subcategorías al modal **DETALLES** de SCORM, manteniendo la restricción de alta solo para usuarios ADMIN.
+- Se mantiene la creación de nuevos valores ya existente en el resto de selectores gestionados y se actualiza el texto de la opción para indicar el campo añadido.
+- Se actualiza versión visible de APP y `package.json` a `1.71.6`.
+
+### Versionado
+- Versión anterior: `1.71.5`
+- Nueva versión consolidada: `1.71.6`
+
+---
+
 ## v1.71.5 - Reconexión de sesión desde cookies al entrar
 
 ### Cambios consolidados
