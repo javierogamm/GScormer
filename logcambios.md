@@ -1,3 +1,20 @@
+## v1.71.4 - MIS VALIDACIONES y edición de rechazos
+
+### Cambios consolidados
+- Se renombra la bandeja **MIS SCORMS** a **MIS VALIDACIONES** en la navegación y en los textos del modal de rechazo.
+- Los usuarios ADMIN acceden en **MIS VALIDACIONES** a todos los SCORMs pendientes de validación, pendientes de publicación, actualizados pendientes de publicación y rechazados de todos los usuarios.
+- Se añade la columna visual **Usuario creador** en **MIS VALIDACIONES** y se guarda el nuevo campo `scorm_creador` en altas manuales, traducciones e importaciones Excel.
+- Los SCORMs rechazados permiten editar el motivo de rechazo desde **MIS VALIDACIONES**, precargando el comentario existente antes de confirmar.
+- Se consolida la persistencia de metadatos de rechazo (`scorm_rechazo_comentario`, usuario, fecha y estado anterior) al rechazar, y se limpian al reenviar el SCORM.
+- Se añade migración para crear la columna `scorm_creador` en `scorms_master`.
+- Se actualiza versión visible de APP y `package.json` a `1.71.4`.
+
+### Versionado
+- Versión anterior: `1.71.3`
+- Nueva versión consolidada: `1.71.4`
+
+---
+
 ## v1.71.3 - Rechazo en columna scorm_rechazo y ajuste MIS SCORMS
 
 ### Cambios consolidados
