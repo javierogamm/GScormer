@@ -1,3 +1,18 @@
+## v1.71.5 - Reconexión de sesión desde cookies al entrar
+
+### Cambios consolidados
+- Se añade el endpoint `/api/auth/session` para validar la cookie HTTP-only `gscormer_session`, recargar el usuario actual desde `scorms_users` y renovar la cookie antes de cargar datos protegidos.
+- Al entrar en el landing, la aplicación muestra un estado de reconexión y no monta las tablas hasta confirmar o descartar la sesión del navegador, evitando cargas con cookies antiguas o no reenganchadas.
+- La sesión del frontend se normaliza en una única función para mantener sincronizados permisos, asociaciones de agente y `localStorage` tanto en login manual como en reconexión por cookie.
+- Se corrige el reenganche manual de agente para leer permisos desde la respuesta de base de datos en vez de referencias inexistentes del login anterior.
+- Se actualiza versión visible de APP y `package.json` a `1.71.5`.
+
+### Versionado
+- Versión anterior: `1.71.4`
+- Nueva versión consolidada: `1.71.5`
+
+---
+
 ## v1.71.4 - MIS VALIDACIONES y edición de rechazos
 
 ### Cambios consolidados
