@@ -1,3 +1,18 @@
+## v1.71.7 - Limpieza y selección múltiple en filtros de cursos
+
+### Cambios consolidados
+- Se reorganiza el panel de filtros de **Cursos** para dejar visibles los filtros principales y mover campos secundarios a un bloque desplegable con el botón **Mostrar más filtros** situado al final derecho del panel.
+- Los filtros **PA Forma parte**, **Instructor**, **Estado curso**, **Tipología**, **Materia** y **Categoría** pasan a usar un selector abierto desde lupa con lista de valores disponibles, selección múltiple y botón **Aplicar filtro**.
+- La aplicación de varios valores dentro de un mismo campo de filtro se evalúa como coincidencia con cualquiera de los valores seleccionados, manteniendo combinación acumulativa entre campos distintos.
+- Se añaden estilos específicos para el selector de valores, el desplegable de filtros adicionales y sus acciones.
+- Se actualiza versión visible de APP y `package.json` a `1.71.7`.
+
+### Versionado
+- Versión anterior: `1.71.6`
+- Nueva versión consolidada: `1.71.7`
+
+---
+
 ## v1.71.6 - Alta admin de categorías y subcategorías SCORM
 
 ### Cambios consolidados

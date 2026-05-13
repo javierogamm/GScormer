@@ -87,7 +87,23 @@ const TIPOLOGY_VISIBILITY_OPTIONS = [
   { key: 'GENERAL', label: 'Tipología GENERAL' },
 ];
 
-const SELECT_FILTER_PRIORITY = ['curso_estado', 'tipologia', 'curso_instructor', 'materia', 'categoria'];
+const MULTI_SELECT_FILTER_KEYS = ['pa_formaparte', 'curso_instructor', 'curso_estado', 'tipologia', 'materia', 'categoria'];
+const ADVANCED_FILTER_KEYS = [
+  'codigo_individual',
+  'pa_url',
+  'pr_orden',
+  'ramas',
+  'inscripcion',
+  'curso_inscripcion',
+  'tiempo_cert',
+  'curso_url_ficha',
+  'curso_url',
+  'test',
+  'existe',
+  'contenido',
+  'link_inscripcion',
+];
+const FEATURED_TEXT_FILTER_KEYS = ['curso_codigo', 'curso_nombre'];
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -234,6 +250,9 @@ export default function ScormsCursosTable({ userSession }) {
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
+  const [advancedFiltersVisible, setAdvancedFiltersVisible] = useState(false);
+  const [openFilterLookupKey, setOpenFilterLookupKey] = useState(null);
+  const [filterDraftSelections, setFilterDraftSelections] = useState({});
   const [scormsModalRows, setScormsModalRows] = useState([]);
   const [detailModalRow, setDetailModalRow] = useState(null);
   const [detailDraft, setDetailDraft] = useState(null);
@@ -390,21 +409,27 @@ export default function ScormsCursosTable({ userSession }) {
     };
   }, [detailModalRow]);
 
-  const prioritizedFilterColumns = useMemo(() => {
-    const prioritizedSelectorColumns = SELECT_FILTER_PRIORITY
-      .map((key) => columns.find((column) => column.key === key))
-      .filter(Boolean);
-    const highlightedKeys = ['curso_codigo', 'curso_nombre'];
-    const highlighted = highlightedKeys
-      .map((key) => columns.find((column) => column.key === key))
-      .filter(Boolean);
-    const hiddenSet = new Set([...SELECT_FILTER_PRIORITY, ...highlightedKeys]);
-    const rest = columns.filter((column) => !hiddenSet.has(column.key));
-    return [...prioritizedSelectorColumns, ...highlighted, { key: '__scorms__', label: 'SCORMS' }, ...rest];
+  const filterColumnByKey = useMemo(() => {
+    return columns.reduce((acc, column) => {
+      acc[column.key] = column;
+      return acc;
+    }, {});
   }, []);
 
+  const primaryFilterColumns = useMemo(() => {
+    const selectedKeys = [...MULTI_SELECT_FILTER_KEYS, ...FEATURED_TEXT_FILTER_KEYS];
+    return [
+      ...selectedKeys.map((key) => filterColumnByKey[key]).filter(Boolean),
+      { key: '__scorms__', label: 'SCORMS' },
+    ];
+  }, [filterColumnByKey]);
+
+  const advancedFilterColumns = useMemo(() => {
+    return ADVANCED_FILTER_KEYS.map((key) => filterColumnByKey[key]).filter(Boolean);
+  }, [filterColumnByKey]);
+
   const selectorFilterOptions = useMemo(() => {
-    return SELECT_FILTER_PRIORITY.reduce((acc, key) => {
+    return MULTI_SELECT_FILTER_KEYS.reduce((acc, key) => {
       acc[key] = rows
         .map((row) => String(row[key] || '').trim())
         .filter(Boolean)
@@ -470,8 +495,18 @@ export default function ScormsCursosTable({ userSession }) {
       }
 
       return activeFilterEntries.every(([columnKey, values]) => {
-        const rowValue = columnKey === '__scorms__' ? getScormSearchableText(row) : String(row[columnKey] || '').toLowerCase();
-        return values.every((value) => rowValue.includes(value.toLowerCase()));
+        const rowValue = columnKey === '__scorms__' ? getScormSearchableText(row) : String(row[columnKey] || '');
+        const normalizedRowValue = rowValue.toLowerCase();
+
+        return values.some((value) => {
+          const normalizedFilterValue = String(value || '').toLowerCase();
+
+          if (MULTI_SELECT_FILTER_KEYS.includes(columnKey)) {
+            return normalizedRowValue === normalizedFilterValue;
+          }
+
+          return normalizedRowValue.includes(normalizedFilterValue);
+        });
       });
     });
   }, [rows, filters, myCoursesOnly, scopedInstructorAgents, getScormSearchableText]);
@@ -1565,6 +1600,45 @@ export default function ScormsCursosTable({ userSession }) {
     }));
   };
 
+  const openFilterLookup = (columnKey) => {
+    setFilterDraftSelections((previous) => ({
+      ...previous,
+      [columnKey]: filters[columnKey] || [],
+    }));
+    setOpenFilterLookupKey((previous) => (previous === columnKey ? null : columnKey));
+  };
+
+  const toggleDraftFilterSelection = (columnKey, option) => {
+    setFilterDraftSelections((previous) => {
+      const existingValues = previous[columnKey] || [];
+      const alreadySelected = existingValues.some((value) => value.toLowerCase() === option.toLowerCase());
+
+      return {
+        ...previous,
+        [columnKey]: alreadySelected
+          ? existingValues.filter((value) => value.toLowerCase() !== option.toLowerCase())
+          : [...existingValues, option],
+      };
+    });
+  };
+
+  const applyLookupFilter = (columnKey) => {
+    const selectedValues = filterDraftSelections[columnKey] || [];
+
+    setFilters((previous) => {
+      if (selectedValues.length === 0) {
+        const { [columnKey]: _removed, ...rest } = previous;
+        return rest;
+      }
+
+      return {
+        ...previous,
+        [columnKey]: selectedValues,
+      };
+    });
+    setOpenFilterLookupKey(null);
+  };
+
   const openPaDetailsModal = (row) => {
     const uniqueId = String(row.IDUnico ?? row.idunico ?? row.id_unico ?? '').trim();
 
@@ -1629,6 +1703,14 @@ export default function ScormsCursosTable({ userSession }) {
     });
   };
 
+  const clearDraftLookupFilter = (columnKey) => {
+    setFilterDraftSelections((previous) => ({
+      ...previous,
+      [columnKey]: [],
+    }));
+    clearFiltersForColumn(columnKey);
+  };
+
   const toggleCellFilter = (columnKey, rawValue) => {
     const normalizedValue = String(rawValue || '').trim();
 
@@ -1658,6 +1740,107 @@ export default function ScormsCursosTable({ userSession }) {
         [columnKey]: [...existingValues, normalizedValue],
       };
     });
+  };
+
+  const renderFilterCard = (column) => {
+    const appliedFilters = filters[column.key] || [];
+    const draftSelections = filterDraftSelections[column.key] || [];
+    const isLookupFilter = MULTI_SELECT_FILTER_KEYS.includes(column.key);
+    const lookupOptions = selectorFilterOptions[column.key] || [];
+    const lookupIsOpen = openFilterLookupKey === column.key;
+
+    return (
+      <div key={column.key} className="filter-dropdown filter-card">
+        <div className="filter-card-header">
+          <span>{column.label}</span>
+          {appliedFilters.length > 0 ? <span className="filter-counter">{appliedFilters.length}</span> : null}
+        </div>
+        <div className="filter-dropdown-content">
+          {isLookupFilter ? (
+            <div className="filter-lookup">
+              <button
+                type="button"
+                className="secondary filter-lookup-trigger"
+                onClick={() => openFilterLookup(column.key)}
+                aria-expanded={lookupIsOpen}
+              >
+                <span aria-hidden="true">🔍</span> Seleccionar valores
+              </button>
+              {lookupIsOpen ? (
+                <div className="filter-lookup-menu">
+                  <div className="filter-lookup-options">
+                    {lookupOptions.length > 0 ? (
+                      lookupOptions.map((option) => {
+                        const optionSelected = draftSelections.some((value) => value.toLowerCase() === option.toLowerCase());
+
+                        return (
+                          <label key={`lookup-${column.key}-${option}`} className="filter-lookup-option">
+                            <input
+                              type="checkbox"
+                              checked={optionSelected}
+                              onChange={() => toggleDraftFilterSelection(column.key, option)}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <p className="filter-lookup-empty">Sin valores disponibles.</p>
+                    )}
+                  </div>
+                  <div className="filter-lookup-actions">
+                    <button type="button" onClick={() => applyLookupFilter(column.key)}>
+                      Aplicar filtro
+                    </button>
+                    <button type="button" className="secondary" onClick={() => clearDraftLookupFilter(column.key)}>
+                      Limpiar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="filter-controls">
+              <input
+                type="text"
+                value={filterInputs[column.key] || ''}
+                onChange={(event) => handleFilterInputChange(column.key, event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addFilter(column.key);
+                  }
+                }}
+                placeholder={`Añadir filtro en ${column.label}`}
+              />
+              <button type="button" className="secondary" onClick={() => addFilter(column.key)}>
+                Añadir
+              </button>
+            </div>
+          )}
+
+          {appliedFilters.length > 0 ? (
+            <>
+              <div className="filter-tags">
+                {appliedFilters.map((value) => (
+                  <button
+                    key={`${column.key}-${value}`}
+                    type="button"
+                    className="filter-tag"
+                    onClick={() => removeFilter(column.key, value)}
+                  >
+                    {value} ✕
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="clear-filters" onClick={() => clearFiltersForColumn(column.key)}>
+                Quitar filtros
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+    );
   };
 
   const handleExportCursosGeneralExcel = () => {
@@ -1813,68 +1996,19 @@ export default function ScormsCursosTable({ userSession }) {
 
         <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
           <div className="filters-grid compact">
-          {prioritizedFilterColumns.map((column) => {
-            const appliedFilters = filters[column.key] || [];
+            {primaryFilterColumns.map((column) => renderFilterCard(column))}
+          </div>
 
-            return (
-              <div key={column.key} className="filter-dropdown filter-card">
-                <div className="filter-card-header">
-                  <span>{column.label}</span>
-                  {appliedFilters.length > 0 ? <span className="filter-counter">{appliedFilters.length}</span> : null}
-                </div>
-                <div className="filter-dropdown-content">
-                  <div className="filter-controls">
-                    {SELECT_FILTER_PRIORITY.includes(column.key) ? (
-                      <select value={filterInputs[column.key] || ''} onChange={(event) => handleFilterInputChange(column.key, event.target.value)}>
-                        <option value="">Selecciona...</option>
-                        {(selectorFilterOptions[column.key] || []).map((option) => (
-                          <option key={`filter-option-${column.key}-${option}`} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        value={filterInputs[column.key] || ''}
-                        onChange={(event) => handleFilterInputChange(column.key, event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            addFilter(column.key);
-                          }
-                        }}
-                        placeholder={`Añadir filtro en ${column.label}`}
-                      />
-                    )}
-                    <button type="button" className="secondary" onClick={() => addFilter(column.key)}>
-                      Añadir
-                    </button>
-                  </div>
+          {advancedFiltersVisible ? (
+            <div className="filters-grid compact advanced-filters-grid">
+              {advancedFilterColumns.map((column) => renderFilterCard(column))}
+            </div>
+          ) : null}
 
-                  {appliedFilters.length > 0 ? (
-                    <>
-                      <div className="filter-tags">
-                        {appliedFilters.map((value) => (
-                          <button
-                            key={`${column.key}-${value}`}
-                            type="button"
-                            className="filter-tag"
-                            onClick={() => removeFilter(column.key, value)}
-                          >
-                            {value} ✕
-                          </button>
-                        ))}
-                      </div>
-                      <button type="button" className="clear-filters" onClick={() => clearFiltersForColumn(column.key)}>
-                        Quitar filtros
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
+          <div className="advanced-filters-actions">
+            <button type="button" className="secondary" onClick={() => setAdvancedFiltersVisible((previous) => !previous)}>
+              {advancedFiltersVisible ? 'Ocultar filtros adicionales' : 'Mostrar más filtros'}
+            </button>
           </div>
         </div>
       </section>

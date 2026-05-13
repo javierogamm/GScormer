@@ -1375,3 +1375,73 @@ textarea:focus {
   width: 100%;
   padding-inline: 0.45rem;
 }
+
+.filter-lookup {
+  position: relative;
+}
+
+.filter-lookup-trigger {
+  width: 100%;
+  justify-content: center;
+}
+
+.filter-lookup-menu {
+  margin-top: 0.45rem;
+  border: 1px solid #d8e6f8;
+  border-radius: 10px;
+  background: #fbfdff;
+  box-shadow: 0 8px 20px rgba(20, 55, 90, 0.12);
+  overflow: hidden;
+}
+
+.filter-lookup-options {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.45rem;
+}
+
+.filter-lookup-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.filter-lookup-option:hover {
+  background: #eef6ff;
+}
+
+.filter-lookup-option input {
+  margin: 0;
+}
+
+.filter-lookup-empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  margin: 0;
+  padding: 0.3rem;
+}
+
+.filter-lookup-actions {
+  display: flex;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  padding: 0.5rem;
+  border-top: 1px solid #e5edf8;
+  background: #fff;
+}
+
+.advanced-filters-grid {
+  margin-top: 0.45rem;
+}
+
+.advanced-filters-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.15rem 0.7rem 0.7rem;
+}
