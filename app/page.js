@@ -85,6 +85,7 @@ const stringifyAgentConfig = (config) => {
 export default function HomePage() {
   const [activeView, setActiveView] = useState('scorms');
   const [userSession, setUserSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -104,32 +105,80 @@ export default function HomePage() {
   const [selectedResponsables, setSelectedResponsables] = useState([]);
   const [selectedInstructores, setSelectedInstructores] = useState([]);
 
+  const applyUserSession = (session) => {
+    const agentRawValue = String(session?.agent || session?.agente || '').trim();
+    const parsedConfig = parseAgentConfig(agentRawValue);
+    const nextSession = {
+      ...session,
+      id: session.id,
+      name: session.name,
+      admin: isAdminFlagEnabled(session.admin),
+      alertador: isAlertadorFlagEnabled(session.alertador),
+      validador: isValidadorFlagEnabled(session.validador),
+      agent: agentRawValue,
+      agente: parsedConfig.responsables.join(', '),
+      agentFilters: parsedConfig,
+    };
+
+    setUserSession(nextSession);
+    setSelectedResponsables(parsedConfig.responsables);
+    setSelectedInstructores(parsedConfig.instructores);
+    globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+    return nextSession;
+  };
+
+  const clearStoredSession = () => {
+    setUserSession(null);
+    setSelectedResponsables([]);
+    setSelectedInstructores([]);
+    globalThis?.localStorage?.removeItem(SESSION_STORAGE_KEY);
+  };
+
   useEffect(() => {
-    const storedSession = globalThis?.localStorage?.getItem(SESSION_STORAGE_KEY);
+    let isMounted = true;
 
-    if (!storedSession) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(storedSession);
-      if (parsed?.id && parsed?.name) {
-        const parsedConfig = parseAgentConfig(parsed.agent || parsed.agente);
-        setUserSession({
-          ...parsed,
-          admin: isAdminFlagEnabled(parsed.admin),
-          alertador: isAlertadorFlagEnabled(parsed.alertador),
-          validador: isValidadorFlagEnabled(parsed.validador),
-          agent: parsed.agent || parsed.agente || '',
-          agente: parsedConfig.responsables.join(', '),
-          agentFilters: parsedConfig,
+    const reconnectBrowserSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
         });
-        setSelectedResponsables(parsedConfig.responsables);
-        setSelectedInstructores(parsedConfig.instructores);
+
+        let sessionJson = null;
+        try {
+          sessionJson = await response.json();
+        } catch (_error) {
+          sessionJson = null;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (response.ok && sessionJson?.user) {
+          applyUserSession(sessionJson.user);
+          setAuthReady(true);
+          return;
+        }
+
+        clearStoredSession();
+      } catch (_error) {
+        if (isMounted) {
+          clearStoredSession();
+        }
+      } finally {
+        if (isMounted) {
+          setAuthReady(true);
+        }
       }
-    } catch (_error) {
-      globalThis?.localStorage?.removeItem(SESSION_STORAGE_KEY);
-    }
+    };
+
+    reconnectBrowserSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLogin = async (event) => {
@@ -166,24 +215,7 @@ export default function HomePage() {
       return;
     }
 
-    const agentRawValue = String(loginJson.user.agent || loginJson.user.agente || '').trim();
-    const parsedConfig = parseAgentConfig(agentRawValue);
-
-    const nextSession = {
-      id: loginJson.user.id,
-      name: loginJson.user.name,
-      admin: isAdminFlagEnabled(loginJson.user.admin),
-      alertador: isAlertadorFlagEnabled(loginJson.user.alertador),
-      validador: isValidadorFlagEnabled(loginJson.user.validador),
-      agent: agentRawValue,
-      agente: parsedConfig.responsables.join(', '),
-      agentFilters: parsedConfig,
-    };
-
-    setUserSession(nextSession);
-    setSelectedResponsables(parsedConfig.responsables);
-    setSelectedInstructores(parsedConfig.instructores);
-    globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+    applyUserSession(loginJson.user);
     setLoginPass('');
     setLoginLoading(false);
   };
@@ -218,9 +250,9 @@ export default function HomePage() {
     const nextSession = {
       ...userSession,
       name: response.data.name || userSession.name,
-      admin: isAdminFlagEnabled(loginJson.user.admin),
-      alertador: isAlertadorFlagEnabled(loginJson.user.alertador),
-      validador: isValidadorFlagEnabled(loginJson.user.validador),
+      admin: isAdminFlagEnabled(response.data.admin),
+      alertador: isAlertadorFlagEnabled(response.data.alertador),
+      validador: isValidadorFlagEnabled(response.data.validador),
       agent: linkedAgent,
       agente: parsedConfig.responsables.join(', '),
       agentFilters: parsedConfig,
@@ -355,6 +387,17 @@ export default function HomePage() {
     setNewPassConfirm('');
     setPasswordLoading(false);
   };
+
+  if (!authReady) {
+    return (
+      <main className="app-shell">
+        <section className="auth-card">
+          <h1>GScormer</h1>
+          <p>Reconectando sesión del navegador...</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!userSession) {
     return (
