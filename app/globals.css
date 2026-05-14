@@ -1486,6 +1486,30 @@ textarea:focus {
   background: #fff;
 }
 
+.filter-range-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.55rem;
+}
+
+.filter-range-controls label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #3f5d82;
+}
+
+.filter-range-controls input {
+  width: 100%;
+}
+
+.filter-range-controls button {
+  grid-column: 1 / -1;
+  justify-self: flex-end;
+}
+
 .advanced-filters-grid {
   margin-top: 0.45rem;
 }

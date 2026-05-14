@@ -25,7 +25,7 @@ const columns = [
   { key: 'observaciones', label: 'Observaciones' },
   { key: 'curso_observaciones', label: 'Curso observaciones' },
   { key: 'curso_descripcion', label: 'Curso descripción' },
-  { key: 'tiempo_cert', label: 'Tiempo cert.' },
+  { key: 'tiempo_cert', label: 'Tiempo certificación' },
   { key: 'curso_url_ficha', label: 'URL ficha' },
   { key: 'curso_url', label: 'URL curso' },
   { key: 'contenido', label: 'Contenido' },
@@ -87,6 +87,15 @@ const TIPOLOGY_VISIBILITY_OPTIONS = [
   { key: 'GENERAL', label: 'Tipología GENERAL' },
 ];
 
+const COURSE_DEFAULT_FILTER_ROWS = [
+  ['curso_estado', 'curso_instructor', 'materia', 'curso_codigo', 'curso_nombre'],
+  ['inscripcion', 'curso_descripcion', 'tiempo_cert', 'test', 'observaciones'],
+  ['pa_formaparte', 'pa_codigo', 'pa_nombre'],
+];
+const PLAN_DEFAULT_FILTER_ROWS = [
+  ['pa_codigo', 'pa_nombre'],
+  ...COURSE_DEFAULT_FILTER_ROWS.map((rowKeys) => rowKeys.filter((key) => !['pa_codigo', 'pa_nombre'].includes(key))),
+];
 const MULTI_SELECT_FILTER_KEYS = [
   'pa_formaparte',
   'pa_codigo',
@@ -97,24 +106,12 @@ const MULTI_SELECT_FILTER_KEYS = [
   'tipologia',
   'materia',
   'categoria',
-];
-const ADVANCED_FILTER_KEYS = [
-  'codigo_individual',
-  'pa_url',
-  'pr_orden',
-  'ramas',
   'inscripcion',
-  'curso_inscripcion',
-  'tiempo_cert',
-  'curso_url_ficha',
-  'curso_url',
   'test',
-  'existe',
-  'contenido',
-  'link_inscripcion',
-  'curso_descripcion',
 ];
-const FEATURED_TEXT_FILTER_KEYS = ['curso_codigo', 'curso_nombre'];
+const RANGE_FILTER_KEYS = ['tiempo_cert'];
+const DEFAULT_FILTER_KEYS = [...new Set([...COURSE_DEFAULT_FILTER_ROWS.flat(), ...PLAN_DEFAULT_FILTER_ROWS.flat()])];
+const EXTRA_FILTER_KEYS = ['__scorms__', ...columns.map((column) => column.key).filter((key) => !DEFAULT_FILTER_KEYS.includes(key))];
 
 const normalizeLanguage = (language) => {
   const normalized = String(language || '').trim().toUpperCase();
@@ -146,6 +143,28 @@ const normalizeText = (value) => {
 };
 
 const normalizeTipologia = (tipologia) => normalizeText(tipologia);
+
+const parseRangeFilterValue = (value) => {
+  const [bound, rawNumber] = String(value || '').split(':');
+  const numberValue = Number(String(rawNumber || '').replace(',', '.'));
+
+  if (!['from', 'to'].includes(bound) || Number.isNaN(numberValue)) {
+    return null;
+  }
+
+  return { bound, value: numberValue };
+};
+
+const parseComparableNumber = (value) => {
+  const normalized = String(value ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const numberValue = Number(normalized[0]);
+  return Number.isNaN(numberValue) ? null : numberValue;
+};
 
 const rowIsPlanChild = (row) => {
   const normalizedMembership = normalizeText(row.pa_formaparte).toLowerCase();
@@ -428,16 +447,16 @@ export default function ScormsCursosTable({ userSession }) {
     }, {});
   }, []);
 
-  const primaryFilterColumns = useMemo(() => {
-    const selectedKeys = [...MULTI_SELECT_FILTER_KEYS, ...FEATURED_TEXT_FILTER_KEYS];
-    return [
-      ...selectedKeys.map((key) => filterColumnByKey[key]).filter(Boolean),
-      { key: '__scorms__', label: 'SCORMS' },
-    ];
-  }, [filterColumnByKey]);
+  const defaultFilterRows = useMemo(() => {
+    const filterRows = cursosSubView === 'planes' ? PLAN_DEFAULT_FILTER_ROWS : COURSE_DEFAULT_FILTER_ROWS;
+
+    return filterRows
+      .map((rowKeys) => rowKeys.map((key) => filterColumnByKey[key]).filter(Boolean))
+      .filter((row) => row.length > 0);
+  }, [cursosSubView, filterColumnByKey]);
 
   const advancedFilterColumns = useMemo(() => {
-    return ADVANCED_FILTER_KEYS.map((key) => filterColumnByKey[key]).filter(Boolean);
+    return EXTRA_FILTER_KEYS.map((key) => (key === '__scorms__' ? { key: '__scorms__', label: 'SCORMS' } : filterColumnByKey[key])).filter(Boolean);
   }, [filterColumnByKey]);
 
   const selectorFilterOptions = useMemo(() => {
@@ -509,6 +528,19 @@ export default function ScormsCursosTable({ userSession }) {
       }
 
       return activeFilterEntries.every(([columnKey, values]) => {
+        if (RANGE_FILTER_KEYS.includes(columnKey)) {
+          const rowNumber = parseComparableNumber(row[columnKey]);
+          const rangeFilters = values.map(parseRangeFilterValue).filter(Boolean);
+
+          if (rowNumber === null || rangeFilters.length === 0) {
+            return false;
+          }
+
+          return rangeFilters.every((rangeFilter) =>
+            rangeFilter.bound === 'from' ? rowNumber >= rangeFilter.value : rowNumber <= rangeFilter.value,
+          );
+        }
+
         const rowValue = columnKey === '__scorms__' ? getScormSearchableText(row) : String(row[columnKey] || '');
         const normalizedRowValue = rowValue.toLowerCase();
 
@@ -1614,6 +1646,46 @@ export default function ScormsCursosTable({ userSession }) {
     }));
   };
 
+  const applyRangeFilter = (columnKey) => {
+    const fromValue = String(filterInputs[`${columnKey}_from`] || '').trim();
+    const toValue = String(filterInputs[`${columnKey}_to`] || '').trim();
+    const nextValues = [];
+
+    if (fromValue) {
+      nextValues.push(`from:${fromValue}`);
+    }
+
+    if (toValue) {
+      nextValues.push(`to:${toValue}`);
+    }
+
+    setFilters((previous) => {
+      if (nextValues.length === 0) {
+        const { [columnKey]: _removed, ...rest } = previous;
+        return rest;
+      }
+
+      return {
+        ...previous,
+        [columnKey]: nextValues,
+      };
+    });
+  };
+
+  const formatFilterTag = (columnKey, value) => {
+    if (!RANGE_FILTER_KEYS.includes(columnKey)) {
+      return value;
+    }
+
+    const rangeFilter = parseRangeFilterValue(value);
+
+    if (!rangeFilter) {
+      return value;
+    }
+
+    return `${rangeFilter.bound === 'from' ? 'Desde' : 'Hasta'} ${rangeFilter.value}`;
+  };
+
   const openFilterLookup = (columnKey) => {
     setFilterDraftSelections((previous) => ({
       ...previous,
@@ -1783,6 +1855,7 @@ export default function ScormsCursosTable({ userSession }) {
     const appliedFilters = filters[column.key] || [];
     const draftSelections = filterDraftSelections[column.key] || [];
     const isLookupFilter = MULTI_SELECT_FILTER_KEYS.includes(column.key);
+    const isRangeFilter = RANGE_FILTER_KEYS.includes(column.key);
     const lookupSearch = filterLookupSearchInputs[column.key] || '';
     const normalizedLookupSearch = normalizeText(lookupSearch);
     const lookupOptions = (selectorFilterOptions[column.key] || []).filter((option) => {
@@ -1854,6 +1927,42 @@ export default function ScormsCursosTable({ userSession }) {
                 </div>
               ) : null}
             </div>
+          ) : isRangeFilter ? (
+            <div className="filter-range-controls">
+              <label>
+                <span>Desde</span>
+                <input
+                  type="number"
+                  value={filterInputs[`${column.key}_from`] || ''}
+                  onChange={(event) => handleFilterInputChange(`${column.key}_from`, event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      applyRangeFilter(column.key);
+                    }
+                  }}
+                  placeholder="Mín."
+                />
+              </label>
+              <label>
+                <span>Hasta</span>
+                <input
+                  type="number"
+                  value={filterInputs[`${column.key}_to`] || ''}
+                  onChange={(event) => handleFilterInputChange(`${column.key}_to`, event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      applyRangeFilter(column.key);
+                    }
+                  }}
+                  placeholder="Máx."
+                />
+              </label>
+              <button type="button" className="secondary" onClick={() => applyRangeFilter(column.key)}>
+                Aplicar
+              </button>
+            </div>
           ) : (
             <div className="filter-controls">
               <input
@@ -1884,7 +1993,7 @@ export default function ScormsCursosTable({ userSession }) {
                     className="filter-tag"
                     onClick={() => removeFilter(column.key, value)}
                   >
-                    {value} ✕
+                    {formatFilterTag(column.key, value)} ✕
                   </button>
                 ))}
               </div>
@@ -2064,9 +2173,11 @@ export default function ScormsCursosTable({ userSession }) {
         </div>
 
         <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
-          <div className="filters-grid compact">
-            {primaryFilterColumns.map((column) => renderFilterCard(column))}
-          </div>
+          {defaultFilterRows.map((filterRow, rowIndex) => (
+            <div key={`curso-filter-row-${rowIndex}`} className="filters-grid compact filters-grid-row">
+              {filterRow.map((column) => renderFilterCard(column))}
+            </div>
+          ))}
 
           {advancedFiltersVisible ? (
             <div className="filters-grid compact advanced-filters-grid">
