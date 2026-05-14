@@ -1,3 +1,18 @@
+## v1.71.8 - Selector de filtros estilo Qlik en cursos
+
+### Cambios consolidados
+- Se rediseña el selector múltiple por lupa de **Cursos** para mostrar cada valor como una línea clicable, sin checks, con estado seleccionado resaltado en verde y estado normal en blanco.
+- Se añade búsqueda textual dentro del selector para filtrar los valores disponibles antes de seleccionar, con comportamiento similar a Qlik Sense.
+- Los valores largos del selector se mantienen en una sola línea y se recortan visualmente con puntos suspensivos para evitar desbordes de ancho.
+- Se incorpora **Curso descripción** al bloque de filtros adicionales para cubrir el filtro secundario de descripción solicitado en la limpieza del panel.
+- Se actualiza versión visible de APP y `package.json` a `1.71.8`.
+
+### Versionado
+- Versión anterior: `1.71.7`
+- Nueva versión consolidada: `1.71.8`
+
+---
+
 ## v1.71.7 - Limpieza y selección múltiple en filtros de cursos
 
 ### Cambios consolidados

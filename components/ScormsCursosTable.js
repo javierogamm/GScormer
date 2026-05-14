@@ -102,6 +102,7 @@ const ADVANCED_FILTER_KEYS = [
   'existe',
   'contenido',
   'link_inscripcion',
+  'curso_descripcion',
 ];
 const FEATURED_TEXT_FILTER_KEYS = ['curso_codigo', 'curso_nombre'];
 
@@ -253,6 +254,7 @@ export default function ScormsCursosTable({ userSession }) {
   const [advancedFiltersVisible, setAdvancedFiltersVisible] = useState(false);
   const [openFilterLookupKey, setOpenFilterLookupKey] = useState(null);
   const [filterDraftSelections, setFilterDraftSelections] = useState({});
+  const [filterLookupSearchInputs, setFilterLookupSearchInputs] = useState({});
   const [scormsModalRows, setScormsModalRows] = useState([]);
   const [detailModalRow, setDetailModalRow] = useState(null);
   const [detailDraft, setDetailDraft] = useState(null);
@@ -1605,7 +1607,18 @@ export default function ScormsCursosTable({ userSession }) {
       ...previous,
       [columnKey]: filters[columnKey] || [],
     }));
+    setFilterLookupSearchInputs((previous) => ({
+      ...previous,
+      [columnKey]: previous[columnKey] || '',
+    }));
     setOpenFilterLookupKey((previous) => (previous === columnKey ? null : columnKey));
+  };
+
+  const handleFilterLookupSearchChange = (columnKey, value) => {
+    setFilterLookupSearchInputs((previous) => ({
+      ...previous,
+      [columnKey]: value,
+    }));
   };
 
   const toggleDraftFilterSelection = (columnKey, option) => {
@@ -1708,6 +1721,10 @@ export default function ScormsCursosTable({ userSession }) {
       ...previous,
       [columnKey]: [],
     }));
+    setFilterLookupSearchInputs((previous) => ({
+      ...previous,
+      [columnKey]: '',
+    }));
     clearFiltersForColumn(columnKey);
   };
 
@@ -1746,7 +1763,15 @@ export default function ScormsCursosTable({ userSession }) {
     const appliedFilters = filters[column.key] || [];
     const draftSelections = filterDraftSelections[column.key] || [];
     const isLookupFilter = MULTI_SELECT_FILTER_KEYS.includes(column.key);
-    const lookupOptions = selectorFilterOptions[column.key] || [];
+    const lookupSearch = filterLookupSearchInputs[column.key] || '';
+    const normalizedLookupSearch = normalizeText(lookupSearch);
+    const lookupOptions = (selectorFilterOptions[column.key] || []).filter((option) => {
+      if (!normalizedLookupSearch) {
+        return true;
+      }
+
+      return normalizeText(option).includes(normalizedLookupSearch);
+    });
     const lookupIsOpen = openFilterLookupKey === column.key;
 
     return (
@@ -1768,20 +1793,30 @@ export default function ScormsCursosTable({ userSession }) {
               </button>
               {lookupIsOpen ? (
                 <div className="filter-lookup-menu">
+                  <div className="filter-lookup-search">
+                    <span aria-hidden="true">🔎</span>
+                    <input
+                      type="search"
+                      value={lookupSearch}
+                      onChange={(event) => handleFilterLookupSearchChange(column.key, event.target.value)}
+                      placeholder="Buscar valores..."
+                    />
+                  </div>
                   <div className="filter-lookup-options">
                     {lookupOptions.length > 0 ? (
                       lookupOptions.map((option) => {
                         const optionSelected = draftSelections.some((value) => value.toLowerCase() === option.toLowerCase());
 
                         return (
-                          <label key={`lookup-${column.key}-${option}`} className="filter-lookup-option">
-                            <input
-                              type="checkbox"
-                              checked={optionSelected}
-                              onChange={() => toggleDraftFilterSelection(column.key, option)}
-                            />
+                          <button
+                            key={`lookup-${column.key}-${option}`}
+                            type="button"
+                            className={`filter-lookup-option ${optionSelected ? 'is-selected' : ''}`}
+                            onClick={() => toggleDraftFilterSelection(column.key, option)}
+                            title={option}
+                          >
                             <span>{option}</span>
-                          </label>
+                          </button>
                         );
                       })
                     ) : (
