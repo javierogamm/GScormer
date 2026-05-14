@@ -1,3 +1,19 @@
+## v1.72.1 - Reordenación de filtros de cursos y PA
+
+### Cambios consolidados
+- Se reorganiza el panel de filtros de **Cursos · Vista general** para mostrar por defecto las tres filas solicitadas: estado/instructor/materia/código/nombre, inscripción/descripción/tiempo de certificación/test/observaciones y datos PA.
+- Los filtros **Inscripción**, **Test** y **PA Forma parte** usan selector con lupa y búsqueda interna en el panel visible.
+- Se añade el filtro numérico desde-hasta de **Tiempo certificación** sobre `tiempo_cert`, con límites inclusivos para buscar desde, hasta o entre ambos valores.
+- El resto de campos de cursos queda dentro del bloque **Mostrar más filtros**, incluyendo el filtro de SCORMs.
+- En la vista **Planes de aprendizaje (PA)** se añade una línea superior específica con **PA Código** y **PA Nombre** antes del resto de filtros visibles.
+- Se actualiza versión visible de APP y `package.json` a `1.72.1`.
+
+### Versionado
+- Versión anterior: `1.72.0`
+- Nueva versión consolidada: `1.72.1`
+
+---
+
 ## v1.72.0 - Selectores de filtros con buscador múltiple
 
 ### Cambios consolidados
