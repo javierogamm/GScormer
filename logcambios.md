@@ -1,3 +1,17 @@
+## v1.72.6 - Aplicación rápida de valores buscados en filtros
+
+### Cambios consolidados
+- En los selectores con lupa de **SCORMs**, al pulsar **Enter** dentro del buscador interno se seleccionan todos los valores disponibles que coinciden con el texto escrito y se aplica el filtro automáticamente.
+- En los selectores con lupa de **Cursos/PA**, al pulsar **Enter** dentro del buscador interno se seleccionan todos los valores disponibles que coinciden con el texto escrito y se aplica el filtro automáticamente.
+- La selección rápida conserva las selecciones temporales existentes del selector y añade los valores coincidentes sin duplicados antes de cerrar el desplegable.
+- Se actualiza versión visible de APP y `package.json` a `1.72.6`.
+
+### Versionado
+- Versión anterior: `1.72.5`
+- Nueva versión consolidada: `1.72.6`
+
+---
+
 ## v1.72.5 - Detalles ampliados y SCORMs en PA
 
 ### Cambios consolidados
