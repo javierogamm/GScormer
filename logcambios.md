@@ -1,3 +1,18 @@
+## v1.72.0 - Selectores de filtros con buscador múltiple
+
+### Cambios consolidados
+- Se reemplazan los desplegables simples del panel de filtros de **SCORMs** por el selector con lupa, búsqueda interna, selección múltiple, resaltado visual y acciones **Aplicar filtro** / **Limpiar**, igualando la experiencia de la vista Cursos.
+- Los filtros de SCORMs para responsable, clasificación/categoría, estado, test e idioma ahora permiten seleccionar varios valores antes de aplicar el filtro.
+- La acción global **Limpiar filtros** de SCORMs también limpia selecciones temporales, búsquedas internas de selectores y cualquier selector abierto.
+- Se amplían los selectores múltiples del panel de **Cursos/PA** para incluir **PA Código**, **PA Nombre** e **Idioma curso**, facilitando la búsqueda y selección múltiple en vistas de planes de aprendizaje y cursos relacionados.
+- Se actualiza versión visible de APP y `package.json` a `1.72.0`.
+
+### Versionado
+- Versión anterior: `1.71.9`
+- Nueva versión consolidada: `1.72.0`
+
+---
+
 ## v1.71.9 - Limpieza global de filtros
 
 ### Cambios consolidados

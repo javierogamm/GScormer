@@ -87,7 +87,17 @@ const TIPOLOGY_VISIBILITY_OPTIONS = [
   { key: 'GENERAL', label: 'Tipología GENERAL' },
 ];
 
-const MULTI_SELECT_FILTER_KEYS = ['pa_formaparte', 'curso_instructor', 'curso_estado', 'tipologia', 'materia', 'categoria'];
+const MULTI_SELECT_FILTER_KEYS = [
+  'pa_formaparte',
+  'pa_codigo',
+  'pa_nombre',
+  'curso_instructor',
+  'curso_estado',
+  'curso_idioma',
+  'tipologia',
+  'materia',
+  'categoria',
+];
 const ADVANCED_FILTER_KEYS = [
   'codigo_individual',
   'pa_url',
