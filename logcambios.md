@@ -1,3 +1,19 @@
+## v1.72.3 - Reagrupación de PA en detalle de curso
+
+### Cambios consolidados
+- Se añade debajo del acordeón **SCORMS** un nuevo acordeón **Planes de aprendizaje** en el modal **Detalle del curso**.
+- El acordeón de PA incorpora dos botones lado a lado: **Ver PA asociados** y **VINCULAR PLAN DE APRENDIZAJE**.
+- **Ver PA asociados** despliega los planes ya vinculados al curso y permite deschecar PA con confirmación previa; los cambios quedan pendientes hasta pulsar **Guardar cambios** en el pie del modal.
+- **VINCULAR PLAN DE APRENDIZAJE** despliega un buscador/listado de PA disponibles para checarlos y añadirlos al curso en el guardado consolidado.
+- Al guardar el detalle del curso se actualizan los datos del curso, el contenido de SCORMs y las altas/bajas de PA seleccionadas en una única acción de usuario.
+- Se actualiza versión visible de APP y `package.json` a `1.72.3`.
+
+### Versionado
+- Versión anterior: `1.72.2`
+- Nueva versión consolidada: `1.72.3`
+
+---
+
 ## v1.72.2 - Reagrupación de SCORMs en detalle de curso
 
 ### Cambios consolidados
