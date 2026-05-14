@@ -1,3 +1,19 @@
+## v1.71.9 - Limpieza global de filtros
+
+### Cambios consolidados
+- Se añade la acción **Limpiar filtros** en el encabezado del panel de filtros de SCORMs para retirar de una sola vez todos los filtros aplicados y vaciar los campos pendientes.
+- Se añade la acción **Limpiar filtros** en el encabezado del panel de filtros de Cursos, con limpieza completa de filtros aplicados, búsquedas de lupa, selecciones temporales y selector abierto.
+- En las vistas de **Traducciones** de SCORMs y cursos se incorpora el botón **Limpiar filtros de traducción** para volver al preset general, limpiar el idioma pendiente y desmarcar selecciones acumuladas.
+- En la bandeja de publicación de SCORMs se añade **Limpiar filtros de publicación** para regresar al preset general.
+- La limpieza global queda disponible para las vistas dependientes del panel de filtros compartido, incluyendo Cursos, Planes de aprendizaje, Relaciones, Validación y Publicación.
+- Se actualiza versión visible de APP y `package.json` a `1.71.9`.
+
+### Versionado
+- Versión anterior: `1.71.8`
+- Nueva versión consolidada: `1.71.9`
+
+---
+
 ## v1.71.8 - Selector de filtros estilo Qlik en cursos
 
 ### Cambios consolidados

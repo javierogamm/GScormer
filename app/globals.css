@@ -481,6 +481,17 @@ select {
   gap: 0.4rem;
 }
 
+.filter-panel-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.clear-all-filters {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
 .filter-collapse-label {
   font-size: 0.78rem;
   color: #4c6486;

@@ -634,6 +634,8 @@ export default function ScormsTable({ userSession }) {
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
 
+  const activeFilterCount = useMemo(() => Object.values(filters).flat().length, [filters]);
+
   const filterOptionsByColumn = useMemo(() => {
     return FILTER_SELECT_KEYS.reduce((acc, key) => {
       const uniqueValues = [...new Set(rows.map((row) => String(row[key] || '').trim()).filter(Boolean))].sort((a, b) =>
@@ -1061,6 +1063,11 @@ export default function ScormsTable({ userSession }) {
       ...previous,
       [field]: [],
     }));
+  };
+
+  const clearAllFilters = () => {
+    setFilters({});
+    setFilterInputs({});
   };
 
   const toggleCellFilter = (field, rawValue) => {
@@ -2791,9 +2798,23 @@ export default function ScormsTable({ userSession }) {
           >
             <div className="filter-panel-title-main">
               <strong>Filtros</strong>
-              {Object.values(filters).flat().length > 0 && <span className="filter-counter">{Object.values(filters).flat().length}</span>}
+              {activeFilterCount > 0 && <span className="filter-counter">{activeFilterCount}</span>}
             </div>
-            <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
+            <div className="filter-panel-title-actions">
+              {activeFilterCount > 0 ? (
+                <button
+                  type="button"
+                  className="secondary clear-all-filters"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    clearAllFilters();
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              ) : null}
+              <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
+            </div>
           </div>
 
           <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
@@ -3323,6 +3344,18 @@ export default function ScormsTable({ userSession }) {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                className="secondary"
+                disabled={translationPreset === 'todos' && selectedTranslationGroupIds.length === 0}
+                onClick={() => {
+                  setTranslationPreset('todos');
+                  setPendingLanguage('ES');
+                  setSelectedTranslationGroupIds([]);
+                }}
+              >
+                Limpiar filtros de traducción
+              </button>
             </div>
             <div className="translation-actions">
               <select
@@ -3465,6 +3498,14 @@ export default function ScormsTable({ userSession }) {
               <span className="preset-kpi-badge" title="SCORMs actualizados pendientes de publicar">
                 {publishUpdatesCount}
               </span>
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={publishPreset === 'todos'}
+              onClick={() => setPublishPreset('todos')}
+            >
+              Limpiar filtros de publicación
             </button>
           </div>
 

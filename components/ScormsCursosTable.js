@@ -487,6 +487,8 @@ export default function ScormsCursosTable({ userSession }) {
     [scormsByCode],
   );
 
+  const activeFilterCount = useMemo(() => Object.values(filters).flat().length, [filters]);
+
   const filteredRows = useMemo(() => {
     const activeFilterEntries = Object.entries(filters).filter(([, values]) => values.length > 0);
 
@@ -1728,6 +1730,14 @@ export default function ScormsCursosTable({ userSession }) {
     clearFiltersForColumn(columnKey);
   };
 
+  const clearAllFilters = () => {
+    setFilters({});
+    setFilterInputs({});
+    setFilterDraftSelections({});
+    setFilterLookupSearchInputs({});
+    setOpenFilterLookupKey(null);
+  };
+
   const toggleCellFilter = (columnKey, rawValue) => {
     const normalizedValue = String(rawValue || '').trim();
 
@@ -2024,9 +2034,23 @@ export default function ScormsCursosTable({ userSession }) {
         >
           <div className="filter-panel-title-main">
             <strong>Filtros</strong>
-            {Object.values(filters).flat().length > 0 ? <span className="filter-counter">{Object.values(filters).flat().length}</span> : null}
+            {activeFilterCount > 0 ? <span className="filter-counter">{activeFilterCount}</span> : null}
           </div>
-          <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
+          <div className="filter-panel-title-actions">
+            {activeFilterCount > 0 ? (
+              <button
+                type="button"
+                className="secondary clear-all-filters"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  clearAllFilters();
+                }}
+              >
+                Limpiar filtros
+              </button>
+            ) : null}
+            <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
+          </div>
         </div>
 
         <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
@@ -2359,6 +2383,18 @@ export default function ScormsCursosTable({ userSession }) {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                className="secondary"
+                disabled={translationPreset === 'parents' && selectedTranslationParentIds.length === 0}
+                onClick={() => {
+                  setTranslationPreset('parents');
+                  setPendingLanguage('CAT');
+                  setSelectedTranslationParentIds([]);
+                }}
+              >
+                Limpiar filtros de traducción
+              </button>
             </div>
           </div>
 
