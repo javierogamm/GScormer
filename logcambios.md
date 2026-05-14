@@ -1,3 +1,18 @@
+## v1.72.2 - Reagrupación de SCORMs en detalle de curso
+
+### Cambios consolidados
+- Se sustituye el bloque directo de asociación de SCORMs del modal **Detalle del curso** por un acordeón **SCORMS**.
+- Dentro del acordeón se añaden dos acciones lado a lado: **Ver scorms asociados** para revisar y deschecar SCORMs ya vinculados, y **VINCULAR SCORMS** para desplegar el buscador de SCORMs disponibles para añadir.
+- Los SCORMs deschequeados o vinculados siguen aplicándose únicamente al pulsar **Guardar cambios** en el pie del modal.
+- Al deschecar un SCORM asociado se solicita confirmación antes de retirarlo de la selección pendiente.
+- Se actualiza versión visible de APP y `package.json` a `1.72.2`.
+
+### Versionado
+- Versión anterior: `1.72.1`
+- Nueva versión consolidada: `1.72.2`
+
+---
+
 ## v1.72.1 - Reordenación de filtros de cursos y PA
 
 ### Cambios consolidados
