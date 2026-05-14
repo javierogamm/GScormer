@@ -1121,9 +1121,7 @@ export default function ScormsTable({ userSession }) {
     });
   };
 
-  const applyLookupFilter = (field) => {
-    const selectedValues = filterDraftSelections[field] || [];
-
+  const applyLookupFilterValues = (field, selectedValues) => {
     setFilters((previous) => {
       if (selectedValues.length === 0) {
         const { [field]: _removed, ...rest } = previous;
@@ -1136,6 +1134,40 @@ export default function ScormsTable({ userSession }) {
       };
     });
     setOpenFilterLookupKey(null);
+  };
+
+  const applyLookupFilter = (field) => {
+    applyLookupFilterValues(field, filterDraftSelections[field] || []);
+  };
+
+  const applyMatchingLookupFilter = (field) => {
+    const normalizedSearch = normalizeFilterLookupText(filterLookupSearchInputs[field]);
+    const matchingOptions = (filterOptionsByColumn[field] || []).filter((option) => {
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return normalizeFilterLookupText(option).includes(normalizedSearch);
+    });
+
+    if (matchingOptions.length === 0) {
+      return;
+    }
+
+    const selectedValues = [...(filterDraftSelections[field] || [])];
+
+    matchingOptions.forEach((option) => {
+      const alreadySelected = selectedValues.some((value) => value.toLowerCase() === option.toLowerCase());
+      if (!alreadySelected) {
+        selectedValues.push(option);
+      }
+    });
+
+    setFilterDraftSelections((previous) => ({
+      ...previous,
+      [field]: selectedValues,
+    }));
+    applyLookupFilterValues(field, selectedValues);
   };
 
   const clearDraftLookupFilter = (field) => {
@@ -2940,6 +2972,12 @@ export default function ScormsTable({ userSession }) {
                                     type="search"
                                     value={filterLookupSearchInputs[column.key] || ''}
                                     onChange={(event) => handleFilterLookupSearchChange(column.key, event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter') {
+                                        event.preventDefault();
+                                        applyMatchingLookupFilter(column.key);
+                                      }
+                                    }}
                                     placeholder="Buscar valores..."
                                   />
                                 </div>
