@@ -334,6 +334,8 @@ export default function ScormsCursosTable({ userSession }) {
   const [selectedScormIds, setSelectedScormIds] = useState([]);
   const [detailScormSearchText, setDetailScormSearchText] = useState('');
   const [detailSelectedScormIds, setDetailSelectedScormIds] = useState([]);
+  const [detailAssociatedScormsVisible, setDetailAssociatedScormsVisible] = useState(false);
+  const [detailLinkScormsVisible, setDetailLinkScormsVisible] = useState(false);
   const [planCourseSearchText, setPlanCourseSearchText] = useState('');
   const [selectedPlanCourseIds, setSelectedPlanCourseIds] = useState([]);
   const [createPlanDraft, setCreatePlanDraft] = useState({
@@ -1069,8 +1071,32 @@ export default function ScormsCursosTable({ userSession }) {
     );
   }, [detailScormSearchText, masterRows]);
 
-  const toggleDetailSelectedScorm = (scormId) => {
-    setDetailSelectedScormIds((previous) => (previous.includes(scormId) ? previous.filter((id) => id !== scormId) : [...previous, scormId]));
+  const associatedDetailScormRows = useMemo(() => {
+    const selectedIds = new Set(detailSelectedScormIds);
+
+    return masterRows.filter((row) => selectedIds.has(row.id));
+  }, [detailSelectedScormIds, masterRows]);
+
+  const linkableDetailScormRows = useMemo(() => {
+    const selectedIds = new Set(detailSelectedScormIds);
+
+    return filteredDetailMasterScormRows.filter((row) => !selectedIds.has(row.id));
+  }, [detailSelectedScormIds, filteredDetailMasterScormRows]);
+
+  const toggleDetailSelectedScorm = (scormId, options = {}) => {
+    setDetailSelectedScormIds((previous) => {
+      const isSelected = previous.includes(scormId);
+
+      if (isSelected) {
+        const shouldConfirm = options.confirmRemoval === true;
+        const removalConfirmed =
+          !shouldConfirm || window.confirm('Vas a deschecar un SCORM asociado al curso. El cambio se aplicará al pulsar GUARDAR. ¿Quieres continuar?');
+
+        return removalConfirmed ? previous.filter((id) => id !== scormId) : previous;
+      }
+
+      return [...previous, scormId];
+    });
   };
 
   const openDetailModal = (row) => {
@@ -1080,6 +1106,8 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailDraft({ ...sourceRow });
     setDetailScormSearchText('');
     setDetailSelectedScormIds(parseScormIdsFromContenido(sourceRow?.contenido));
+    setDetailAssociatedScormsVisible(false);
+    setDetailLinkScormsVisible(false);
   };
 
   const closeDetailModal = () => {
@@ -1091,6 +1119,8 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailDraft(null);
     setDetailScormSearchText('');
     setDetailSelectedScormIds([]);
+    setDetailAssociatedScormsVisible(false);
+    setDetailLinkScormsVisible(false);
   };
 
   const saveDetailModal = async () => {
@@ -3538,44 +3568,117 @@ export default function ScormsCursosTable({ userSession }) {
               ))}
             </div>
 
-            <section className="card-soft" style={{ marginTop: '0.8rem' }}>
-              <h4>Asociar SCORMs al curso</h4>
-              <input
-                type="text"
-                placeholder="Buscar SCORM..."
-                value={detailScormSearchText}
-                onChange={(event) => setDetailScormSearchText(event.target.value)}
-              />
-              <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
-                <table className="compact-rows">
-                  <thead>
-                    <tr>
-                      <th>Sel.</th>
-                      <th>Código</th>
-                      <th>Nombre</th>
-                      <th>Responsable</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDetailMasterScormRows.slice(0, 40).map((row) => (
-                      <tr key={`detail-scorm-${row.id}`}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={detailSelectedScormIds.includes(row.id)}
-                            onChange={() => toggleDetailSelectedScorm(row.id)}
-                          />
-                        </td>
-                        <td>{getScormReferenceLabel(row)}</td>
-                        <td>{String(row.scorm_name || '-')}</td>
-                        <td>{String(row.scorm_responsable || '-')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <details className="scorms-accordion-item course-detail-scorms-accordion" style={{ marginTop: '0.8rem' }}>
+              <summary>
+                <span className="course-detail-scorms-summary">
+                  <strong>SCORMS</strong>
+                  <span>{detailSelectedScormIds.length} asociado(s)</span>
+                </span>
+              </summary>
+              <div className="course-detail-scorms-panel">
+                <div className="course-detail-scorms-actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setDetailAssociatedScormsVisible((previous) => !previous)}
+                  >
+                    Ver scorms asociados
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailLinkScormsVisible((previous) => !previous)}
+                  >
+                    VINCULAR SCORMS
+                  </button>
+                </div>
+
+                {detailAssociatedScormsVisible ? (
+                  <section className="course-detail-scorms-subpanel">
+                    <h4>SCORMs asociados al curso</h4>
+                    <p className="status">
+                      Descheca los SCORMs que quieras retirar. El cambio no se aplicará hasta pulsar <strong>Guardar cambios</strong>.
+                    </p>
+                    {associatedDetailScormRows.length === 0 ? (
+                      <p className="status">No hay SCORMs asociados a este curso.</p>
+                    ) : (
+                      <div className="table-wrapper">
+                        <table className="compact-rows">
+                          <thead>
+                            <tr>
+                              <th>Asociado</th>
+                              <th>Código</th>
+                              <th>Nombre</th>
+                              <th>Responsable</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {associatedDetailScormRows.map((row) => (
+                              <tr key={`detail-associated-scorm-${row.id}`}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked
+                                    onChange={() => toggleDetailSelectedScorm(row.id, { confirmRemoval: true })}
+                                  />
+                                </td>
+                                <td>{getScormReferenceLabel(row)}</td>
+                                <td>{String(row.scorm_name || '-')}</td>
+                                <td>{String(row.scorm_responsable || '-')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+
+                {detailLinkScormsVisible ? (
+                  <section className="course-detail-scorms-subpanel">
+                    <h4>Vincular SCORMs</h4>
+                    <input
+                      type="text"
+                      placeholder="Buscar SCORM para añadir..."
+                      value={detailScormSearchText}
+                      onChange={(event) => setDetailScormSearchText(event.target.value)}
+                    />
+                    <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                      <table className="compact-rows">
+                        <thead>
+                          <tr>
+                            <th>Añadir</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Responsable</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {linkableDetailScormRows.slice(0, 40).map((row) => (
+                            <tr key={`detail-linkable-scorm-${row.id}`}>
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={false}
+                                  onChange={() => toggleDetailSelectedScorm(row.id)}
+                                />
+                              </td>
+                              <td>{getScormReferenceLabel(row)}</td>
+                              <td>{String(row.scorm_name || '-')}</td>
+                              <td>{String(row.scorm_responsable || '-')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="status">
+                      Mostrando {Math.min(linkableDetailScormRows.length, 40)} de {linkableDetailScormRows.length} SCORMs disponibles. Las nuevas vinculaciones se guardan al pulsar <strong>Guardar cambios</strong>.
+                    </p>
+                  </section>
+                ) : null}
+
+                <p className="status">Seleccionados: {detailSelectedScormIds.length} · Se guardan en contenido al guardar cambios.</p>
               </div>
-              <p className="status">Seleccionados: {detailSelectedScormIds.length} · Se guardan en contenido al guardar cambios.</p>
-            </section>
+            </details>
 
             <footer className="modal-footer">
               <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
