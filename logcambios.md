@@ -1,3 +1,33 @@
+## v1.71.8 - Selector de filtros estilo Qlik en cursos
+
+### Cambios consolidados
+- Se rediseña el selector múltiple por lupa de **Cursos** para mostrar cada valor como una línea clicable, sin checks, con estado seleccionado resaltado en verde y estado normal en blanco.
+- Se añade búsqueda textual dentro del selector para filtrar los valores disponibles antes de seleccionar, con comportamiento similar a Qlik Sense.
+- Los valores largos del selector se mantienen en una sola línea y se recortan visualmente con puntos suspensivos para evitar desbordes de ancho.
+- Se incorpora **Curso descripción** al bloque de filtros adicionales para cubrir el filtro secundario de descripción solicitado en la limpieza del panel.
+- Se actualiza versión visible de APP y `package.json` a `1.71.8`.
+
+### Versionado
+- Versión anterior: `1.71.7`
+- Nueva versión consolidada: `1.71.8`
+
+---
+
+## v1.71.7 - Limpieza y selección múltiple en filtros de cursos
+
+### Cambios consolidados
+- Se reorganiza el panel de filtros de **Cursos** para dejar visibles los filtros principales y mover campos secundarios a un bloque desplegable con el botón **Mostrar más filtros** situado al final derecho del panel.
+- Los filtros **PA Forma parte**, **Instructor**, **Estado curso**, **Tipología**, **Materia** y **Categoría** pasan a usar un selector abierto desde lupa con lista de valores disponibles, selección múltiple y botón **Aplicar filtro**.
+- La aplicación de varios valores dentro de un mismo campo de filtro se evalúa como coincidencia con cualquiera de los valores seleccionados, manteniendo combinación acumulativa entre campos distintos.
+- Se añaden estilos específicos para el selector de valores, el desplegable de filtros adicionales y sus acciones.
+- Se actualiza versión visible de APP y `package.json` a `1.71.7`.
+
+### Versionado
+- Versión anterior: `1.71.6`
+- Nueva versión consolidada: `1.71.7`
+
+---
+
 ## v1.71.6 - Alta admin de categorías y subcategorías SCORM
 
 ### Cambios consolidados

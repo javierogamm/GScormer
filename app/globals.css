@@ -1375,3 +1375,112 @@ textarea:focus {
   width: 100%;
   padding-inline: 0.45rem;
 }
+
+.filter-lookup {
+  position: relative;
+}
+
+.filter-lookup-trigger {
+  width: 100%;
+  justify-content: center;
+}
+
+.filter-lookup-menu {
+  margin-top: 0.45rem;
+  border: 1px solid #cfe0f6;
+  border-radius: 14px;
+  background: #f8fbff;
+  box-shadow: 0 12px 28px rgba(20, 55, 90, 0.16);
+  overflow: hidden;
+}
+
+.filter-lookup-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border-bottom: 1px solid #e3edf9;
+  background: #fff;
+  color: #4d6686;
+}
+
+.filter-lookup-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem 0;
+  outline: 0;
+  font-size: 0.86rem;
+}
+
+.filter-lookup-options {
+  display: grid;
+  gap: 0.28rem;
+  max-height: 260px;
+  overflow: auto;
+  padding: 0.5rem;
+}
+
+.filter-lookup-option {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0.48rem 0.6rem;
+  border: 1px solid #e1ebf7;
+  border-radius: 10px;
+  background: #fff;
+  color: #24435f;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filter-lookup-option span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-lookup-option:hover {
+  border-color: #9fc3ef;
+  background: #eef6ff;
+}
+
+.filter-lookup-option.is-selected {
+  border-color: #1c9b5e;
+  background: #dbf7e8;
+  color: #09643b;
+  box-shadow: inset 4px 0 0 #1c9b5e;
+}
+
+.filter-lookup-empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  margin: 0;
+  padding: 0.3rem;
+}
+
+.filter-lookup-actions {
+  display: flex;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  padding: 0.5rem;
+  border-top: 1px solid #e5edf8;
+  background: #fff;
+}
+
+.advanced-filters-grid {
+  margin-top: 0.45rem;
+}
+
+.advanced-filters-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.15rem 0.7rem 0.7rem;
+}
