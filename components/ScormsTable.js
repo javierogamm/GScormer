@@ -90,6 +90,12 @@ const normalizeLanguage = (language) => {
   return normalized;
 };
 
+const normalizeFilterLookupText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
 const CATEGORY_COLORS = {
   '02-Gestión Documental y Archivo': {
     backgroundColor: '#eef4ff',
@@ -381,6 +387,9 @@ export default function ScormsTable({ userSession }) {
   const [filterInputs, setFilterInputs] = useState({});
   const [filters, setFilters] = useState({});
   const [filtersCollapsed, setFiltersCollapsed] = useState(true);
+  const [openFilterLookupKey, setOpenFilterLookupKey] = useState(null);
+  const [filterDraftSelections, setFilterDraftSelections] = useState({});
+  const [filterLookupSearchInputs, setFilterLookupSearchInputs] = useState({});
   const [viewMode, setViewMode] = useState('table');
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedCardIds, setExpandedCardIds] = useState([]);
@@ -633,6 +642,8 @@ export default function ScormsTable({ userSession }) {
   }, [filters, myScormsOnly, rows, scopedResponsibleAgents]);
 
   const canRenderTable = useMemo(() => filteredRows.length > 0, [filteredRows.length]);
+
+  const activeFilterCount = useMemo(() => Object.values(filters).flat().length, [filters]);
 
   const filterOptionsByColumn = useMemo(() => {
     return FILTER_SELECT_KEYS.reduce((acc, key) => {
@@ -1061,6 +1072,76 @@ export default function ScormsTable({ userSession }) {
       ...previous,
       [field]: [],
     }));
+  };
+
+  const openFilterLookup = (field) => {
+    setFilterDraftSelections((previous) => ({
+      ...previous,
+      [field]: filters[field] || [],
+    }));
+    setFilterLookupSearchInputs((previous) => ({
+      ...previous,
+      [field]: previous[field] || '',
+    }));
+    setOpenFilterLookupKey((previous) => (previous === field ? null : field));
+  };
+
+  const handleFilterLookupSearchChange = (field, value) => {
+    setFilterLookupSearchInputs((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  };
+
+  const toggleDraftFilterSelection = (field, option) => {
+    setFilterDraftSelections((previous) => {
+      const existingValues = previous[field] || [];
+      const alreadySelected = existingValues.some((value) => value.toLowerCase() === option.toLowerCase());
+
+      return {
+        ...previous,
+        [field]: alreadySelected
+          ? existingValues.filter((value) => value.toLowerCase() !== option.toLowerCase())
+          : [...existingValues, option],
+      };
+    });
+  };
+
+  const applyLookupFilter = (field) => {
+    const selectedValues = filterDraftSelections[field] || [];
+
+    setFilters((previous) => {
+      if (selectedValues.length === 0) {
+        const { [field]: _removed, ...rest } = previous;
+        return rest;
+      }
+
+      return {
+        ...previous,
+        [field]: selectedValues,
+      };
+    });
+    setOpenFilterLookupKey(null);
+  };
+
+  const clearDraftLookupFilter = (field) => {
+    setFilterDraftSelections((previous) => ({
+      ...previous,
+      [field]: [],
+    }));
+    setFilterLookupSearchInputs((previous) => ({
+      ...previous,
+      [field]: '',
+    }));
+    clearFieldFilters(field);
+  };
+
+  const clearAllFilters = () => {
+    setFilters({});
+    setFilterInputs({});
+    setFilterDraftSelections({});
+    setFilterLookupSearchInputs({});
+    setOpenFilterLookupKey(null);
   };
 
   const toggleCellFilter = (field, rawValue) => {
@@ -2791,9 +2872,23 @@ export default function ScormsTable({ userSession }) {
           >
             <div className="filter-panel-title-main">
               <strong>Filtros</strong>
-              {Object.values(filters).flat().length > 0 && <span className="filter-counter">{Object.values(filters).flat().length}</span>}
+              {activeFilterCount > 0 && <span className="filter-counter">{activeFilterCount}</span>}
             </div>
-            <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
+            <div className="filter-panel-title-actions">
+              {activeFilterCount > 0 ? (
+                <button
+                  type="button"
+                  className="secondary clear-all-filters"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    clearAllFilters();
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              ) : null}
+              <span className="filter-collapse-label">{filtersCollapsed ? 'Expandir' : 'Colapsar'}</span>
+            </div>
           </div>
 
           <div className={`filters-panel-body ${filtersCollapsed ? 'filters-panel-body-collapsed' : ''}`}>
@@ -2813,25 +2908,68 @@ export default function ScormsTable({ userSession }) {
                       </div>
 
                       <div className="filter-dropdown-content">
-                        <div className="filter-controls">
-                          {usesSelect ? (
-                            <select
-                              value={filterInputs[column.key] || ''}
-                              onChange={(event) =>
-                                setFilterInputs((previous) => ({
-                                  ...previous,
-                                  [column.key]: event.target.value,
-                                }))
-                              }
+                        {usesSelect ? (
+                          <div className="filter-lookup">
+                            <button
+                              type="button"
+                              className="secondary filter-lookup-trigger"
+                              onClick={() => openFilterLookup(column.key)}
+                              aria-expanded={openFilterLookupKey === column.key}
                             >
-                              <option value="">Selecciona un valor</option>
-                              {(filterOptionsByColumn[column.key] || []).map((option) => (
-                                <option key={`${column.key}-${option}`} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
+                              <span aria-hidden="true">🔍</span> Seleccionar valores
+                            </button>
+                            {openFilterLookupKey === column.key ? (
+                              <div className="filter-lookup-menu">
+                                <div className="filter-lookup-search">
+                                  <span aria-hidden="true">🔎</span>
+                                  <input
+                                    type="search"
+                                    value={filterLookupSearchInputs[column.key] || ''}
+                                    onChange={(event) => handleFilterLookupSearchChange(column.key, event.target.value)}
+                                    placeholder="Buscar valores..."
+                                  />
+                                </div>
+                                <div className="filter-lookup-options">
+                                  {(filterOptionsByColumn[column.key] || [])
+                                    .filter((option) =>
+                                      normalizeFilterLookupText(option).includes(normalizeFilterLookupText(filterLookupSearchInputs[column.key])),
+                                    )
+                                    .map((option) => {
+                                      const optionSelected = (filterDraftSelections[column.key] || []).some(
+                                        (value) => value.toLowerCase() === option.toLowerCase(),
+                                      );
+
+                                      return (
+                                        <button
+                                          key={`${column.key}-${option}`}
+                                          type="button"
+                                          className={`filter-lookup-option ${optionSelected ? 'is-selected' : ''}`}
+                                          onClick={() => toggleDraftFilterSelection(column.key, option)}
+                                          title={option}
+                                        >
+                                          <span>{option}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  {(filterOptionsByColumn[column.key] || []).filter((option) =>
+                                    normalizeFilterLookupText(option).includes(normalizeFilterLookupText(filterLookupSearchInputs[column.key])),
+                                  ).length === 0 ? (
+                                    <p className="filter-lookup-empty">Sin valores disponibles.</p>
+                                  ) : null}
+                                </div>
+                                <div className="filter-lookup-actions">
+                                  <button type="button" onClick={() => applyLookupFilter(column.key)}>
+                                    Aplicar filtro
+                                  </button>
+                                  <button type="button" className="secondary" onClick={() => clearDraftLookupFilter(column.key)}>
+                                    Limpiar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="filter-controls">
                             <input
                               type="text"
                               placeholder={`Añadir filtro en ${label}`}
@@ -2849,12 +2987,12 @@ export default function ScormsTable({ userSession }) {
                                 }
                               }}
                             />
-                          )}
 
-                          <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
-                            Añadir
-                          </button>
-                        </div>
+                            <button type="button" className="secondary" onClick={() => addFieldFilter(column.key)}>
+                              Añadir
+                            </button>
+                          </div>
+                        )}
 
                         <div className="filter-tags">
                           {(filters[column.key] || []).map((value) => (
@@ -3323,6 +3461,18 @@ export default function ScormsTable({ userSession }) {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                className="secondary"
+                disabled={translationPreset === 'todos' && selectedTranslationGroupIds.length === 0}
+                onClick={() => {
+                  setTranslationPreset('todos');
+                  setPendingLanguage('ES');
+                  setSelectedTranslationGroupIds([]);
+                }}
+              >
+                Limpiar filtros de traducción
+              </button>
             </div>
             <div className="translation-actions">
               <select
@@ -3465,6 +3615,14 @@ export default function ScormsTable({ userSession }) {
               <span className="preset-kpi-badge" title="SCORMs actualizados pendientes de publicar">
                 {publishUpdatesCount}
               </span>
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={publishPreset === 'todos'}
+              onClick={() => setPublishPreset('todos')}
+            >
+              Limpiar filtros de publicación
             </button>
           </div>
 

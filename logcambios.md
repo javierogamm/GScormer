@@ -1,3 +1,34 @@
+## v1.72.0 - Selectores de filtros con buscador múltiple
+
+### Cambios consolidados
+- Se reemplazan los desplegables simples del panel de filtros de **SCORMs** por el selector con lupa, búsqueda interna, selección múltiple, resaltado visual y acciones **Aplicar filtro** / **Limpiar**, igualando la experiencia de la vista Cursos.
+- Los filtros de SCORMs para responsable, clasificación/categoría, estado, test e idioma ahora permiten seleccionar varios valores antes de aplicar el filtro.
+- La acción global **Limpiar filtros** de SCORMs también limpia selecciones temporales, búsquedas internas de selectores y cualquier selector abierto.
+- Se amplían los selectores múltiples del panel de **Cursos/PA** para incluir **PA Código**, **PA Nombre** e **Idioma curso**, facilitando la búsqueda y selección múltiple en vistas de planes de aprendizaje y cursos relacionados.
+- Se actualiza versión visible de APP y `package.json` a `1.72.0`.
+
+### Versionado
+- Versión anterior: `1.71.9`
+- Nueva versión consolidada: `1.72.0`
+
+---
+
+## v1.71.9 - Limpieza global de filtros
+
+### Cambios consolidados
+- Se añade la acción **Limpiar filtros** en el encabezado del panel de filtros de SCORMs para retirar de una sola vez todos los filtros aplicados y vaciar los campos pendientes.
+- Se añade la acción **Limpiar filtros** en el encabezado del panel de filtros de Cursos, con limpieza completa de filtros aplicados, búsquedas de lupa, selecciones temporales y selector abierto.
+- En las vistas de **Traducciones** de SCORMs y cursos se incorpora el botón **Limpiar filtros de traducción** para volver al preset general, limpiar el idioma pendiente y desmarcar selecciones acumuladas.
+- En la bandeja de publicación de SCORMs se añade **Limpiar filtros de publicación** para regresar al preset general.
+- La limpieza global queda disponible para las vistas dependientes del panel de filtros compartido, incluyendo Cursos, Planes de aprendizaje, Relaciones, Validación y Publicación.
+- Se actualiza versión visible de APP y `package.json` a `1.71.9`.
+
+### Versionado
+- Versión anterior: `1.71.8`
+- Nueva versión consolidada: `1.71.9`
+
+---
+
 ## v1.71.8 - Selector de filtros estilo Qlik en cursos
 
 ### Cambios consolidados
