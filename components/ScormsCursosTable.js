@@ -1155,6 +1155,31 @@ export default function ScormsCursosTable({ userSession }) {
     return filteredDetailMasterScormRows.filter((row) => !selectedIds.has(row.id));
   }, [detailSelectedScormIds, filteredDetailMasterScormRows]);
 
+  const editPlanAssociatedScormRows = useMemo(() => {
+    if (!editPlanModalOpen || selectedEditPlanCourseIds.length === 0) {
+      return [];
+    }
+
+    const selectedCourseIds = new Set(selectedEditPlanCourseIds.map((id) => Number(id)));
+    const scormIdSet = new Set();
+
+    rows
+      .filter((row) => selectedCourseIds.has(Number(row.id)))
+      .forEach((row) => {
+        parseScormIdsFromContenido(row.contenido).forEach((scormId) => {
+          scormIdSet.add(scormId);
+        });
+      });
+
+    return masterRows
+      .filter((row) => scormIdSet.has(row.id))
+      .sort((left, right) => {
+        const leftLabel = getScormReferenceLabel(left) || String(left.scorm_name || left.id || '');
+        const rightLabel = getScormReferenceLabel(right) || String(right.scorm_name || right.id || '');
+        return leftLabel.localeCompare(rightLabel, 'es', { sensitivity: 'base' });
+      });
+  }, [editPlanModalOpen, masterRows, parseScormIdsFromContenido, rows, selectedEditPlanCourseIds]);
+
   const availableLearningPlans = useMemo(() => resolveLearningPlanGroups(rows), [rows]);
 
   const associatedDetailPlanGroups = useMemo(() => {
@@ -3160,7 +3185,7 @@ export default function ScormsCursosTable({ userSession }) {
 
       {editPlanModalOpen ? (
         <div className="modal-overlay" role="presentation">
-          <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+          <section className="modal-content modal-content-large detail-modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h3>Editar Plan de aprendizaje</h3>
@@ -3273,6 +3298,48 @@ export default function ScormsCursosTable({ userSession }) {
                 Seleccionados para añadir: {selectedEditPlanCourseIds.length}
               </p>
             </section>
+
+            <details className="scorms-accordion-item course-detail-scorms-accordion">
+              <summary>
+                <span className="course-detail-scorms-summary">
+                  <strong>SCORMS</strong>
+                  <span>{editPlanAssociatedScormRows.length} detectado(s) en cursos asociados</span>
+                </span>
+              </summary>
+              <div className="course-detail-scorms-panel">
+                <p className="status">
+                  Lista de solo lectura generada desde los SCORMs vinculados a los cursos asociados al PA. No se edita desde esta vista.
+                </p>
+                {editPlanAssociatedScormRows.length === 0 ? (
+                  <p className="status">No hay SCORMs detectados en los cursos asociados al PA.</p>
+                ) : (
+                  <div className="table-wrapper">
+                    <table className="compact-rows">
+                      <thead>
+                        <tr>
+                          <th>Código</th>
+                          <th>Nombre</th>
+                          <th>Idioma</th>
+                          <th>Responsable</th>
+                          <th>Categoría</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editPlanAssociatedScormRows.map((row) => (
+                          <tr key={`edit-plan-associated-scorm-${row.id}`}>
+                            <td>{getScormReferenceLabel(row) || '-'}</td>
+                            <td>{String(row.scorm_name || '-')}</td>
+                            <td>{String(row.scorm_idioma || '-')}</td>
+                            <td>{String(row.scorm_responsable || '-')}</td>
+                            <td>{String(row.scorm_categoria || '-')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </details>
 
             <footer className="modal-footer">
               <button type="button" onClick={submitEditPlan} disabled={editPlanSubmitting}>
@@ -3679,7 +3746,7 @@ export default function ScormsCursosTable({ userSession }) {
 
       {paDetailsModalRow ? (
         <div className="modal-overlay" role="presentation" onClick={() => setPaDetailsModalRow(null)}>
-          <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+          <section className="modal-content detail-modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h3>Planes de aprendizaje relacionados</h3>
@@ -3729,7 +3796,7 @@ export default function ScormsCursosTable({ userSession }) {
 
       {detailModalRow && detailDraft ? (
         <div className="modal-overlay" role="presentation">
-          <section className="modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+          <section className="modal-content detail-modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h3>Detalle del curso</h3>

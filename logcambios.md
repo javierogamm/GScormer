@@ -1,3 +1,18 @@
+## v1.72.5 - Detalles ampliados y SCORMs en PA
+
+### Cambios consolidados
+- Se añade en el detalle/edición de **Plan de aprendizaje** un acordeón **SCORMS** que identifica los SCORMs presentes en los cursos asociados al PA y los lista en modo solo lectura.
+- El acordeón de SCORMs del PA se recalcula con los cursos seleccionados para el plan, sin permitir editar esas relaciones desde el listado de SCORMs.
+- Las vistas de detalle de **SCORM**, **Curso** y **PA** pasan a tener un ancho base un 75% mayor, con límites adaptados al viewport.
+- Las vistas de detalle ampliadas se pueden redimensionar manualmente desde el lateral o la esquina mediante el comportamiento nativo de resize.
+- Se actualiza versión visible de APP y `package.json` a `1.72.5`.
+
+### Versionado
+- Versión anterior: `1.72.4`
+- Nueva versión consolidada: `1.72.5`
+
+---
+
 ## v1.72.4 - Selectores con lupa en todos los filtros
 
 ### Cambios consolidados

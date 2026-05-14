@@ -758,6 +758,13 @@ input:focus {
   width: min(1320px, 100%);
 }
 
+.modal-content.detail-modal-content {
+  width: min(1680px, calc(100vw - 2.4rem));
+  min-width: min(75vw, calc(100vw - 2.4rem));
+  max-width: calc(100vw - 2.4rem);
+  resize: both;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -936,6 +943,12 @@ input:focus {
 }
 
 @media (max-width: 700px) {
+  .modal-content.detail-modal-content {
+    width: 100%;
+    min-width: 0;
+    resize: vertical;
+  }
+
   .course-detail-scorms-actions {
     grid-template-columns: 1fr;
   }
