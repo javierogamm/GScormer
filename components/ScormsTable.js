@@ -26,7 +26,7 @@ const FILTER_LAYOUT_ROWS = [
   ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_test', 'scorm_idioma'],
 ];
 
-const FILTER_SELECT_KEYS = ['scorm_responsable', 'scorm_categoria', 'scorm_estado', 'scorm_test', 'scorm_idioma'];
+const FILTER_SELECT_KEYS = columns.map((column) => column.key);
 
 const FILTER_LABELS = {
   scorm_categoria: 'Clasificación',
@@ -647,9 +647,23 @@ export default function ScormsTable({ userSession }) {
 
   const filterOptionsByColumn = useMemo(() => {
     return FILTER_SELECT_KEYS.reduce((acc, key) => {
-      const uniqueValues = [...new Set(rows.map((row) => String(row[key] || '').trim()).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b, 'es', { sensitivity: 'base' })
-      );
+      const uniqueValues = [
+        ...new Set(
+          rows
+            .map((row) => {
+              if (key === 'scorm_name') {
+                return getOfficialName(row);
+              }
+
+              if (key === 'scorm_code') {
+                return getInternationalizedCode(row);
+              }
+
+              return String(row[key] || '').trim();
+            })
+            .filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       acc[key] = uniqueValues;
       return acc;
     }, {});

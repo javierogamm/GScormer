@@ -96,20 +96,8 @@ const PLAN_DEFAULT_FILTER_ROWS = [
   ['pa_codigo', 'pa_nombre'],
   ...COURSE_DEFAULT_FILTER_ROWS.map((rowKeys) => rowKeys.filter((key) => !['pa_codigo', 'pa_nombre'].includes(key))),
 ];
-const MULTI_SELECT_FILTER_KEYS = [
-  'pa_formaparte',
-  'pa_codigo',
-  'pa_nombre',
-  'curso_instructor',
-  'curso_estado',
-  'curso_idioma',
-  'tipologia',
-  'materia',
-  'categoria',
-  'inscripcion',
-  'test',
-];
-const RANGE_FILTER_KEYS = ['tiempo_cert'];
+const MULTI_SELECT_FILTER_KEYS = ['__scorms__', ...columns.map((column) => column.key)];
+const RANGE_FILTER_KEYS = [];
 const DEFAULT_FILTER_KEYS = [...new Set([...COURSE_DEFAULT_FILTER_ROWS.flat(), ...PLAN_DEFAULT_FILTER_ROWS.flat()])];
 const EXTRA_FILTER_KEYS = ['__scorms__', ...columns.map((column) => column.key).filter((key) => !DEFAULT_FILTER_KEYS.includes(key))];
 
@@ -544,14 +532,17 @@ export default function ScormsCursosTable({ userSession }) {
 
   const selectorFilterOptions = useMemo(() => {
     return MULTI_SELECT_FILTER_KEYS.reduce((acc, key) => {
-      acc[key] = rows
-        .map((row) => String(row[key] || '').trim())
+      const values = key === '__scorms__'
+        ? masterRows.map((row) => getScormReferenceLabel(row) || String(row.scorm_name || '').trim())
+        : rows.map((row) => String(row[key] || '').trim());
+
+      acc[key] = values
         .filter(Boolean)
         .filter((value, index, array) => array.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index)
         .sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' }));
       return acc;
     }, {});
-  }, [rows]);
+  }, [masterRows, rows]);
 
   const scormsByCode = useMemo(() => {
     return masterRows.reduce((acc, row) => {
@@ -630,7 +621,7 @@ export default function ScormsCursosTable({ userSession }) {
         return values.some((value) => {
           const normalizedFilterValue = String(value || '').toLowerCase();
 
-          if (MULTI_SELECT_FILTER_KEYS.includes(columnKey)) {
+          if (MULTI_SELECT_FILTER_KEYS.includes(columnKey) && columnKey !== '__scorms__') {
             return normalizedRowValue === normalizedFilterValue;
           }
 

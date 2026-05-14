@@ -1,3 +1,18 @@
+## v1.72.4 - Selectores con lupa en todos los filtros
+
+### Cambios consolidados
+- Todos los filtros del panel de **SCORMs** pasan a usar el selector con lupa estilo Qlik Sense, incluyendo código, nombre, tipo, subcategoría, URL, cursos y observaciones.
+- Todos los filtros del panel de **Cursos/PA** pasan a usar el selector con lupa estilo Qlik Sense, incluyendo códigos, nombres, descripciones, observaciones, SCORMs y tiempo de certificación.
+- El selector de SCORMs asociados en Cursos se alimenta de las referencias del maestro de SCORMs para facilitar la búsqueda por código/idioma desde el panel de filtros.
+- Se mantiene la selección múltiple, búsqueda interna, resaltado de valores seleccionados y acciones **Aplicar filtro** / **Limpiar** en todos los campos filtrables.
+- Se actualiza versión visible de APP y `package.json` a `1.72.4`.
+
+### Versionado
+- Versión anterior: `1.72.3`
+- Nueva versión consolidada: `1.72.4`
+
+---
+
 ## v1.72.3 - Reagrupación de PA en detalle de curso
 
 ### Cambios consolidados
