@@ -175,6 +175,83 @@ const rowIsTranslationChild = (row) => normalizeText(row.relacion_tipo) === 'TRA
 
 const rowIsParentCourse = (row) => normalizeText(row.relacion_tipo) === 'PADRE';
 
+const getCourseUniqueId = (row) => String(row?.IDUnico ?? row?.idunico ?? row?.id_unico ?? '').trim();
+
+const getLearningPlanKey = (row) => String(row?.pa_codigo || row?.pa_nombre || '').trim();
+
+const getLearningPlanAcronym = (plan) => {
+  const sampleCourseCode = String(plan?.sampleRow?.curso_codigo || '').trim();
+
+  if (sampleCourseCode.includes('-')) {
+    return sampleCourseCode.split('-')[0].trim().toUpperCase();
+  }
+
+  return String(plan?.paCodigo || '').trim().toUpperCase();
+};
+
+const buildLearningPlanCourseCode = (plan, baseCourseCode) => {
+  const acronym = getLearningPlanAcronym(plan);
+  const normalizedBaseCode = String(baseCourseCode || '').trim();
+
+  if (!acronym) {
+    return normalizedBaseCode;
+  }
+
+  if (!normalizedBaseCode) {
+    return acronym;
+  }
+
+  return normalizedBaseCode.toUpperCase().startsWith(`${acronym}-`) ? normalizedBaseCode : `${acronym}-${normalizedBaseCode}`;
+};
+
+const resolveLearningPlanGroups = (sourceRows) => {
+  const grouped = (sourceRows || []).reduce((acc, row) => {
+    if (!rowIsPlanChild(row)) {
+      return acc;
+    }
+
+    const key = getLearningPlanKey(row);
+
+    if (!key) {
+      return acc;
+    }
+
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        paCodigo: String(row.pa_codigo || '').trim(),
+        paNombre: String(row.pa_nombre || '').trim(),
+        paUrl: String(row.pa_url || '').trim(),
+        rowIds: [],
+        rows: [],
+        sampleRow: row,
+      };
+    }
+
+    if (!acc[key].paCodigo) {
+      acc[key].paCodigo = String(row.pa_codigo || '').trim();
+    }
+
+    if (!acc[key].paNombre) {
+      acc[key].paNombre = String(row.pa_nombre || '').trim();
+    }
+
+    if (!acc[key].paUrl) {
+      acc[key].paUrl = String(row.pa_url || '').trim();
+    }
+
+    acc[key].rowIds.push(row.id);
+    acc[key].rows.push(row);
+    return acc;
+  }, {});
+
+  return Object.values(grouped).sort((left, right) => {
+    const leftLabel = `${left.paCodigo} ${left.paNombre}`;
+    const rightLabel = `${right.paCodigo} ${right.paNombre}`;
+    return leftLabel.localeCompare(rightLabel, 'es', { sensitivity: 'base' });
+  });
+};
+
 const resolveTipologyGroup = (tipologia) => {
   const normalized = normalizeTipologia(tipologia);
 
@@ -336,6 +413,10 @@ export default function ScormsCursosTable({ userSession }) {
   const [detailSelectedScormIds, setDetailSelectedScormIds] = useState([]);
   const [detailAssociatedScormsVisible, setDetailAssociatedScormsVisible] = useState(false);
   const [detailLinkScormsVisible, setDetailLinkScormsVisible] = useState(false);
+  const [detailPlanSearchText, setDetailPlanSearchText] = useState('');
+  const [detailSelectedPlanKeys, setDetailSelectedPlanKeys] = useState([]);
+  const [detailAssociatedPlansVisible, setDetailAssociatedPlansVisible] = useState(false);
+  const [detailLinkPlansVisible, setDetailLinkPlansVisible] = useState(false);
   const [planCourseSearchText, setPlanCourseSearchText] = useState('');
   const [selectedPlanCourseIds, setSelectedPlanCourseIds] = useState([]);
   const [createPlanDraft, setCreatePlanDraft] = useState({
@@ -1083,6 +1164,57 @@ export default function ScormsCursosTable({ userSession }) {
     return filteredDetailMasterScormRows.filter((row) => !selectedIds.has(row.id));
   }, [detailSelectedScormIds, filteredDetailMasterScormRows]);
 
+  const availableLearningPlans = useMemo(() => resolveLearningPlanGroups(rows), [rows]);
+
+  const associatedDetailPlanGroups = useMemo(() => {
+    const detailUniqueId = getCourseUniqueId(detailModalRow);
+
+    if (!detailUniqueId) {
+      return [];
+    }
+
+    return resolveLearningPlanGroups(rows.filter((row) => getCourseUniqueId(row) === detailUniqueId));
+  }, [detailModalRow, rows]);
+
+  const filteredAvailableDetailPlans = useMemo(() => {
+    const selectedKeys = new Set(detailSelectedPlanKeys);
+    const search = String(detailPlanSearchText || '').trim().toLowerCase();
+
+    return availableLearningPlans.filter((plan) => {
+      if (selectedKeys.has(plan.key)) {
+        return false;
+      }
+
+      if (!search) {
+        return true;
+      }
+
+      return [plan.paCodigo, plan.paNombre, plan.paUrl]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(search));
+    });
+  }, [availableLearningPlans, detailPlanSearchText, detailSelectedPlanKeys]);
+
+  const selectedDetailPlanGroups = useMemo(() => {
+    const associatedByKey = associatedDetailPlanGroups.reduce((acc, plan) => {
+      acc[plan.key] = plan;
+      return acc;
+    }, {});
+    const availableByKey = availableLearningPlans.reduce((acc, plan) => {
+      acc[plan.key] = plan;
+      return acc;
+    }, {});
+
+    return detailSelectedPlanKeys
+      .map((key) => associatedByKey[key] || availableByKey[key])
+      .filter(Boolean)
+      .sort((left, right) => {
+        const leftLabel = `${left.paCodigo} ${left.paNombre}`;
+        const rightLabel = `${right.paCodigo} ${right.paNombre}`;
+        return leftLabel.localeCompare(rightLabel, 'es', { sensitivity: 'base' });
+      });
+  }, [associatedDetailPlanGroups, availableLearningPlans, detailSelectedPlanKeys]);
+
   const toggleDetailSelectedScorm = (scormId, options = {}) => {
     setDetailSelectedScormIds((previous) => {
       const isSelected = previous.includes(scormId);
@@ -1099,8 +1231,28 @@ export default function ScormsCursosTable({ userSession }) {
     });
   };
 
+  const toggleDetailSelectedPlan = (planKey, options = {}) => {
+    setDetailSelectedPlanKeys((previous) => {
+      const isSelected = previous.includes(planKey);
+
+      if (isSelected) {
+        const shouldConfirm = options.confirmRemoval === true;
+        const removalConfirmed =
+          !shouldConfirm || window.confirm('Vas a deschecar un PA asociado al curso. El cambio se aplicará al pulsar GUARDAR. ¿Quieres continuar?');
+
+        return removalConfirmed ? previous.filter((key) => key !== planKey) : previous;
+      }
+
+      return [...previous, planKey];
+    });
+  };
+
   const openDetailModal = (row) => {
     const sourceRow = rows.find((candidate) => Number(candidate.id) === Number(row?.id)) || row;
+    const sourceUniqueId = getCourseUniqueId(sourceRow);
+    const associatedPlanKeys = sourceUniqueId
+      ? resolveLearningPlanGroups(rows.filter((candidate) => getCourseUniqueId(candidate) === sourceUniqueId)).map((plan) => plan.key)
+      : [];
 
     setDetailModalRow(sourceRow);
     setDetailDraft({ ...sourceRow });
@@ -1108,6 +1260,10 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailSelectedScormIds(parseScormIdsFromContenido(sourceRow?.contenido));
     setDetailAssociatedScormsVisible(false);
     setDetailLinkScormsVisible(false);
+    setDetailPlanSearchText('');
+    setDetailSelectedPlanKeys(associatedPlanKeys);
+    setDetailAssociatedPlansVisible(false);
+    setDetailLinkPlansVisible(false);
   };
 
   const closeDetailModal = () => {
@@ -1121,6 +1277,10 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailSelectedScormIds([]);
     setDetailAssociatedScormsVisible(false);
     setDetailLinkScormsVisible(false);
+    setDetailPlanSearchText('');
+    setDetailSelectedPlanKeys([]);
+    setDetailAssociatedPlansVisible(false);
+    setDetailLinkPlansVisible(false);
   };
 
   const saveDetailModal = async () => {
@@ -1157,8 +1317,69 @@ export default function ScormsCursosTable({ userSession }) {
       return;
     }
 
-    setRows((previousRows) => previousRows.map((row) => (row.id === detailModalRow.id ? response.data : row)));
-    setStatusMessage(`Curso actualizado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`}`);
+    const detailUniqueId = getCourseUniqueId(response.data) || getCourseUniqueId(detailModalRow);
+
+    if (!detailUniqueId && detailSelectedPlanKeys.length > 0) {
+      setDetailSaving(false);
+      setError('El curso se actualizó, pero no se pueden vincular PA porque no tiene IDUnico.');
+      return;
+    }
+
+    const selectedPlanKeySet = new Set(detailSelectedPlanKeys);
+    const existingPlanRows = rows.filter((row) => getCourseUniqueId(row) === detailUniqueId && rowIsPlanChild(row));
+    const existingPlanKeySet = new Set(existingPlanRows.map((row) => getLearningPlanKey(row)).filter(Boolean));
+    const planRowIdsToDelete = existingPlanRows
+      .filter((row) => !selectedPlanKeySet.has(getLearningPlanKey(row)))
+      .map((row) => row.id);
+    const plansToInsert = availableLearningPlans.filter((plan) => selectedPlanKeySet.has(plan.key) && !existingPlanKeySet.has(plan.key));
+
+    if (planRowIdsToDelete.length > 0) {
+      const deleteResponse = await supabase.from('scorms_cursos').delete().in('id', planRowIdsToDelete);
+
+      if (deleteResponse.error) {
+        setDetailSaving(false);
+        setError(`El curso se actualizó, pero no se pudieron desvincular PA: ${deleteResponse.error.message}`);
+        return;
+      }
+    }
+
+    let insertedPlanRows = [];
+    if (plansToInsert.length > 0) {
+      const insertPayload = plansToInsert.map((plan) => ({
+        ...columns.reduce((acc, column) => {
+          acc[column.key] = response.data[column.key] ?? null;
+          return acc;
+        }, {}),
+        IDUnico: detailUniqueId,
+        relacion_tipo: response.data.relacion_tipo || DEFAULT_RELATION_TYPE_PARENT,
+        pa_formaparte: 'Sí',
+        pa_codigo: plan.paCodigo,
+        pa_nombre: plan.paNombre,
+        pa_url: plan.paUrl,
+        curso_codigo: buildLearningPlanCourseCode(plan, response.data.curso_codigo),
+      }));
+
+      const insertResponse = await supabase.from('scorms_cursos').insert(insertPayload).select('*');
+
+      if (insertResponse.error) {
+        setDetailSaving(false);
+        setError(`El curso se actualizó, pero no se pudieron vincular PA: ${insertResponse.error.message}`);
+        return;
+      }
+
+      insertedPlanRows = insertResponse.data || [];
+    }
+
+    const deletedPlanRowIdSet = new Set(planRowIdsToDelete);
+    setRows((previousRows) => [
+      ...previousRows
+        .map((row) => (row.id === detailModalRow.id ? response.data : row))
+        .filter((row) => !deletedPlanRowIdSet.has(row.id)),
+      ...insertedPlanRows,
+    ]);
+    setStatusMessage(
+      `Curso actualizado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`} · PA desvinculados: ${planRowIdsToDelete.length} · PA vinculados: ${insertedPlanRows.length}`,
+    );
     setDetailSaving(false);
     setDetailModalRow(response.data);
     setDetailDraft({ ...response.data });
@@ -3677,6 +3898,134 @@ export default function ScormsCursosTable({ userSession }) {
                 ) : null}
 
                 <p className="status">Seleccionados: {detailSelectedScormIds.length} · Se guardan en contenido al guardar cambios.</p>
+              </div>
+            </details>
+
+            <details className="scorms-accordion-item course-detail-scorms-accordion">
+              <summary>
+                <span className="course-detail-scorms-summary">
+                  <strong>Planes de aprendizaje</strong>
+                  <span>{detailSelectedPlanKeys.length} PA asociado(s)</span>
+                </span>
+              </summary>
+              <div className="course-detail-scorms-panel">
+                <div className="course-detail-scorms-actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setDetailAssociatedPlansVisible((previous) => !previous)}
+                  >
+                    Ver PA asociados
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailLinkPlansVisible((previous) => !previous)}
+                  >
+                    VINCULAR PLAN DE APRENDIZAJE
+                  </button>
+                </div>
+
+                {detailAssociatedPlansVisible ? (
+                  <section className="course-detail-scorms-subpanel">
+                    <h4>PA asociados al curso</h4>
+                    <p className="status">
+                      Descheca los PA que quieras retirar. El cambio no se aplicará hasta pulsar <strong>Guardar cambios</strong>.
+                    </p>
+                    {selectedDetailPlanGroups.length === 0 ? (
+                      <p className="status">No hay PA asociados a este curso.</p>
+                    ) : (
+                      <div className="table-wrapper">
+                        <table className="compact-rows">
+                          <thead>
+                            <tr>
+                              <th>Asociado</th>
+                              <th>PA Código</th>
+                              <th>PA Nombre</th>
+                              <th>PA URL</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedDetailPlanGroups.map((plan) => (
+                              <tr key={`detail-associated-plan-${plan.key}`}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked
+                                    onChange={() => toggleDetailSelectedPlan(plan.key, { confirmRemoval: true })}
+                                  />
+                                </td>
+                                <td>{plan.paCodigo || '-'}</td>
+                                <td>{plan.paNombre || '-'}</td>
+                                <td>
+                                  {isUrl(plan.paUrl) ? (
+                                    <a className="table-link" href={plan.paUrl} target="_blank" rel="noreferrer">
+                                      LINK
+                                    </a>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+
+                {detailLinkPlansVisible ? (
+                  <section className="course-detail-scorms-subpanel">
+                    <h4>Vincular Plan de aprendizaje</h4>
+                    <input
+                      type="text"
+                      placeholder="Buscar PA para añadir..."
+                      value={detailPlanSearchText}
+                      onChange={(event) => setDetailPlanSearchText(event.target.value)}
+                    />
+                    <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
+                      <table className="compact-rows">
+                        <thead>
+                          <tr>
+                            <th>Añadir</th>
+                            <th>PA Código</th>
+                            <th>PA Nombre</th>
+                            <th>PA URL</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredAvailableDetailPlans.slice(0, 40).map((plan) => (
+                            <tr key={`detail-linkable-plan-${plan.key}`}>
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={false}
+                                  onChange={() => toggleDetailSelectedPlan(plan.key)}
+                                />
+                              </td>
+                              <td>{plan.paCodigo || '-'}</td>
+                              <td>{plan.paNombre || '-'}</td>
+                              <td>
+                                {isUrl(plan.paUrl) ? (
+                                  <a className="table-link" href={plan.paUrl} target="_blank" rel="noreferrer">
+                                    LINK
+                                  </a>
+                                ) : (
+                                  '-'
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="status">
+                      Mostrando {Math.min(filteredAvailableDetailPlans.length, 40)} de {filteredAvailableDetailPlans.length} PA disponibles. Las nuevas vinculaciones se guardan al pulsar <strong>Guardar cambios</strong>.
+                    </p>
+                  </section>
+                ) : null}
+
+                <p className="status">Seleccionados: {detailSelectedPlanKeys.length} · Se aplican al guardar cambios.</p>
               </div>
             </details>
 
