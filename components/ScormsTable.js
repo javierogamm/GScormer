@@ -4223,7 +4223,7 @@ export default function ScormsTable({ userSession }) {
       {activeRow && detailDraft && (
         <div className="modal-overlay" role="presentation">
           <div
-            className="modal-content"
+            className="modal-content detail-modal-content"
             role="dialog"
             aria-modal="true"
             aria-labelledby="detalle-titulo"
