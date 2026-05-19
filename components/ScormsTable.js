@@ -458,6 +458,8 @@ export default function ScormsTable({ userSession }) {
   const [singleTagPickerOpen, setSingleTagPickerOpen] = useState(false);
   const [singleTagPickerSearch, setSingleTagPickerSearch] = useState('');
   const [singleTagPickerDraft, setSingleTagPickerDraft] = useState([]);
+  const [suggestedTagsModalOpen, setSuggestedTagsModalOpen] = useState(false);
+  const [suggestedTagDraft, setSuggestedTagDraft] = useState([]);
   const [singleTagSubmitting, setSingleTagSubmitting] = useState(false);
   const [bulkTagPickerOpen, setBulkTagPickerOpen] = useState(false);
   const [bulkTagPickerSearch, setBulkTagPickerSearch] = useState('');
@@ -929,6 +931,16 @@ export default function ScormsTable({ userSession }) {
         .map((code) => (tagsByCode[code] || [])[0] || { etiqueta_codigo: code, etiqueta_nombre: '', clasificacion_scorm: '' }),
     [singleTagPickerDraft, tagsByCode],
   );
+  const suggestedTagRows = useMemo(() => {
+    const scormClassification = String(coursesModalRow?.scorm_categoria || '').trim();
+    if (!scormClassification) {
+      return [];
+    }
+
+    return tagCatalogRows
+      .filter((row) => String(row.clasificacion_scorm || '').trim() === scormClassification)
+      .sort((left, right) => String(left.etiqueta_codigo || '').localeCompare(String(right.etiqueta_codigo || ''), 'es', { sensitivity: 'base' }));
+  }, [coursesModalRow?.scorm_categoria, tagCatalogRows]);
   const selectedBulkTagRows = useMemo(
     () =>
       bulkTagPickerDraft
@@ -1849,6 +1861,12 @@ export default function ScormsTable({ userSession }) {
     setSingleTagPickerDraft([]);
     setSingleTagPickerOpen(false);
     setStatusMessage('Etiquetas actualizadas correctamente.');
+  };
+
+  const applySuggestedTags = () => {
+    setSingleTagPickerOpen(true);
+    setSingleTagPickerDraft((previous) => [...new Set([...previous, ...suggestedTagDraft])]);
+    setSuggestedTagsModalOpen(false);
   };
 
   const togglePublishSelection = (rowId) => {
@@ -5084,9 +5102,22 @@ export default function ScormsTable({ userSession }) {
               </div>
             )}
             <footer className="modal-footer" style={{ justifyContent: 'space-between' }}>
-              <button type="button" className="secondary" onClick={() => setSingleTagPickerOpen((prev) => !prev)}>
-                + Añadir etiquetas
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="secondary" onClick={() => setSingleTagPickerOpen((prev) => !prev)}>
+                  + Añadir etiquetas
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    const currentCodes = parseTagCodesFromInput(String(coursesModalRow.scorm_etiquetas || '').replace(/;/g, ' '));
+                    setSuggestedTagDraft(currentCodes);
+                    setSuggestedTagsModalOpen(true);
+                  }}
+                >
+                  Etiquetas sugeridas
+                </button>
+              </div>
               {singleTagPickerOpen ? (
                 <button type="button" onClick={saveSingleScormTags} disabled={singleTagSubmitting || singleTagPickerDraft.length === 0}>
                   {singleTagSubmitting ? 'Guardando...' : `Añadir seleccionadas (${singleTagPickerDraft.length})`}
@@ -5134,6 +5165,59 @@ export default function ScormsTable({ userSession }) {
                 </div>
               </div>
             )}
+          </section>
+        </div>
+      ) : null}
+
+      {coursesModalRow && suggestedTagsModalOpen ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setSuggestedTagsModalOpen(false)}>
+          <section className="modal-content modal-content-narrow" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <header className="modal-header">
+              <div>
+                <h3>Etiquetas sugeridas</h3>
+                <p>Clasificación: {coursesModalRow.scorm_categoria || 'Sin clasificación'}</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setSuggestedTagsModalOpen(false)}>
+                Cerrar
+              </button>
+            </header>
+            <div className="modal-footer" style={{ justifyContent: 'flex-start', gap: 8 }}>
+              <button type="button" className="secondary" onClick={() => setSuggestedTagDraft(suggestedTagRows.map((row) => String(row.etiqueta_codigo || '').trim().toUpperCase()))} disabled={suggestedTagRows.length === 0}>
+                Seleccionar todas
+              </button>
+              <button type="button" className="secondary" onClick={() => setSuggestedTagDraft([])} disabled={suggestedTagDraft.length === 0}>
+                Borrar todas
+              </button>
+              <button type="button" onClick={applySuggestedTags} disabled={suggestedTagDraft.length === 0}>
+                Añadir seleccionadas ({suggestedTagDraft.length})
+              </button>
+            </div>
+            <div className="filter-lookup-options" style={{ maxHeight: 360, overflowY: 'auto' }}>
+              {suggestedTagRows.length === 0 ? (
+                <p className="status">No hay etiquetas sugeridas para esta clasificación.</p>
+              ) : (
+                suggestedTagRows.map((tagRow) => {
+                  const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                  const selected = suggestedTagDraft.includes(code);
+                  return (
+                    <button
+                      key={`suggested-tag-${code}`}
+                      type="button"
+                      className={`filter-lookup-option ${selected ? 'is-selected' : ''}`}
+                      onClick={() =>
+                        setSuggestedTagDraft((previous) =>
+                          previous.includes(code) ? previous.filter((item) => item !== code) : [...previous, code],
+                        )
+                      }
+                      title={selected ? 'Quitar etiqueta sugerida' : 'Añadir etiqueta sugerida'}
+                    >
+                      {code} - {tagRow.etiqueta_nombre || 'Sin nombre'}
+                      {selected ? ' · Quitar' : ''}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </section>
         </div>
       ) : null}

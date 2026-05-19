@@ -1,3 +1,18 @@
+## v1.73.2 - Modal de etiquetas sugeridas por clasificación SCORM
+
+### Cambios consolidados
+- En el modal individual **Etiquetas del SCORM** se añade el botón **Etiquetas sugeridas** (solo en edición individual, no en edición masiva).
+- El botón abre un segundo modal sin buscador que muestra, con scroll vertical, las etiquetas cuya `clasificacion_scorm` coincide con la `scorm_categoria` del SCORM en edición.
+- En el segundo modal se permite selección contextual por clic sobre cada etiqueta: seleccionar/quitar individualmente, **Seleccionar todas** y **Borrar todas**.
+- El botón **Añadir seleccionadas** incorpora esas etiquetas al selector de **+ Añadir etiquetas** del modal principal, dejándolas marcadas como seleccionadas para su guardado.
+- Se actualiza versión visible de APP y `package.json` a `1.73.2`.
+
+### Versionado
+- Versión anterior: `1.73.1`
+- Nueva versión consolidada: `1.73.2`
+
+---
+
 ## v1.73.1 - Etiquetas seleccionadas fijas arriba en pickers
 
 ### Cambios consolidados
