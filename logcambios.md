@@ -1,3 +1,18 @@
+## v1.73.3 - Gestión completa de etiquetas y búsqueda por nombre
+
+### Cambios consolidados
+- En el modal individual de etiquetas del SCORM, el botón pasa a **Gestionar etiquetas** y al abrirlo carga como selección inicial las etiquetas actuales del SCORM para poder quitarlas y no solo añadir nuevas.
+- La acción de guardado del modal individual ahora persiste exactamente la selección activa (incluyendo dejarla vacía), habilitando la eliminación real de etiquetas ya asignadas.
+- En los filtros tipo lookup de la columna **Etiquetas**, la búsqueda ahora también contempla `etiqueta_nombre` además del código, de modo que se pueden encontrar etiquetas escribiendo por nombre.
+- Se mantiene la persistencia de filtros por código de etiqueta, pero con enriquecimiento de búsqueda para resolver descubrimiento por nombre.
+- Se actualiza versión visible de APP y `package.json` a `1.73.3`.
+
+### Versionado
+- Versión anterior: `1.73.2`
+- Nueva versión consolidada: `1.73.3`
+
+---
+
 ## v1.73.2 - Modal de etiquetas sugeridas por clasificación SCORM
 
 ### Cambios consolidados
