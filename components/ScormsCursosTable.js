@@ -417,6 +417,14 @@ export default function ScormsCursosTable({ userSession }) {
   const [moveHistory, setMoveHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
   const [selectedValidationCourseIds, setSelectedValidationCourseIds] = useState([]);
+  const [selectedGeneralCourseIds, setSelectedGeneralCourseIds] = useState([]);
+  const [bulkEditCoursesModalOpen, setBulkEditCoursesModalOpen] = useState(false);
+  const [bulkEditCoursesSubmitting, setBulkEditCoursesSubmitting] = useState(false);
+  const [bulkEditCoursesDraft, setBulkEditCoursesDraft] = useState({
+    curso_instructor: '',
+    materia: '',
+    inscripcion: '',
+  });
   const [courseSortOrder, setCourseSortOrder] = useState('created_desc');
   const [createManagedFieldMode, setCreateManagedFieldMode] = useState({});
   const [tipologyVisibility, setTipologyVisibility] = useState({
@@ -544,6 +552,14 @@ export default function ScormsCursosTable({ userSession }) {
     }, {});
   }, [masterRows, rows]);
 
+  const bulkCourseSelectorOptions = useMemo(() => {
+    return {
+      curso_instructor: selectorFilterOptions.curso_instructor || [],
+      materia: selectorFilterOptions.materia || [],
+      inscripcion: selectorFilterOptions.inscripcion || [],
+    };
+  }, [selectorFilterOptions]);
+
   const scormsByCode = useMemo(() => {
     return masterRows.reduce((acc, row) => {
       const code = String(row.scorm_code || '').trim().toUpperCase();
@@ -560,6 +576,64 @@ export default function ScormsCursosTable({ userSession }) {
       return acc;
     }, {});
   }, [masterRows]);
+
+  const toggleGeneralCourseSelection = (rowId) => {
+    setSelectedGeneralCourseIds((previous) =>
+      previous.includes(rowId) ? previous.filter((id) => id !== rowId) : [...previous, rowId],
+    );
+  };
+
+  const toggleAllGeneralRows = () => {
+    const visibleIds = sortedGeneralRows.map((row) => row.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedGeneralCourseIds.includes(id));
+
+    if (allSelected) {
+      setSelectedGeneralCourseIds((previous) => previous.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+
+    setSelectedGeneralCourseIds((previous) => [...new Set([...previous, ...visibleIds])]);
+  };
+
+  const openBulkEditCoursesModal = () => {
+    if (userSession?.admin !== true || selectedGeneralCourseIds.length < 2) {
+      return;
+    }
+    setBulkEditCoursesDraft({ curso_instructor: '', materia: '', inscripcion: '' });
+    setBulkEditCoursesModalOpen(true);
+    setError('');
+    setStatusMessage('');
+  };
+
+  const submitBulkEditCourses = async () => {
+    const payload = Object.entries(bulkEditCoursesDraft).reduce((acc, [key, value]) => {
+      const normalized = String(value || '').trim();
+      if (normalized) {
+        acc[key] = normalized;
+      }
+      return acc;
+    }, {});
+
+    if (Object.keys(payload).length === 0) {
+      setError('Debes informar al menos un campo para aplicar la edición masiva de cursos.');
+      return;
+    }
+
+    setBulkEditCoursesSubmitting(true);
+    setError('');
+    const { error: updateError } = await supabase.from('scorms_cursos').update(payload).in('id', selectedGeneralCourseIds);
+
+    if (updateError) {
+      setBulkEditCoursesSubmitting(false);
+      setError(`No se pudo completar la edición masiva de cursos: ${updateError.message}`);
+      return;
+    }
+
+    setRows((previousRows) => previousRows.map((row) => (selectedGeneralCourseIds.includes(row.id) ? { ...row, ...payload } : row)));
+    setStatusMessage(`Edición masiva aplicada a ${selectedGeneralCourseIds.length} curso(s).`);
+    setBulkEditCoursesSubmitting(false);
+    setBulkEditCoursesModalOpen(false);
+  };
 
 
   const getScormSearchableText = useCallback(
@@ -2535,10 +2609,23 @@ export default function ScormsCursosTable({ userSession }) {
               </select>
             </label>
           </div>
+          <div className="status-board-actions" style={{ marginBottom: '0.8rem' }}>
+            <button type="button" className="secondary" onClick={openBulkEditCoursesModal} disabled={userSession?.admin !== true || selectedGeneralCourseIds.length < 2}>
+              EDITAR SELECCIÓN
+            </button>
+          </div>
           <div className="table-wrapper">
             <table className="cursos-table compact-rows">
               <thead>
                 <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="Seleccionar todos los cursos visibles"
+                      checked={sortedGeneralRows.length > 0 && sortedGeneralRows.every((row) => selectedGeneralCourseIds.includes(row.id))}
+                      onChange={toggleAllGeneralRows}
+                    />
+                  </th>
                   <th>SCORMs</th>
                   {compactColumns.map((columnKey) => {
                     const column = columns.find((item) => item.key === columnKey);
@@ -2550,6 +2637,9 @@ export default function ScormsCursosTable({ userSession }) {
               <tbody>
                 {sortedGeneralRows.map((row) => (
                     <tr key={`row-${row.id}`} onDoubleClick={() => openDetailModal(row)}>
+                      <td>
+                        <input type="checkbox" checked={selectedGeneralCourseIds.includes(row.id)} onChange={() => toggleGeneralCourseSelection(row.id)} />
+                      </td>
                       <td>
                             <button type="button" className="secondary" onClick={() => setScormsModalRows([row])}>
                               Scorms
@@ -3041,6 +3131,48 @@ export default function ScormsCursosTable({ userSession }) {
           )}
         </section>
       )}
+
+      {bulkEditCoursesModalOpen ? (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal-content modal-content-narrow" role="dialog" aria-modal="true" aria-labelledby="curso-bulk-edit-title">
+            <header className="modal-header">
+              <div>
+                <h3 id="curso-bulk-edit-title">Editar selección de cursos</h3>
+                <p>{selectedGeneralCourseIds.length} curso(s) seleccionados</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setBulkEditCoursesModalOpen(false)} disabled={bulkEditCoursesSubmitting}>
+                Cerrar
+              </button>
+            </header>
+            <div className="details-grid details-grid-single">
+              {['curso_instructor', 'materia', 'inscripcion'].map((fieldKey) => (
+                <label key={`bulk-course-${fieldKey}`}>
+                  <span>{columns.find((column) => column.key === fieldKey)?.label || fieldKey}</span>
+                  <select
+                    value={bulkEditCoursesDraft[fieldKey] || ''}
+                    onChange={(event) => setBulkEditCoursesDraft((previous) => ({ ...previous, [fieldKey]: event.target.value }))}
+                  >
+                    <option value="">No modificar</option>
+                    {(bulkCourseSelectorOptions[fieldKey] || []).map((optionValue) => (
+                      <option key={`bulk-course-${fieldKey}-${optionValue}`} value={optionValue}>
+                        {optionValue}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setBulkEditCoursesModalOpen(false)} disabled={bulkEditCoursesSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" onClick={submitBulkEditCourses} disabled={bulkEditCoursesSubmitting}>
+                {bulkEditCoursesSubmitting ? 'Guardando...' : 'Aplicar edición masiva'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
 
       {scormsModalRows.length > 0 ? (
         <div className="modal-overlay" role="presentation">

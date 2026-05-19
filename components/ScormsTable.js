@@ -392,6 +392,15 @@ export default function ScormsTable({ userSession }) {
   const [filterLookupSearchInputs, setFilterLookupSearchInputs] = useState({});
   const [viewMode, setViewMode] = useState('table');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkEditModalOpen, setBulkEditModalOpen] = useState(false);
+  const [bulkEditSubmitting, setBulkEditSubmitting] = useState(false);
+  const [bulkEditDraft, setBulkEditDraft] = useState({
+    scorm_responsable: '',
+    scorm_tipo: '',
+    scorm_categoria: '',
+    scorm_subcategoria: '',
+    scorm_test: '',
+  });
   const [expandedCardIds, setExpandedCardIds] = useState([]);
   const [dragOverState, setDragOverState] = useState('');
   const [draggedRowIds, setDraggedRowIds] = useState([]);
@@ -1647,6 +1656,72 @@ export default function ScormsTable({ userSession }) {
     }
 
     setSelectedIds((previous) => [...new Set([...previous, ...visibleIds])]);
+  };
+
+  const openBulkEditModal = () => {
+    if (!canPublishAsAdmin || selectedIds.length < 2) {
+      return;
+    }
+    setBulkEditDraft({
+      scorm_responsable: '',
+      scorm_tipo: '',
+      scorm_categoria: '',
+      scorm_subcategoria: '',
+      scorm_test: '',
+    });
+    setBulkEditModalOpen(true);
+    setError('');
+    setStatusMessage('');
+  };
+
+  const closeBulkEditModal = () => {
+    if (bulkEditSubmitting) {
+      return;
+    }
+    setBulkEditModalOpen(false);
+  };
+
+  const submitBulkEdit = async () => {
+    const selectedRows = rows.filter((row) => selectedIds.includes(row.id));
+    if (selectedRows.length < 2) {
+      setError('Debes seleccionar al menos 2 SCORMs para editar en masa.');
+      return;
+    }
+
+    const payload = Object.entries(bulkEditDraft).reduce((acc, [key, value]) => {
+      const normalized = String(value || '').trim();
+      if (normalized) {
+        acc[key] = normalized;
+      }
+      return acc;
+    }, {});
+
+    if (Object.keys(payload).length === 0) {
+      setError('Debes informar al menos un campo para aplicar la edición masiva.');
+      return;
+    }
+
+    setBulkEditSubmitting(true);
+    setError('');
+    setStatusMessage('');
+
+    const selectedRowIds = selectedRows.map((row) => row.id);
+    const { error: updateError } = await supabase.from('scorms_master').update(payload).in('id', selectedRowIds);
+
+    if (updateError) {
+      setBulkEditSubmitting(false);
+      setError(`No se pudo completar la edición masiva de SCORMs: ${updateError.message}`);
+      return;
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((row) => (selectedRowIds.includes(row.id) ? { ...row, ...payload } : row)),
+    );
+    setActiveRow((previous) => (previous && selectedRowIds.includes(previous.id) ? { ...previous, ...payload } : previous));
+    setDetailDraft((previous) => (previous && selectedRowIds.includes(previous.id) ? { ...previous, ...payload } : previous));
+    setBulkEditSubmitting(false);
+    setBulkEditModalOpen(false);
+    setStatusMessage(`Edición masiva aplicada a ${selectedRowIds.length} SCORM(s).`);
   };
 
   const togglePublishSelection = (rowId) => {
@@ -3207,6 +3282,9 @@ export default function ScormsTable({ userSession }) {
               >
                 Actualizar selección ({selectedIds.length})
               </button>
+              <button type="button" className="secondary" onClick={openBulkEditModal} disabled={!canPublishAsAdmin || selectedIds.length < 2}>
+                EDITAR SELECCIÓN
+              </button>
               <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
                 ← DESHACER
               </button>
@@ -4548,6 +4626,51 @@ export default function ScormsTable({ userSession }) {
             <footer className="modal-footer">
               <button type="button" onClick={submitScormUpdate} disabled={updateSubmitting}>
                 {updateSubmitting ? 'Registrando...' : 'Registrar actualización'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {bulkEditModalOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal-content modal-content-narrow" role="dialog" aria-modal="true" aria-labelledby="edicion-masiva-scorm-title">
+            <header className="modal-header">
+              <div>
+                <h3 id="edicion-masiva-scorm-title">Editar selección de SCORMs</h3>
+                <p>{selectedIds.length} SCORM(s) seleccionados</p>
+              </div>
+              <button type="button" className="secondary" onClick={closeBulkEditModal} disabled={bulkEditSubmitting}>
+                Cerrar
+              </button>
+            </header>
+            <div className="details-grid details-grid-single">
+              {SCORM_SELECTOR_FIELDS.filter((fieldKey) => ['scorm_responsable', 'scorm_tipo', 'scorm_categoria', 'scorm_subcategoria', 'scorm_test'].includes(fieldKey)).map((fieldKey) => {
+                const column = columns.find((item) => item.key === fieldKey);
+                return (
+                  <label key={`bulk-${fieldKey}`}>
+                    <span>{column?.label || fieldKey}</span>
+                    <select
+                      value={bulkEditDraft[fieldKey] || ''}
+                      onChange={(event) => setBulkEditDraft((previous) => ({ ...previous, [fieldKey]: event.target.value }))}
+                    >
+                      <option value="">No modificar</option>
+                      {(selectorOptionsByField[fieldKey] || []).map((optionValue) => (
+                        <option key={`bulk-${fieldKey}-${optionValue}`} value={optionValue}>
+                          {optionValue}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              })}
+            </div>
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={closeBulkEditModal} disabled={bulkEditSubmitting}>
+                Cancelar
+              </button>
+              <button type="button" onClick={submitBulkEdit} disabled={bulkEditSubmitting}>
+                {bulkEditSubmitting ? 'Guardando...' : 'Aplicar edición masiva'}
               </button>
             </footer>
           </div>
