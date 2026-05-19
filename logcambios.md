@@ -1,3 +1,17 @@
+## v1.72.9 - Corrección de build por JSX residual en modal de etiquetas
+
+### Cambios consolidados
+- Se elimina un bloque JSX residual/huérfano que quedó tras el cierre del modal de etiquetas en `ScormsTable.js` y que rompía el parseo del archivo durante el deploy.
+- Se corrige el error de compilación reportado por Vercel (`Expression expected` / `Unterminated regexp literal`) al dejar el árbol JSX balanceado y sin fragmentos fuera de contexto.
+- Se mantiene la funcionalidad de modal de etiquetas y el resto de vistas sin alterar la lógica de negocio.
+- Se actualiza versión visible de APP y `package.json` a `1.72.9`.
+
+### Versionado
+- Versión anterior: `1.72.8`
+- Nueva versión consolidada: `1.72.9`
+
+---
+
 ## v1.72.8 - Gestión avanzada de etiquetas SCORM
 
 ### Cambios consolidados

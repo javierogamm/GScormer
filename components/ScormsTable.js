@@ -4947,44 +4947,6 @@ export default function ScormsTable({ userSession }) {
           </section>
         </div>
       ) : null}
-
-                                <div className="table-wrapper details-table-wrapper">
-                                  <table className="details-edit-table">
-                                    <thead>
-                                      <tr>
-                                        <th>Campo</th>
-                                        {courseGroup.rows.map((course) => (
-                                          <th key={`${courseGroup.key}-header-${course.id}`}>
-                                            {String(course.curso_nombre || course.curso_codigo || `Registro ${course.id}`)}
-                                          </th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {orderedDetailKeys.map((key) => (
-                                        <tr key={`${courseGroup.key}-${key}`}>
-                                          <td>{formatFieldLabel(key)}</td>
-                                          {courseGroup.rows.map((course) => (
-                                            <td key={`${course.id}-${key}`}>{String(course[key] || '-')}</td>
-                                          ))}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </details>
-                            </details>
-                          );
-                        })}
-                      </div>
-                    </details>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-      ) : null}
     </section>
   );
 }
