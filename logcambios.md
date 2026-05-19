@@ -1,3 +1,20 @@
+## v1.72.8 - Gestión avanzada de etiquetas SCORM
+
+### Cambios consolidados
+- La columna de SCORM `scorm_etiquetas` pasa a mostrarse como **Etiquetas** y ahora presenta un botón tipo bullet para abrir un modal con las etiquetas asociadas al SCORM.
+- Las etiquetas se interpretan con soporte multivalor separadas por `;` y se muestran en formato **`etiqueta_codigo - etiqueta_nombre`**.
+- Se aplica color por etiqueta en base a `clasificacion_scorm`, reutilizando la gama cromática de clasificación SCORM para homogeneidad visual.
+- El filtro por etiquetas del panel usa cada etiqueta individual (descomponiendo valores compuestos) para permitir filtrado tipo Qlik por código de etiqueta.
+- Se añade un nuevo **Gestor etiquetas** para admin, con búsqueda, listado editable, carga de borrador al pulsar una fila y guardado (alta/edición) por `upsert` en `scorms_etiquetas`.
+- En edición masiva de SCORMs se mantiene el soporte de campos actuales y se deja preparada la estructura para evolución de edición masiva de etiquetas.
+- Se actualiza versión visible de APP y `package.json` a `1.72.8`.
+
+### Versionado
+- Versión anterior: `1.72.7`
+- Nueva versión consolidada: `1.72.8`
+
+---
+
 ## v1.72.7 - Edición masiva de SCORMs y Cursos para ADMIN
 
 ### Cambios consolidados

@@ -17,7 +17,7 @@ const columns = [
   { key: 'scorm_url', label: 'URL', editable: true },
   { key: 'scorm_estado', label: 'Estado', editable: true },
   { key: 'scorm_test', label: 'Test', editable: true },
-  { key: 'scorm_etiquetas', label: 'CURSOS', editable: false },
+  { key: 'scorm_etiquetas', label: 'Etiquetas', editable: false },
   { key: 'scorm_observaciones', label: 'Observaciones', editable: true },
 ];
 
@@ -30,6 +30,7 @@ const FILTER_SELECT_KEYS = columns.map((column) => column.key);
 
 const FILTER_LABELS = {
   scorm_categoria: 'Clasificación',
+  scorm_etiquetas: 'Etiquetas',
 };
 
 const SCORM_SELECTOR_FIELDS = ['scorm_responsable', 'scorm_tipo', 'scorm_categoria', 'scorm_subcategoria', 'scorm_estado', 'scorm_test'];
@@ -265,6 +266,8 @@ const parseTagCodesFromInput = (value) =>
     .map((item) => item.trim().toUpperCase())
     .filter(Boolean))];
 
+const stringifyTagCodes = (values = []) => values.join(';');
+
 const formatDateDDMMYYYY = (value) => {
   const dateMs = typeof value === 'number' ? value : getDateMsFromCandidates([value]);
   if (!dateMs) {
@@ -448,6 +451,10 @@ export default function ScormsTable({ userSession }) {
   const [publishDateSortDirection, setPublishDateSortDirection] = useState('desc');
   const [coursesRows, setCoursesRows] = useState([]);
   const [coursesModalRow, setCoursesModalRow] = useState(null);
+  const [tagManagerModalOpen, setTagManagerModalOpen] = useState(false);
+  const [tagManagerSearch, setTagManagerSearch] = useState('');
+  const [tagManagerDraft, setTagManagerDraft] = useState({ etiqueta_codigo: '', etiqueta_nombre: '', clasificacion_scorm: '' });
+  const [tagManagerSubmitting, setTagManagerSubmitting] = useState(false);
   const [alertGeneratorModalOpen, setAlertGeneratorModalOpen] = useState(false);
   const [alertCodesDraft, setAlertCodesDraft] = useState('');
   const [alertNovedadDraft, setAlertNovedadDraft] = useState('');
@@ -668,8 +675,13 @@ export default function ScormsTable({ userSession }) {
                 return getInternationalizedCode(row);
               }
 
+              if (key === 'scorm_etiquetas') {
+                return parseTagCodesFromInput(String(row[key] || '').replace(/;/g, ' '));
+              }
+
               return String(row[key] || '').trim();
             })
+            .flat()
             .filter(Boolean),
         ),
       ].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
@@ -878,6 +890,33 @@ export default function ScormsTable({ userSession }) {
       return acc;
     }, {});
   }, [tagCatalogRows]);
+
+  const tagCatalogFilteredRows = useMemo(() => {
+    const lookup = normalizeFilterLookupText(tagManagerSearch);
+    if (!lookup) {
+      return tagCatalogRows;
+    }
+    return tagCatalogRows.filter((row) =>
+      [row.etiqueta_codigo, row.etiqueta_nombre, row.clasificacion_scorm].some((value) =>
+        normalizeFilterLookupText(value).includes(lookup),
+      ),
+    );
+  }, [tagCatalogRows, tagManagerSearch]);
+
+  const getTagRowsForScorm = useCallback(
+    (row) => {
+      const tagCodes = parseTagCodesFromInput(String(row.scorm_etiquetas || '').replace(/;/g, ' '));
+      return tagCodes.map((code) => {
+        const catalogRow = (tagsByCode[code] || [])[0] || {};
+        return {
+          etiqueta_codigo: code,
+          etiqueta_nombre: catalogRow.etiqueta_nombre || '',
+          clasificacion_scorm: catalogRow.clasificacion_scorm || '',
+        };
+      });
+    },
+    [tagsByCode],
+  );
 
   const alertsByScormCode = useMemo(() => {
     const scormRowsByCode = filteredRows.reduce((acc, row) => {
@@ -2885,6 +2924,28 @@ export default function ScormsTable({ userSession }) {
     setStatusMessage(`Exportación Excel generada correctamente (${filteredRows.length} SCORMs).`);
   };
 
+  const submitTagManager = async () => {
+    const payload = {
+      etiqueta_codigo: String(tagManagerDraft.etiqueta_codigo || '').trim().toUpperCase(),
+      etiqueta_nombre: String(tagManagerDraft.etiqueta_nombre || '').trim(),
+      clasificacion_scorm: String(tagManagerDraft.clasificacion_scorm || '').trim(),
+    };
+    if (!payload.etiqueta_codigo || !payload.etiqueta_nombre) {
+      setError('Código y nombre de etiqueta son obligatorios.');
+      return;
+    }
+    setTagManagerSubmitting(true);
+    const { error: upsertError } = await supabase.from('scorms_etiquetas').upsert(payload, { onConflict: 'etiqueta_codigo' });
+    setTagManagerSubmitting(false);
+    if (upsertError) {
+      setError(`No se pudo guardar la etiqueta: ${upsertError.message}`);
+      return;
+    }
+    setTagManagerDraft({ etiqueta_codigo: '', etiqueta_nombre: '', clasificacion_scorm: '' });
+    fetchData();
+    setStatusMessage(`Etiqueta ${payload.etiqueta_codigo} guardada correctamente.`);
+  };
+
   return (
     <section className="card card-wide">
       <header className="card-header">
@@ -2939,6 +3000,11 @@ export default function ScormsTable({ userSession }) {
           <button type="button" className="secondary" onClick={fetchData}>
             Recargar
           </button>
+          {canPublishAsAdmin && (
+            <button type="button" className="secondary" onClick={() => setTagManagerModalOpen(true)}>
+              Gestor etiquetas
+            </button>
+          )}
           {viewMode === 'table' && (
             <button type="button" className="secondary" onClick={handleExportScormsGeneralExcel}>
               Exportar Excel
@@ -3391,7 +3457,7 @@ export default function ScormsTable({ userSession }) {
                               setCoursesModalRow(row);
                             }}
                           >
-                            Cursos individuales ({getIndividualCourseCountForScorm(row)})
+                            • Etiquetas ({getTagRowsForScorm(row).length})
                           </button>
                         ) : column.key === 'scorm_test' ? (
                           <span className={`test-indicator ${scormTestDisplay.isPositive ? 'ok' : 'error'}`}>
@@ -4677,6 +4743,41 @@ export default function ScormsTable({ userSession }) {
         </div>
       )}
 
+      {tagManagerModalOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal-content modal-content-large" role="dialog" aria-modal="true">
+            <header className="modal-header">
+              <div>
+                <h3>Gestor de etiquetas</h3>
+                <p>Alta/edición rápida y filtrado tipo Qlik de etiquetas.</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setTagManagerModalOpen(false)}>Cerrar</button>
+            </header>
+            <div className="details-grid">
+              <label><span>Buscar</span><input value={tagManagerSearch} onChange={(e) => setTagManagerSearch(e.target.value)} /></label>
+              <label><span>Código</span><input value={tagManagerDraft.etiqueta_codigo} onChange={(e) => setTagManagerDraft((p) => ({ ...p, etiqueta_codigo: e.target.value }))} /></label>
+              <label><span>Nombre</span><input value={tagManagerDraft.etiqueta_nombre} onChange={(e) => setTagManagerDraft((p) => ({ ...p, etiqueta_nombre: e.target.value }))} /></label>
+              <label><span>Clasificación SCORM</span><input value={tagManagerDraft.clasificacion_scorm} onChange={(e) => setTagManagerDraft((p) => ({ ...p, clasificacion_scorm: e.target.value }))} /></label>
+            </div>
+            <div className="table-shell">
+              <table>
+                <thead><tr><th>Código</th><th>Nombre</th><th>Clasificación</th></tr></thead>
+                <tbody>
+                  {tagCatalogFilteredRows.map((tagRow) => (
+                    <tr key={tagRow.etiqueta_codigo} onClick={() => setTagManagerDraft(tagRow)}>
+                      <td>{tagRow.etiqueta_codigo}</td><td>{tagRow.etiqueta_nombre}</td><td>{tagRow.clasificacion_scorm}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <footer className="modal-footer">
+              <button type="button" onClick={submitTagManager} disabled={tagManagerSubmitting}>{tagManagerSubmitting ? 'Guardando...' : 'Guardar etiqueta'}</button>
+            </footer>
+          </div>
+        </div>
+      )}
+
       {createDraft && (
         <div className="modal-overlay" role="presentation">
           <div
@@ -4822,7 +4923,7 @@ export default function ScormsTable({ userSession }) {
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <header className="modal-header">
               <div>
-                <h3>Cursos relacionados al SCORM</h3>
+                <h3>Etiquetas del SCORM</h3>
                 <p>
                   {getOfficialName(coursesModalRow)} · {getInternationalizedCode(coursesModalRow)}
                 </p>
@@ -4832,76 +4933,20 @@ export default function ScormsTable({ userSession }) {
               </button>
             </header>
 
-            {modalIndividualCourseGroups.length === 0 ? (
-              <p className="status">No hay cursos individuales relacionados para este SCORM.</p>
+            {getTagRowsForScorm(coursesModalRow).length === 0 ? (
+              <p className="status">No hay etiquetas relacionadas para este SCORM.</p>
             ) : (
-              <div className="scorms-accordion-list">
-                {modalIndividualCourseGroups.map((individualGroup) => {
-                  const level1CourseName =
-                    individualGroup.rows.map((course) => String(course.curso_nombre || '').trim()).find(Boolean) || '-';
-                  const coursesByCode = individualGroup.rows.reduce((acc, course) => {
-                    const courseCode = String(course.curso_codigo || '').trim();
-                    const courseName = String(course.curso_nombre || '').trim();
-                    const key = courseCode || courseName || `curso-${course.id}`;
-
-                    if (!acc[key]) {
-                      acc[key] = {
-                        key,
-                        title: courseCode || courseName || `Curso ${course.id}`,
-                        rows: [],
-                      };
-                    }
-
-                    acc[key].rows.push(course);
-                    return acc;
-                  }, {});
-
-                  const nestedCourses = Object.values(coursesByCode).sort((left, right) =>
-                    left.title.localeCompare(right.title, 'es', { sensitivity: 'base' }),
-                  );
-
-                  return (
-                    <details key={individualGroup.key} className="scorms-accordion-item course-level-1">
-                      <summary>
-                        <span className="course-summary-grid">
-                          <strong>{level1CourseName}</strong>
-                          <span>{individualGroup.label}</span>
-                          <span>{individualGroup.rows.length} curso(s)</span>
-                          <span>Nivel 1 · Curso individual</span>
-                        </span>
-                      </summary>
-
-                      <div className="scorms-accordion-list">
-                        {nestedCourses.map((courseGroup) => {
-                          const level2CourseName =
-                            courseGroup.rows.map((course) => String(course.curso_nombre || '').trim()).find(Boolean) || '-';
-                          const orderedDetailKeys = [
-                            ...new Set([
-                              'curso_nombre',
-                              ...Object.keys(courseGroup.rows[0] || {}).filter((key) => !['contenido', 'contenidos'].includes(key)),
-                            ]),
-                          ];
-
-                          return (
-                            <details key={`${individualGroup.key}-${courseGroup.key}`} className="scorms-accordion-item course-level-2">
-                              <summary>
-                                <span className="course-summary-grid">
-                                  <span>{level2CourseName}</span>
-                                  <span>{courseGroup.title}</span>
-                                  <span>{courseGroup.rows.length} registro(s)</span>
-                                  <span>Nivel 2 · Cursos</span>
-                                </span>
-                              </summary>
-
-                              <details className="scorms-accordion-item course-level-3" open>
-                                <summary>
-                                  <span className="course-summary-grid">
-                                    <span>Detalles</span>
-                                    <span>{level2CourseName}</span>
-                                    <span>Tabla de campos</span>
-                                    <span>Nivel 3</span>
-                                  </span>
-                                </summary>
+              <div className="tags-modal-grid">
+                {getTagRowsForScorm(coursesModalRow).map((tag) => (
+                  <span key={tag.etiqueta_codigo} className="category-chip" style={getCategoryColor(tag.clasificacion_scorm)}>
+                    {tag.etiqueta_codigo} - {tag.etiqueta_nombre || 'Sin nombre'}
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
 
                                 <div className="table-wrapper details-table-wrapper">
                                   <table className="details-edit-table">
