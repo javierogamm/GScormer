@@ -1,3 +1,18 @@
+## v1.72.7 - Edición masiva de SCORMs y Cursos para ADMIN
+
+### Cambios consolidados
+- En **SCORMs** se añade el botón **EDITAR SELECCIÓN** a la derecha de **Actualizar selección**, habilitado solo para perfiles `admin: true` cuando hay más de un SCORM checado.
+- El botón abre un modal de edición masiva con los campos **Responsable**, **Tipo**, **Categoría**, **Subcategoría** y **Test**, aplicando los valores elegidos a todos los SCORMs seleccionados.
+- En **Cursos · Vista general** se incorpora selección por checkbox (individual y seleccionar todos los visibles) para habilitar edición masiva.
+- En **Cursos** se añade un modal **EDITAR SELECCIÓN** (solo `admin: true` y más de un curso checado) para actualizar en bloque **Curso instructor**, **Materia** e **Inscripción**.
+- Se actualiza versión visible de APP y `package.json` a `1.72.7`.
+
+### Versionado
+- Versión anterior: `1.72.6`
+- Nueva versión consolidada: `1.72.7`
+
+---
+
 ## v1.72.6 - Aplicación rápida de valores buscados en filtros
 
 ### Cambios consolidados
