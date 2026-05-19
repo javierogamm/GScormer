@@ -2060,3 +2060,29 @@
 ### Versionado
 - Versión anterior: `1.70.4`
 - Nueva versión consolidada: `1.70.5`
+
+
+## v1.73.3 - Gestión de etiquetas con alta y edición por modal
+
+### Cambios consolidados
+- En el **Gestor de etiquetas**, cada fila incorpora un botón **Editar** que abre un modal específico para modificar los valores de la etiqueta seleccionada.
+- Se añadió un flujo de **Añadir etiqueta** independiente para altas nuevas desde el propio modal del gestor.
+- La carga del catálogo de `scorms_etiquetas` ahora incluye el campo `id` y lo muestra en tabla para facilitar seguimiento de claves.
+- Al crear una etiqueta nueva, se asigna manualmente el campo `id` con valor correlativo respecto al último `id` existente en `scorms_etiquetas` (`max + 1`), tal como se solicitó.
+- Se separó la lógica de guardado en dos acciones: creación (`insert`) y edición (`update` por `id`).
+
+### Versionado
+- Versión anterior: `1.73.2`
+- Nueva versión consolidada: `1.73.3`
+
+
+## v1.73.4 - Ajustes de UX en etiquetas y desmarcado tras edición masiva
+
+### Cambios consolidados
+- En el modal **Gestor de etiquetas**, el botón **Añadir etiqueta** se movió a la parte superior (cabecera del modal), junto al botón de cierre.
+- En la edición masiva general de **SCORMs**, al aplicar cambios ahora se desmarcan automáticamente los SCORMs que formaban parte de la operación.
+- En la edición masiva general de **cursos**, al aplicar cambios ahora se desmarcan automáticamente los cursos editados.
+
+### Versionado
+- Versión anterior: `1.73.3`
+- Nueva versión consolidada: `1.73.4`
