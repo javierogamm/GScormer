@@ -2074,3 +2074,15 @@
 ### Versionado
 - Versión anterior: `1.73.2`
 - Nueva versión consolidada: `1.73.3`
+
+
+## v1.73.4 - Ajustes de UX en etiquetas y desmarcado tras edición masiva
+
+### Cambios consolidados
+- En el modal **Gestor de etiquetas**, el botón **Añadir etiqueta** se movió a la parte superior (cabecera del modal), junto al botón de cierre.
+- En la edición masiva general de **SCORMs**, al aplicar cambios ahora se desmarcan automáticamente los SCORMs que formaban parte de la operación.
+- En la edición masiva general de **cursos**, al aplicar cambios ahora se desmarcan automáticamente los cursos editados.
+
+### Versionado
+- Versión anterior: `1.73.3`
+- Nueva versión consolidada: `1.73.4`

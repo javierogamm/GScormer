@@ -1811,7 +1811,8 @@ export default function ScormsTable({ userSession }) {
     setDetailDraft((previous) => (previous && selectedRowIds.includes(previous.id) ? { ...previous, ...payload } : previous));
     setBulkEditSubmitting(false);
     setBulkEditModalOpen(false);
-    setStatusMessage(`Edición masiva aplicada a ${selectedRowIds.length} SCORM(s).`);
+    setSelectedIds((previous) => previous.filter((id) => !selectedRowIds.includes(id)));
+    setStatusMessage(`Edición masiva aplicada a ${selectedRowIds.length} SCORM(s). Selección desmarcada.`);
   };
 
   const applyBulkTags = async () => {
@@ -4944,7 +4945,10 @@ export default function ScormsTable({ userSession }) {
                 <h3>Gestor de etiquetas</h3>
                 <p>Alta/edición rápida y filtrado tipo Qlik de etiquetas.</p>
               </div>
-              <button type="button" className="secondary" onClick={() => setTagManagerModalOpen(false)}>Cerrar</button>
+              <div className="header-actions">
+                <button type="button" onClick={submitTagManager} disabled={tagManagerSubmitting}>{tagManagerSubmitting ? 'Guardando...' : 'Añadir etiqueta'}</button>
+                <button type="button" className="secondary" onClick={() => setTagManagerModalOpen(false)}>Cerrar</button>
+              </div>
             </header>
             <div className="details-grid">
               <label><span>Buscar</span><input value={tagManagerSearch} onChange={(e) => setTagManagerSearch(e.target.value)} /></label>
@@ -4965,9 +4969,7 @@ export default function ScormsTable({ userSession }) {
                 </tbody>
               </table>
             </div>
-            <footer className="modal-footer">
-              <button type="button" onClick={submitTagManager} disabled={tagManagerSubmitting}>{tagManagerSubmitting ? 'Guardando...' : 'Añadir etiqueta'}</button>
-            </footer>
+            
           </div>
         </div>
       )}

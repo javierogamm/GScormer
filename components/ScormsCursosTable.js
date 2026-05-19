@@ -630,7 +630,8 @@ export default function ScormsCursosTable({ userSession }) {
     }
 
     setRows((previousRows) => previousRows.map((row) => (selectedGeneralCourseIds.includes(row.id) ? { ...row, ...payload } : row)));
-    setStatusMessage(`Edición masiva aplicada a ${selectedGeneralCourseIds.length} curso(s).`);
+    setStatusMessage(`Edición masiva aplicada a ${selectedGeneralCourseIds.length} curso(s). Selección desmarcada.`);
+    setSelectedGeneralCourseIds((previous) => previous.filter((id) => !selectedGeneralCourseIds.includes(id)));
     setBulkEditCoursesSubmitting(false);
     setBulkEditCoursesModalOpen(false);
   };
