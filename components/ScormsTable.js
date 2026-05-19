@@ -1234,15 +1234,28 @@ export default function ScormsTable({ userSession }) {
     applyLookupFilterValues(field, filterDraftSelections[field] || []);
   };
 
-  const applyMatchingLookupFilter = (field) => {
-    const normalizedSearch = normalizeFilterLookupText(filterLookupSearchInputs[field]);
-    const matchingOptions = (filterOptionsByColumn[field] || []).filter((option) => {
-      if (!normalizedSearch) {
-        return true;
-      }
+  const optionMatchesLookupSearch = (field, option, rawSearch) => {
+    const normalizedSearch = normalizeFilterLookupText(rawSearch);
+    if (!normalizedSearch) {
+      return true;
+    }
 
-      return normalizeFilterLookupText(option).includes(normalizedSearch);
-    });
+    const baseText = normalizeFilterLookupText(option);
+    if (baseText.includes(normalizedSearch)) {
+      return true;
+    }
+
+    if (field !== 'scorm_etiquetas') {
+      return false;
+    }
+
+    const relatedTag = (tagsByCode[String(option || '').trim().toUpperCase()] || [])[0] || {};
+    const tagSearchText = normalizeFilterLookupText(`${relatedTag.etiqueta_codigo || ''} ${relatedTag.etiqueta_nombre || ''}`);
+    return tagSearchText.includes(normalizedSearch);
+  };
+
+  const applyMatchingLookupFilter = (field) => {
+    const matchingOptions = (filterOptionsByColumn[field] || []).filter((option) => optionMatchesLookupSearch(field, option, filterLookupSearchInputs[field]));
 
     if (matchingOptions.length === 0) {
       return;
@@ -1845,13 +1858,11 @@ export default function ScormsTable({ userSession }) {
   };
 
   const saveSingleScormTags = async () => {
-    if (!coursesModalRow || singleTagPickerDraft.length === 0) {
+    if (!coursesModalRow) {
       return;
     }
-    const currentCodes = parseTagCodesFromInput(String(coursesModalRow.scorm_etiquetas || '').replace(/;/g, ' '));
-    const merged = [...new Set([...currentCodes, ...singleTagPickerDraft])];
     setSingleTagSubmitting(true);
-    const serialized = stringifyTagCodes(merged);
+    const serialized = stringifyTagCodes(singleTagPickerDraft);
     const { error: updateError } = await supabase.from('scorms_master').update({ scorm_etiquetas: serialized }).eq('id', coursesModalRow.id);
     setSingleTagSubmitting(false);
     if (updateError) {
@@ -3267,9 +3278,7 @@ export default function ScormsTable({ userSession }) {
                                 </div>
                                 <div className="filter-lookup-options">
                                   {(filterOptionsByColumn[column.key] || [])
-                                    .filter((option) =>
-                                      normalizeFilterLookupText(option).includes(normalizeFilterLookupText(filterLookupSearchInputs[column.key])),
-                                    )
+                                    .filter((option) => optionMatchesLookupSearch(column.key, option, filterLookupSearchInputs[column.key]))
                                     .map((option) => {
                                       const optionSelected = (filterDraftSelections[column.key] || []).some(
                                         (value) => value.toLowerCase() === option.toLowerCase(),
@@ -3287,9 +3296,7 @@ export default function ScormsTable({ userSession }) {
                                         </button>
                                       );
                                     })}
-                                  {(filterOptionsByColumn[column.key] || []).filter((option) =>
-                                    normalizeFilterLookupText(option).includes(normalizeFilterLookupText(filterLookupSearchInputs[column.key])),
-                                  ).length === 0 ? (
+                                  {(filterOptionsByColumn[column.key] || []).filter((option) => optionMatchesLookupSearch(column.key, option, filterLookupSearchInputs[column.key])).length === 0 ? (
                                     <p className="filter-lookup-empty">Sin valores disponibles.</p>
                                   ) : null}
                                 </div>
@@ -5165,8 +5172,21 @@ export default function ScormsTable({ userSession }) {
             )}
             <footer className="modal-footer" style={{ justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="secondary" onClick={() => setSingleTagPickerOpen((prev) => !prev)}>
-                  + Añadir etiquetas
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setSingleTagPickerOpen((prev) => {
+                      const nextIsOpen = !prev;
+                      if (nextIsOpen) {
+                        const currentCodes = parseTagCodesFromInput(String(coursesModalRow.scorm_etiquetas || '').replace(/;/g, ' '));
+                        setSingleTagPickerDraft(currentCodes);
+                      }
+                      return nextIsOpen;
+                    });
+                  }}
+                >
+                  Gestionar etiquetas
                 </button>
                 <button
                   type="button"
@@ -5181,8 +5201,8 @@ export default function ScormsTable({ userSession }) {
                 </button>
               </div>
               {singleTagPickerOpen ? (
-                <button type="button" onClick={saveSingleScormTags} disabled={singleTagSubmitting || singleTagPickerDraft.length === 0}>
-                  {singleTagSubmitting ? 'Guardando...' : `Añadir seleccionadas (${singleTagPickerDraft.length})`}
+                <button type="button" onClick={saveSingleScormTags} disabled={singleTagSubmitting}>
+                  {singleTagSubmitting ? 'Guardando...' : `Guardar etiquetas (${singleTagPickerDraft.length})`}
                 </button>
               ) : null}
             </footer>
