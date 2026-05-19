@@ -455,6 +455,13 @@ export default function ScormsTable({ userSession }) {
   const [tagManagerSearch, setTagManagerSearch] = useState('');
   const [tagManagerDraft, setTagManagerDraft] = useState({ etiqueta_codigo: '', etiqueta_nombre: '', clasificacion_scorm: '' });
   const [tagManagerSubmitting, setTagManagerSubmitting] = useState(false);
+  const [singleTagPickerOpen, setSingleTagPickerOpen] = useState(false);
+  const [singleTagPickerSearch, setSingleTagPickerSearch] = useState('');
+  const [singleTagPickerDraft, setSingleTagPickerDraft] = useState([]);
+  const [singleTagSubmitting, setSingleTagSubmitting] = useState(false);
+  const [bulkTagPickerOpen, setBulkTagPickerOpen] = useState(false);
+  const [bulkTagPickerSearch, setBulkTagPickerSearch] = useState('');
+  const [bulkTagPickerDraft, setBulkTagPickerDraft] = useState([]);
   const [alertGeneratorModalOpen, setAlertGeneratorModalOpen] = useState(false);
   const [alertCodesDraft, setAlertCodesDraft] = useState('');
   const [alertNovedadDraft, setAlertNovedadDraft] = useState('');
@@ -902,6 +909,20 @@ export default function ScormsTable({ userSession }) {
       ),
     );
   }, [tagCatalogRows, tagManagerSearch]);
+  const singleTagPickerRows = useMemo(() => {
+    const lookup = normalizeFilterLookupText(singleTagPickerSearch);
+    if (!lookup) return tagCatalogRows;
+    return tagCatalogRows.filter((row) =>
+      [row.etiqueta_codigo, row.etiqueta_nombre, row.clasificacion_scorm].some((value) => normalizeFilterLookupText(value).includes(lookup)),
+    );
+  }, [singleTagPickerSearch, tagCatalogRows]);
+  const bulkTagPickerRows = useMemo(() => {
+    const lookup = normalizeFilterLookupText(bulkTagPickerSearch);
+    if (!lookup) return tagCatalogRows;
+    return tagCatalogRows.filter((row) =>
+      [row.etiqueta_codigo, row.etiqueta_nombre, row.clasificacion_scorm].some((value) => normalizeFilterLookupText(value).includes(lookup)),
+    );
+  }, [bulkTagPickerSearch, tagCatalogRows]);
 
   const getTagRowsForScorm = useCallback(
     (row) => {
@@ -1718,6 +1739,11 @@ export default function ScormsTable({ userSession }) {
       return;
     }
     setBulkEditModalOpen(false);
+    setBulkTagPickerOpen(false);
+  };
+
+  const toggleTagCodeInDraft = (setter, code) => {
+    setter((previous) => (previous.includes(code) ? previous.filter((item) => item !== code) : [...previous, code]));
   };
 
   const submitBulkEdit = async () => {
@@ -1761,6 +1787,56 @@ export default function ScormsTable({ userSession }) {
     setBulkEditSubmitting(false);
     setBulkEditModalOpen(false);
     setStatusMessage(`Edición masiva aplicada a ${selectedRowIds.length} SCORM(s).`);
+  };
+
+  const applyBulkTags = async () => {
+    const selectedRows = rows.filter((row) => selectedIds.includes(row.id));
+    if (selectedRows.length < 2 || bulkTagPickerDraft.length === 0) {
+      return;
+    }
+    setBulkEditSubmitting(true);
+    const updates = selectedRows.map((row) => {
+      const currentCodes = parseTagCodesFromInput(String(row.scorm_etiquetas || '').replace(/;/g, ' '));
+      const merged = [...new Set([...currentCodes, ...bulkTagPickerDraft])];
+      return { id: row.id, scorm_etiquetas: stringifyTagCodes(merged) };
+    });
+    for (const item of updates) {
+      const { error: updateError } = await supabase.from('scorms_master').update({ scorm_etiquetas: item.scorm_etiquetas }).eq('id', item.id);
+      if (updateError) {
+        setBulkEditSubmitting(false);
+        setError(`No se pudo aplicar etiquetas en masa: ${updateError.message}`);
+        return;
+      }
+    }
+    setRows((previousRows) => previousRows.map((row) => {
+      const updated = updates.find((item) => item.id === row.id);
+      return updated ? { ...row, scorm_etiquetas: updated.scorm_etiquetas } : row;
+    }));
+    setBulkEditSubmitting(false);
+    setBulkTagPickerOpen(false);
+    setBulkTagPickerDraft([]);
+    setStatusMessage(`Etiquetas añadidas a ${updates.length} SCORM(s).`);
+  };
+
+  const saveSingleScormTags = async () => {
+    if (!coursesModalRow || singleTagPickerDraft.length === 0) {
+      return;
+    }
+    const currentCodes = parseTagCodesFromInput(String(coursesModalRow.scorm_etiquetas || '').replace(/;/g, ' '));
+    const merged = [...new Set([...currentCodes, ...singleTagPickerDraft])];
+    setSingleTagSubmitting(true);
+    const serialized = stringifyTagCodes(merged);
+    const { error: updateError } = await supabase.from('scorms_master').update({ scorm_etiquetas: serialized }).eq('id', coursesModalRow.id);
+    setSingleTagSubmitting(false);
+    if (updateError) {
+      setError(`No se pudo actualizar etiquetas del SCORM: ${updateError.message}`);
+      return;
+    }
+    setRows((previousRows) => previousRows.map((row) => (row.id === coursesModalRow.id ? { ...row, scorm_etiquetas: serialized } : row)));
+    setCoursesModalRow((previous) => (previous ? { ...previous, scorm_etiquetas: serialized } : previous));
+    setSingleTagPickerDraft([]);
+    setSingleTagPickerOpen(false);
+    setStatusMessage('Etiquetas actualizadas correctamente.');
   };
 
   const togglePublishSelection = (rowId) => {
@@ -3349,7 +3425,7 @@ export default function ScormsTable({ userSession }) {
                 Actualizar selección ({selectedIds.length})
               </button>
               <button type="button" className="secondary" onClick={openBulkEditModal} disabled={!canPublishAsAdmin || selectedIds.length < 2}>
-                EDITAR SELECCIÓN
+                Editar Selección ({selectedIds.length})
               </button>
               <button type="button" className="secondary" disabled={moveHistory.length === 0} onClick={handleUndo}>
                 ← DESHACER
@@ -4731,6 +4807,39 @@ export default function ScormsTable({ userSession }) {
                 );
               })}
             </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-start' }}>
+              <button type="button" className="secondary" onClick={() => setBulkTagPickerOpen((prev) => !prev)}>
+                + Añadir etiquetas masivamente
+              </button>
+            </div>
+            {bulkTagPickerOpen && (
+              <div className="filter-lookup-menu">
+                <div className="filter-lookup-search">
+                  <input
+                    type="text"
+                    value={bulkTagPickerSearch}
+                    onChange={(event) => setBulkTagPickerSearch(event.target.value)}
+                    placeholder="Buscar etiquetas..."
+                  />
+                </div>
+                <div className="filter-lookup-options">
+                  {bulkTagPickerRows.map((tagRow) => {
+                    const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                    const selected = bulkTagPickerDraft.includes(code);
+                    return (
+                      <button key={`bulk-tag-${code}`} type="button" className={`filter-lookup-option ${selected ? 'is-selected' : ''}`} onClick={() => toggleTagCodeInDraft(setBulkTagPickerDraft, code)}>
+                        {code} - {tagRow.etiqueta_nombre || 'Sin nombre'}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="filter-lookup-actions">
+                  <button type="button" onClick={applyBulkTags} disabled={bulkEditSubmitting || bulkTagPickerDraft.length === 0}>
+                    Añadir seleccionadas ({bulkTagPickerDraft.length})
+                  </button>
+                </div>
+              </div>
+            )}
             <footer className="modal-footer">
               <button type="button" className="secondary" onClick={closeBulkEditModal} disabled={bulkEditSubmitting}>
                 Cancelar
@@ -4942,6 +5051,39 @@ export default function ScormsTable({ userSession }) {
                     {tag.etiqueta_codigo} - {tag.etiqueta_nombre || 'Sin nombre'}
                   </span>
                 ))}
+              </div>
+            )}
+            <footer className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <button type="button" className="secondary" onClick={() => setSingleTagPickerOpen((prev) => !prev)}>
+                + Añadir etiquetas
+              </button>
+              {singleTagPickerOpen ? (
+                <button type="button" onClick={saveSingleScormTags} disabled={singleTagSubmitting || singleTagPickerDraft.length === 0}>
+                  {singleTagSubmitting ? 'Guardando...' : `Añadir seleccionadas (${singleTagPickerDraft.length})`}
+                </button>
+              ) : null}
+            </footer>
+            {singleTagPickerOpen && (
+              <div className="filter-lookup-menu">
+                <div className="filter-lookup-search">
+                  <input
+                    type="text"
+                    value={singleTagPickerSearch}
+                    onChange={(event) => setSingleTagPickerSearch(event.target.value)}
+                    placeholder="Buscar etiquetas..."
+                  />
+                </div>
+                <div className="filter-lookup-options">
+                  {singleTagPickerRows.map((tagRow) => {
+                    const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                    const selected = singleTagPickerDraft.includes(code);
+                    return (
+                      <button key={`single-tag-${code}`} type="button" className={`filter-lookup-option ${selected ? 'is-selected' : ''}`} onClick={() => toggleTagCodeInDraft(setSingleTagPickerDraft, code)}>
+                        {code} - {tagRow.etiqueta_nombre || 'Sin nombre'}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </section>

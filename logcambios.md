@@ -1,3 +1,19 @@
+## v1.73.0 - Alta múltiple de etiquetas en modal individual y edición masiva
+
+### Cambios consolidados
+- En el modal de etiquetas de SCORM individual se añade botón **+ Añadir etiquetas**.
+- El botón abre un buscador tipo Qlik (búsqueda + selección múltiple) para escoger una o varias etiquetas del catálogo y agregarlas al SCORM en una sola acción.
+- En el modal **Editar selección de SCORMs** se añade bloque **+ Añadir etiquetas masivamente** con buscador tipo Qlik y selección múltiple.
+- La acción masiva agrega (merge sin duplicados) las etiquetas seleccionadas a todos los SCORMs chequeados.
+- Se renombra el botón superior de acción masiva a **Editar Selección (n)** mostrando `n` como número de SCORMs seleccionados.
+- Se actualiza versión visible de APP y `package.json` a `1.73.0`.
+
+### Versionado
+- Versión anterior: `1.72.9`
+- Nueva versión consolidada: `1.73.0`
+
+---
+
 ## v1.72.9 - Corrección de build por JSX residual en modal de etiquetas
 
 ### Cambios consolidados
