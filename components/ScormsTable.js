@@ -923,6 +923,18 @@ export default function ScormsTable({ userSession }) {
       [row.etiqueta_codigo, row.etiqueta_nombre, row.clasificacion_scorm].some((value) => normalizeFilterLookupText(value).includes(lookup)),
     );
   }, [bulkTagPickerSearch, tagCatalogRows]);
+  const selectedSingleTagRows = useMemo(
+    () =>
+      singleTagPickerDraft
+        .map((code) => (tagsByCode[code] || [])[0] || { etiqueta_codigo: code, etiqueta_nombre: '', clasificacion_scorm: '' }),
+    [singleTagPickerDraft, tagsByCode],
+  );
+  const selectedBulkTagRows = useMemo(
+    () =>
+      bulkTagPickerDraft
+        .map((code) => (tagsByCode[code] || [])[0] || { etiqueta_codigo: code, etiqueta_nombre: '', clasificacion_scorm: '' }),
+    [bulkTagPickerDraft, tagsByCode],
+  );
 
   const getTagRowsForScorm = useCallback(
     (row) => {
@@ -4814,6 +4826,24 @@ export default function ScormsTable({ userSession }) {
             </div>
             {bulkTagPickerOpen && (
               <div className="filter-lookup-menu">
+                {selectedBulkTagRows.length > 0 && (
+                  <div className="filter-lookup-options">
+                    {selectedBulkTagRows.map((tagRow) => {
+                      const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                      return (
+                        <button
+                          key={`bulk-selected-${code}`}
+                          type="button"
+                          className="filter-lookup-option is-selected"
+                          onClick={() => toggleTagCodeInDraft(setBulkTagPickerDraft, code)}
+                          title="Quitar etiqueta seleccionada"
+                        >
+                          {code} - {tagRow.etiqueta_nombre || 'Sin nombre'} · Quitar
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="filter-lookup-search">
                   <input
                     type="text"
@@ -5065,6 +5095,24 @@ export default function ScormsTable({ userSession }) {
             </footer>
             {singleTagPickerOpen && (
               <div className="filter-lookup-menu">
+                {selectedSingleTagRows.length > 0 && (
+                  <div className="filter-lookup-options">
+                    {selectedSingleTagRows.map((tagRow) => {
+                      const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                      return (
+                        <button
+                          key={`single-selected-${code}`}
+                          type="button"
+                          className="filter-lookup-option is-selected"
+                          onClick={() => toggleTagCodeInDraft(setSingleTagPickerDraft, code)}
+                          title="Quitar etiqueta seleccionada"
+                        >
+                          {code} - {tagRow.etiqueta_nombre || 'Sin nombre'} · Quitar
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="filter-lookup-search">
                   <input
                     type="text"

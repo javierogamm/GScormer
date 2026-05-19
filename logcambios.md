@@ -1,3 +1,18 @@
+## v1.73.1 - Etiquetas seleccionadas fijas arriba en pickers
+
+### Cambios consolidados
+- En el selector de etiquetas del modal individual de SCORM, las etiquetas que se van seleccionando ahora se muestran en un bloque superior fijo y siempre visible.
+- En ese bloque superior se añade acción directa para quitar cada etiqueta seleccionada (toggle de eliminación).
+- Se aplica el mismo comportamiento en el selector de etiquetas del modal de edición masiva de SCORMs: seleccionadas arriba + opción de quitarlas.
+- Se mantiene el flujo de búsqueda tipo Qlik debajo del bloque de seleccionadas para seguir añadiendo más etiquetas.
+- Se actualiza versión visible de APP y `package.json` a `1.73.1`.
+
+### Versionado
+- Versión anterior: `1.73.0`
+- Nueva versión consolidada: `1.73.1`
+
+---
+
 ## v1.73.0 - Alta múltiple de etiquetas en modal individual y edición masiva
 
 ### Cambios consolidados
