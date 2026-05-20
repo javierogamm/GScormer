@@ -469,6 +469,9 @@ export default function ScormsTable({ userSession }) {
   const [bulkTagPickerDraft, setBulkTagPickerDraft] = useState([]);
   const [alertGeneratorModalOpen, setAlertGeneratorModalOpen] = useState(false);
   const [alertCodesDraft, setAlertCodesDraft] = useState('');
+  const [alertTagPickerOpen, setAlertTagPickerOpen] = useState(false);
+  const [alertTagPickerSearch, setAlertTagPickerSearch] = useState('');
+  const [alertTagPickerDraft, setAlertTagPickerDraft] = useState([]);
   const [alertNovedadDraft, setAlertNovedadDraft] = useState('');
   const [alertUrlDraft, setAlertUrlDraft] = useState('');
   const [alertSubmitting, setAlertSubmitting] = useState(false);
@@ -949,6 +952,19 @@ export default function ScormsTable({ userSession }) {
       bulkTagPickerDraft
         .map((code) => (tagsByCode[code] || [])[0] || { etiqueta_codigo: code, etiqueta_nombre: '', clasificacion_scorm: '' }),
     [bulkTagPickerDraft, tagsByCode],
+  );
+  const alertTagPickerRows = useMemo(() => {
+    const lookup = normalizeFilterLookupText(alertTagPickerSearch);
+    if (!lookup) return tagCatalogRows;
+    return tagCatalogRows.filter((row) =>
+      [row.etiqueta_codigo, row.etiqueta_nombre, row.clasificacion_scorm].some((value) => normalizeFilterLookupText(value).includes(lookup)),
+    );
+  }, [alertTagPickerSearch, tagCatalogRows]);
+  const selectedAlertTagRows = useMemo(
+    () =>
+      alertTagPickerDraft
+        .map((code) => (tagsByCode[code] || [])[0] || { etiqueta_codigo: code, etiqueta_nombre: '', clasificacion_scorm: '' }),
+    [alertTagPickerDraft, tagsByCode],
   );
 
   const getTagRowsForScorm = useCallback(
@@ -2220,6 +2236,9 @@ export default function ScormsTable({ userSession }) {
 
     setAlertGeneratorModalOpen(false);
     setAlertCodesDraft('');
+    setAlertTagPickerOpen(false);
+    setAlertTagPickerSearch('');
+    setAlertTagPickerDraft([]);
     setAlertNovedadDraft('');
     setAlertUrlDraft('');
   };
@@ -2280,6 +2299,9 @@ export default function ScormsTable({ userSession }) {
     setAlertSubmitting(false);
     setAlertGeneratorModalOpen(false);
     setAlertCodesDraft('');
+    setAlertTagPickerOpen(false);
+    setAlertTagPickerSearch('');
+    setAlertTagPickerDraft([]);
     setAlertNovedadDraft('');
     setAlertUrlDraft('');
     setStatusMessage(`${payload.length} alerta(s) generada(s). Recargando vista de alertas...`);
@@ -4349,9 +4371,85 @@ export default function ScormsTable({ userSession }) {
                 rows={8}
                 value={alertCodesDraft}
                 onChange={(event) => setAlertCodesDraft(event.target.value)}
-                placeholder="Ejemplo: ETQ001, ETQ002"
+                placeholder="Pega códigos (ETQ001, ETQ002) o Código-Nombre del SCORM. Se hará match solo por etiqueta_codigo."
                 disabled={alertSubmitting}
               />
+              <div className="inline-actions" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setAlertTagPickerOpen((prev) => {
+                      const next = !prev;
+                      if (next) {
+                        const currentCodes = parseTagCodesFromInput(alertCodesDraft);
+                        setAlertTagPickerDraft(currentCodes);
+                      } else {
+                        setAlertTagPickerSearch('');
+                      }
+                      return next;
+                    });
+                  }}
+                  disabled={alertSubmitting}
+                >
+                  🔍 Buscar y añadir etiquetas
+                </button>
+                {alertTagPickerOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setAlertCodesDraft(stringifyTagCodes(alertTagPickerDraft))}
+                    disabled={alertSubmitting}
+                  >
+                    Usar seleccionadas ({alertTagPickerDraft.length})
+                  </button>
+                ) : null}
+              </div>
+              {alertTagPickerOpen && (
+                <div className="filter-lookup-menu" style={{ marginTop: 8 }}>
+                  {selectedAlertTagRows.length > 0 && (
+                    <div className="filter-lookup-options">
+                      {selectedAlertTagRows.map((tagRow) => {
+                        const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                        return (
+                          <button
+                            key={`alert-selected-${code}`}
+                            type="button"
+                            className="filter-lookup-option is-selected"
+                            onClick={() => toggleTagCodeInDraft(setAlertTagPickerDraft, code)}
+                            title="Quitar etiqueta seleccionada"
+                          >
+                            {code} - {tagRow.etiqueta_nombre || 'Sin nombre'} · Quitar
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="filter-lookup-search">
+                    <input
+                      type="text"
+                      value={alertTagPickerSearch}
+                      onChange={(event) => setAlertTagPickerSearch(event.target.value)}
+                      placeholder="Buscar etiquetas por código o nombre..."
+                    />
+                  </div>
+                  <div className="filter-lookup-options">
+                    {alertTagPickerRows.map((tagRow) => {
+                      const code = String(tagRow.etiqueta_codigo || '').trim().toUpperCase();
+                      const selected = alertTagPickerDraft.includes(code);
+                      return (
+                        <button
+                          key={`alert-tag-${code}`}
+                          type="button"
+                          className={`filter-lookup-option ${selected ? 'is-selected' : ''}`}
+                          onClick={() => toggleTagCodeInDraft(setAlertTagPickerDraft, code)}
+                        >
+                          {code} - {tagRow.etiqueta_nombre || 'Sin nombre'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </label>
 
             <label>
