@@ -268,6 +268,8 @@ const parseTagCodesFromInput = (value) =>
 
 const stringifyTagCodes = (values = []) => values.join(';');
 
+const getRowTagCodes = (row) => parseTagCodesFromInput(String(row?.scorm_etiquetas || '').replace(/;/g, ' '));
+
 const formatDateDDMMYYYY = (value) => {
   const dateMs = typeof value === 'number' ? value : getDateMsFromCandidates([value]);
   if (!dateMs) {
@@ -2239,30 +2241,18 @@ export default function ScormsTable({ userSession }) {
     setError('');
     setStatusMessage('');
 
-    const { data: etiquetasData, error: etiquetasError } = await supabase
-      .from('scorms_etiquetas')
-      .select('etiqueta_codigo, clasificacion_scorm')
-      .in('etiqueta_codigo', tagCodes);
+    const rowsToAlert = rows.filter((row) => {
+      const rowTagCodes = getRowTagCodes(row);
+      if (rowTagCodes.length === 0) {
+        return false;
+      }
 
-    if (etiquetasError) {
-      setAlertSubmitting(false);
-      setError(`No se pudieron consultar las etiquetas: ${etiquetasError.message}`);
-      return;
-    }
-
-    const classifications = [...new Set((etiquetasData || []).map((item) => String(item.clasificacion_scorm || '').trim()).filter(Boolean))];
-
-    if (classifications.length === 0) {
-      setAlertSubmitting(false);
-      setError('No se encontró clasificación SCORM asociada a los códigos informados.');
-      return;
-    }
-
-    const rowsToAlert = rows.filter((row) => classifications.includes(String(row.scorm_categoria || '').trim()));
+      return rowTagCodes.some((code) => tagCodes.includes(code));
+    });
 
     if (rowsToAlert.length === 0) {
       setAlertSubmitting(false);
-      setStatusMessage('No hay SCORMs con la clasificación de las etiquetas informadas.');
+      setStatusMessage('No hay SCORMs con las etiquetas informadas en la columna de etiquetas.');
       return;
     }
 
