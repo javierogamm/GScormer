@@ -1,3 +1,11 @@
+## v1.73.5 - Alertas por etiquetas pegadas en SCORM Master
+
+- En **Generar alertas**, el copypaste de etiquetas ahora se aplica contra la columna `scorm_etiquetas` de `scorms_master` (intersección por código de etiqueta), sin depender de la clasificación SCORM.
+- Se mantiene el parseo flexible del pegado (espacios, comas, saltos de línea y `;`) para compatibilidad con los formatos de copia actuales.
+- Se actualiza el mensaje funcional cuando no hay coincidencias para reflejar el nuevo criterio de búsqueda por etiquetas en master.
+- Se actualiza versión visible de APP y `package.json` a `1.73.5`.
+- Nueva versión consolidada: `1.73.5`
+
 ## v1.73.3 - Gestión completa de etiquetas y búsqueda por nombre
 
 ### Cambios consolidados
