@@ -1,3 +1,17 @@
+## v1.73.6 - Alertas por etiqueta_codigo y selector con lupa en modal
+
+### Cambios consolidados
+- En el modal **Generar alertas**, el criterio de coincidencia se mantiene estrictamente por **código de etiqueta** (`etiqueta_codigo`), aunque el usuario pegue textos en formato `Codigo-Nombre` desde SCORM; el parseo ignora el nombre para el match.
+- Se actualiza el texto de ayuda del campo para dejar explícito que la generación cruza solo por código de etiqueta.
+- Se añade un selector con **lupa** dentro del modal para buscar etiquetas por **Código-Nombre** y seleccionarlas con comportamiento multiselección.
+- Las etiquetas seleccionadas en el selector se muestran en verde, se pueden desmarcar pulsándolas, y se pueden volcar al textarea con el botón **Usar seleccionadas**.
+- Se limpian los estados del selector (abierto, búsqueda y seleccionadas) al cerrar el modal o al completar la generación.
+- Se actualiza versión visible de APP y `package.json` a `1.73.6`.
+
+### Versionado
+- Versión anterior: `1.73.5`
+- Nueva versión consolidada: `1.73.6`
+
 ## v1.73.5 - Alertas por etiquetas pegadas en SCORM Master
 
 - En **Generar alertas**, el copypaste de etiquetas ahora se aplica contra la columna `scorm_etiquetas` de `scorms_master` (intersección por código de etiqueta), sin depender de la clasificación SCORM.
