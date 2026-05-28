@@ -420,7 +420,8 @@ export default function ScormsTable({ userSession }) {
   const [pendingLanguage, setPendingLanguage] = useState('ES');
   const [translationModalOpen, setTranslationModalOpen] = useState(false);
   const [translationSubmitting, setTranslationSubmitting] = useState(false);
-  const [translationLanguage, setTranslationLanguage] = useState('CAT');
+  const [translationLanguage, setTranslationLanguage] = useState('');
+  const [translationResponsibleDraft, setTranslationResponsibleDraft] = useState('');
   const [selectedTranslationGroupIds, setSelectedTranslationGroupIds] = useState([]);
   const [translationNameDrafts, setTranslationNameDrafts] = useState({});
   const [updateTargetRow, setUpdateTargetRow] = useState(null);
@@ -1554,6 +1555,7 @@ export default function ScormsTable({ userSession }) {
 
     setTranslationModalOpen(false);
     setTranslationNameDrafts({});
+    setTranslationResponsibleDraft('');
   };
 
   const updateTranslationNameDraft = (groupId, value) => {
@@ -2454,6 +2456,7 @@ export default function ScormsTable({ userSession }) {
     }
 
     const targetLanguage = normalizeLanguage(translationLanguage);
+    const translationResponsible = String(translationResponsibleDraft || '').trim();
 
     if (!targetLanguage || targetLanguage === 'ES') {
       setError('Debes elegir un idioma de traducción distinto de ES.');
@@ -2466,6 +2469,11 @@ export default function ScormsTable({ userSession }) {
 
     if (groupsMissingName.length > 0) {
       setError('Debes informar el nombre traducido de todos los SCORMs seleccionados.');
+      return;
+    }
+
+    if (!translationResponsible) {
+      setError('Debes informar un responsable para la nueva traducción.');
       return;
     }
 
@@ -2498,7 +2506,7 @@ export default function ScormsTable({ userSession }) {
         scorm_idioma: targetLanguage,
         scorm_code: String(esRow.scorm_code || '').trim().toUpperCase(),
         scorm_name: translatedName,
-        scorm_responsable: esRow.scorm_responsable || null,
+        scorm_responsable: translationResponsible,
         scorm_tipo: esRow.scorm_tipo || null,
         scorm_categoria: esRow.scorm_categoria || null,
         scorm_subcategoria: esRow.scorm_subcategoria || null,
@@ -2524,6 +2532,7 @@ export default function ScormsTable({ userSession }) {
     setTranslationSubmitting(false);
     setTranslationModalOpen(false);
     setTranslationNameDrafts({});
+    setTranslationResponsibleDraft('');
     setSelectedTranslationGroupIds([]);
     setStatusMessage(
       payload.length === 1
@@ -3838,6 +3847,7 @@ export default function ScormsTable({ userSession }) {
                 onChange={(event) => setTranslationLanguage(event.target.value)}
                 aria-label="Seleccionar idioma para nueva traducción"
               >
+                <option value="">Selecciona idioma…</option>
                 {availableLanguages
                   .filter((language) => language !== 'ES')
                   .map((language) => (
@@ -3903,7 +3913,7 @@ export default function ScormsTable({ userSession }) {
                       {availableLanguages.map((language) => (
                         <td key={`translation-${group.groupId}-${language}`}>
                           {group.languages.has(language) ? (
-                            <span className="lang-ok">Disponible</span>
+                            <span className="lang-ok">{group.rowByLanguage?.[language]?.scorm_idioma || language}</span>
                           ) : (
                             <span className="muted">Pendiente</span>
                           )}
@@ -4513,6 +4523,7 @@ export default function ScormsTable({ userSession }) {
                   onChange={(event) => setTranslationLanguage(event.target.value)}
                   disabled={translationSubmitting}
                 >
+                  <option value="">Selecciona idioma…</option>
                   {availableLanguages
                     .filter((language) => language !== 'ES')
                     .map((language) => (
@@ -4521,6 +4532,19 @@ export default function ScormsTable({ userSession }) {
                       </option>
                     ))}
                 </select>
+              </label>
+            </div>
+
+            <div className="details-grid details-grid-single">
+              <label>
+                <span>Responsable</span>
+                <input
+                  type="text"
+                  value={translationResponsibleDraft}
+                  onChange={(event) => setTranslationResponsibleDraft(event.target.value)}
+                  placeholder="Responsable de la traducción"
+                  disabled={translationSubmitting}
+                />
               </label>
             </div>
 
@@ -4535,7 +4559,7 @@ export default function ScormsTable({ userSession }) {
                 <tbody>
                   {selectedTranslatableGroups.map((group) => (
                     <tr key={`translation-draft-${group.groupId}`}>
-                      <td>{`${translationLanguage}-${group.code}`}</td>
+                      <td>{translationLanguage ? `${translationLanguage}-${group.code}` : `-${group.code}`}</td>
                       <td>
                         <input
                           type="text"

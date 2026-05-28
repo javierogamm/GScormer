@@ -1,3 +1,16 @@
+## v1.73.7 - Ajustes en traducciones SCORM (idioma visible y responsable obligatorio)
+
+### Cambios consolidados
+- En la subvista **Traducciones** de SCORMs, las celdas por idioma ahora muestran el código real de `scorm_idioma` cuando la traducción existe, en lugar de la etiqueta genérica **Disponible**.
+- Al crear traducciones manuales desde **Añadir traducción**, el selector de idioma arranca vacío (`Selecciona idioma…`) para obligar a seleccionar idioma en cada alta.
+- En el mismo modal se añade el campo obligatorio **Responsable**; no se permite crear traducciones si no se informa un responsable.
+- Las nuevas traducciones manuales guardan `scorm_responsable` con el valor informado en el modal, en lugar de heredarlo automáticamente del registro en ES.
+- Se actualiza versión visible de APP y `package.json` a `1.73.7`.
+
+### Versionado
+- Versión anterior: `1.73.6`
+- Nueva versión consolidada: `1.73.7`
+
 ## v1.73.6 - Alertas por etiqueta_codigo y selector con lupa en modal
 
 ### Cambios consolidados
