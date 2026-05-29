@@ -1,4 +1,19 @@
 
+## v1.74.0 - Alertas de cursos conectadas a scorms_cursos_actualizaciones
+
+### Cambios consolidados
+- Se corrige la integración de **Alertas cambios cursos** para usar la tabla existente `scorms_cursos_actualizaciones` en lugar de crear una tabla nueva.
+- Las alertas pendientes se leen desde `scorms_cursos_actualizaciones` por `IDUnico`, cruzándose con `scorms_cursos` para mostrar los datos principales del curso.
+- Los SCORMs añadidos y eliminados se interpretan desde `scorms_anadidos` y `scorms_eliminados`, separados por comas, y se muestran en el detalle con colores verde y rojo.
+- La acción **CAMBIOS REALIZADOS** actualiza la fila de `scorms_cursos_actualizaciones`, conserva los SCORMs separados por comas en sus columnas correspondientes y rellena `usuario` con el usuario que consolida la alerta.
+- Se elimina la migración incorrecta de `scorms_cursos_cambios_scorms` y se actualiza versión visible de APP y `package.json` a `1.74.0`.
+
+### Versionado
+- Versión anterior: `1.73.9`
+- Nueva versión consolidada: `1.74.0`
+
+---
+
 ## v1.73.9 - Alertas de cambios en SCORMs asociados a cursos
 
 ### Cambios consolidados
