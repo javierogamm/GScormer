@@ -1,3 +1,16 @@
+
+## v1.73.8 - Relaciones de cursos y PA en detalle de SCORM
+
+### Cambios consolidados
+- En el modal de **Detalles** de SCORM se añadió, en la parte derecha inferior, un desplegable **CURSOS** que muestra los cursos vinculados al SCORM, agrupados por identificador individual o código de curso.
+- Debajo de **CURSOS** se añadió el desplegable **Planes de aprendizaje**, con los PA en los que el SCORM está incluido y acceso a la URL del PA cuando existe.
+- Se reutiliza el contenido de `scorms_cursos` ya cargado en la pantalla para resolver las relaciones por código e idioma del SCORM, evitando consultas adicionales al abrir el modal.
+- Se incorporaron estilos específicos para tarjetas compactas de relaciones dentro del panel derecho del modal de detalles.
+
+### Versionado
+- Versión anterior: `1.73.7`
+- Nueva versión consolidada: `1.73.8`
+
 ## v1.73.7 - Ajustes en traducciones SCORM (idioma visible y responsable obligatorio)
 
 ### Cambios consolidados
