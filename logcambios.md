@@ -1,3 +1,19 @@
+## v1.74.1 - Registro automático de cambios de SCORMs en cursos
+
+### Cambios consolidados
+- Al guardar el detalle de un curso, se comparan los SCORMs asociados antes y después del cambio para detectar altas y bajas reales.
+- Al crear un curso con SCORMs seleccionados, se registra la relación inicial como SCORMs añadidos para ese `IDUnico`.
+- Cuando hay SCORMs añadidos o quitados, se inserta un registro en `scorms_cursos_actualizaciones` con `IDUnico`, el usuario que realiza el cambio, `scorms_anadidos` y `scorms_eliminados`.
+- La subvista **Alertas cambios cursos** muestra los cambios registrados con el usuario que realizó la modificación y permite consultar su detalle.
+- Se añade migración defensiva para crear `scorms_cursos_actualizaciones` con sus índices si el entorno todavía no dispone de la tabla.
+- Se actualiza versión visible de APP y `package.json` a `1.74.1`.
+
+### Versionado
+- Versión anterior: `1.74.0`
+- Nueva versión consolidada: `1.74.1`
+
+---
+
 
 ## v1.74.0 - Alertas de cursos conectadas a scorms_cursos_actualizaciones
 
