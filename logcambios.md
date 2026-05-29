@@ -1,4 +1,19 @@
 
+## v1.73.9 - Alertas de cambios en SCORMs asociados a cursos
+
+### Cambios consolidados
+- Se añade en **Cursos** la subvista **Alertas cambios cursos**, visible únicamente para usuarios ADMIN, con contador de cursos cuyos SCORMs asociados han cambiado desde la última consolidación de la alerta.
+- La vista lista los datos principales del curso junto con contadores de SCORMs añadidos y eliminados, y permite abrir un detalle con altas en verde y bajas en rojo.
+- Se incorpora la acción **CAMBIOS REALIZADOS** para consolidar la alerta y guardar el estado actual de SCORMs como nueva referencia del curso.
+- Se añade persistencia en Supabase mediante la tabla `scorms_cursos_cambios_scorms`, que almacena la última lista de SCORMs reconocida para cada curso.
+- Se actualiza versión visible de APP y `package.json` a `1.73.9`.
+
+### Versionado
+- Versión anterior: `1.73.8`
+- Nueva versión consolidada: `1.73.9`
+
+---
+
 ## v1.73.8 - Relaciones de cursos y PA en detalle de SCORM
 
 ### Cambios consolidados

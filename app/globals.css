@@ -1638,3 +1638,67 @@ textarea:focus {
   justify-content: flex-end;
   padding: 0.15rem 0.7rem 0.7rem;
 }
+
+.scorm-change-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-weight: 800;
+}
+
+.scorm-change-count.added {
+  background: #def8ec;
+  color: #146c43;
+}
+
+.scorm-change-count.removed {
+  background: #ffe2e8;
+  color: #a61e3c;
+}
+
+.scorm-change-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.scorm-change-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: #fff;
+}
+
+.scorm-change-panel h4 {
+  margin: 0 0 0.7rem;
+}
+
+.scorm-change-panel.added {
+  border-color: #9be2bd;
+  background: #f1fbf6;
+}
+
+.scorm-change-panel.removed {
+  border-color: #f3a6b7;
+  background: #fff5f7;
+}
+
+.scorm-change-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.scorm-change-list li strong,
+.scorm-change-list li span {
+  display: block;
+}
+
+.scorm-change-list li span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
