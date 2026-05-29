@@ -318,6 +318,62 @@ const formatFieldLabel = (key) =>
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const normalizeBooleanText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+
+const rowIsPlanChild = (row) => ['si', 'sí', 'yes', 'true', '1', 'x'].includes(normalizeBooleanText(row?.pa_formaparte));
+
+const getLearningPlanKey = (row) => String(row?.pa_codigo || row?.pa_nombre || '').trim();
+
+const resolveLearningPlanGroups = (sourceRows) => {
+  const grouped = (sourceRows || []).reduce((acc, row) => {
+    if (!rowIsPlanChild(row)) {
+      return acc;
+    }
+
+    const key = getLearningPlanKey(row);
+
+    if (!key) {
+      return acc;
+    }
+
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        paCodigo: String(row.pa_codigo || '').trim(),
+        paNombre: String(row.pa_nombre || '').trim(),
+        paUrl: String(row.pa_url || '').trim(),
+        rows: [],
+      };
+    }
+
+    if (!acc[key].paCodigo) {
+      acc[key].paCodigo = String(row.pa_codigo || '').trim();
+    }
+
+    if (!acc[key].paNombre) {
+      acc[key].paNombre = String(row.pa_nombre || '').trim();
+    }
+
+    if (!acc[key].paUrl) {
+      acc[key].paUrl = String(row.pa_url || '').trim();
+    }
+
+    acc[key].rows.push(row);
+    return acc;
+  }, {});
+
+  return Object.values(grouped).sort((left, right) => {
+    const leftLabel = `${left.paCodigo} ${left.paNombre}`;
+    const rightLabel = `${right.paCodigo} ${right.paNombre}`;
+    return leftLabel.localeCompare(rightLabel, 'es', { sensitivity: 'base' });
+  });
+};
+
 const getIndividualCourseIdentity = (course) => {
   const codigoIndividual = String(course.codigo_individual || '').trim();
   if (codigoIndividual) {
@@ -1158,9 +1214,19 @@ export default function ScormsTable({ userSession }) {
     [getIndividualCourseGroupsForScorm],
   );
 
+  const getRelatedLearningPlansForScorm = useCallback(
+    (row) => resolveLearningPlanGroups(getRelatedCoursesForScorm(row)),
+    [getRelatedCoursesForScorm],
+  );
+
   const modalIndividualCourseGroups = useMemo(
-    () => (coursesModalRow ? getIndividualCourseGroupsForScorm(coursesModalRow) : []),
-    [coursesModalRow, getIndividualCourseGroupsForScorm],
+    () => (detailDraft ? getIndividualCourseGroupsForScorm(detailDraft) : []),
+    [detailDraft, getIndividualCourseGroupsForScorm],
+  );
+
+  const modalLearningPlanGroups = useMemo(
+    () => (detailDraft ? getRelatedLearningPlansForScorm(detailDraft) : []),
+    [detailDraft, getRelatedLearningPlansForScorm],
   );
 
   const addFieldFilter = (field) => {
@@ -4770,6 +4836,89 @@ export default function ScormsTable({ userSession }) {
                       <dd>{detailLatestUpdate?.cambio_user || '-'}</dd>
                     </div>
                   </dl>
+                </div>
+
+                <div className="detail-relations-panel">
+                  <details className="scorms-accordion-item detail-relations-accordion">
+                    <summary className="course-detail-scorms-summary">
+                      <strong>CURSOS</strong>
+                      <span>{modalIndividualCourseGroups.length}</span>
+                    </summary>
+                    <div className="course-detail-scorms-panel">
+                      {modalIndividualCourseGroups.length === 0 ? (
+                        <p className="status">Este SCORM no está vinculado a ningún curso.</p>
+                      ) : (
+                        <div className="detail-relations-list">
+                          {modalIndividualCourseGroups.map((group) => {
+                            const representativeCourse = group.rows[0] || {};
+                            return (
+                              <article key={`detail-course-${group.key}`} className="detail-relation-card">
+                                <div>
+                                  <strong>{group.label}</strong>
+                                  <p>{representativeCourse.curso_nombre || 'Curso sin nombre'}</p>
+                                </div>
+                                <dl>
+                                  <div>
+                                    <dt>Idioma</dt>
+                                    <dd>{representativeCourse.curso_idioma || '-'}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Estado</dt>
+                                    <dd>{representativeCourse.curso_estado || '-'}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Filas</dt>
+                                    <dd>{group.rows.length}</dd>
+                                  </div>
+                                </dl>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="scorms-accordion-item detail-relations-accordion">
+                    <summary className="course-detail-scorms-summary">
+                      <strong>Planes de aprendizaje</strong>
+                      <span>{modalLearningPlanGroups.length}</span>
+                    </summary>
+                    <div className="course-detail-scorms-panel">
+                      {modalLearningPlanGroups.length === 0 ? (
+                        <p className="status">Este SCORM no está incluido en ningún Plan de aprendizaje.</p>
+                      ) : (
+                        <div className="detail-relations-list">
+                          {modalLearningPlanGroups.map((plan) => (
+                            <article key={`detail-plan-${plan.key}`} className="detail-relation-card">
+                              <div>
+                                <strong>{plan.paCodigo || '-'}</strong>
+                                <p>{plan.paNombre || 'Plan de aprendizaje sin nombre'}</p>
+                              </div>
+                              <dl>
+                                <div>
+                                  <dt>Cursos</dt>
+                                  <dd>{plan.rows.length}</dd>
+                                </div>
+                                <div>
+                                  <dt>URL</dt>
+                                  <dd>
+                                    {plan.paUrl ? (
+                                      <a className="table-link" href={getExternalUrl(plan.paUrl)} target="_blank" rel="noreferrer">
+                                        Abrir PA
+                                      </a>
+                                    ) : (
+                                      '-'
+                                    )}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </details>
                 </div>
               </aside>
             </div>

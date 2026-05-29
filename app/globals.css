@@ -881,6 +881,68 @@ input:focus {
   color: #17304f;
 }
 
+.detail-relations-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.detail-relations-accordion {
+  background: #ffffff;
+}
+
+.detail-relations-accordion summary span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #285ea8;
+  font-weight: 700;
+}
+
+.detail-relations-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.detail-relation-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid #dce7f7;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.detail-relation-card p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.detail-relation-card dl {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  margin: 0;
+}
+
+.detail-relation-card dt {
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #5c7494;
+}
+
+.detail-relation-card dd {
+  margin: 0;
+  font-weight: 600;
+  color: #17304f;
+}
+
 .scorms-accordion-list {
   display: grid;
   gap: 0.55rem;
