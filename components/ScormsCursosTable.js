@@ -333,6 +333,18 @@ const extractScormReferencesFromContenido = (contenido) => {
   return references;
 };
 
+const parseScormChangeList = (value) => {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((label, index) => ({
+      key: `${label.toLocaleLowerCase('es-ES')}-${index}`,
+      label,
+      name: '',
+    }));
+};
+
 export default function ScormsCursosTable({ userSession }) {
   const [cursosSubView, setCursosSubView] = useState('general');
   const [translationPreset, setTranslationPreset] = useState('parents');
@@ -434,11 +446,15 @@ export default function ScormsCursosTable({ userSession }) {
     GENERAL: true,
   });
   const [paDetailsModalRow, setPaDetailsModalRow] = useState(null);
+  const [courseScormUpdates, setCourseScormUpdates] = useState([]);
+  const [scormChangeDetails, setScormChangeDetails] = useState(null);
+  const [acknowledgingScormChangeIds, setAcknowledgingScormChangeIds] = useState([]);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
   const canAccessValidationView = userSession?.admin === true || canValidateCourses;
   const canCreateManagedValues = userSession?.admin === true;
+  const canAccessScormChangeAlerts = userSession?.admin === true;
 
   const getDefaultCreateDraft = useCallback(
     () => ({
@@ -479,17 +495,24 @@ export default function ScormsCursosTable({ userSession }) {
     setLoading(true);
     setError('');
 
-    const [cursosResponse, masterResponse] = await Promise.all([
+    const requests = [
       supabase.from('scorms_cursos').select('*').order('id', { ascending: true }),
       supabase.from('scorms_master').select('*').order('id', { ascending: true }),
-    ]);
+    ];
+
+    if (canAccessScormChangeAlerts) {
+      requests.push(supabase.from('scorms_cursos_actualizaciones').select('*').order('created_at', { ascending: false }));
+    }
+
+    const [cursosResponse, masterResponse, scormUpdatesResponse] = await Promise.all(requests);
+    const loadedRows = cursosResponse.data || [];
 
     if (cursosResponse.error) {
       setRows([]);
       setError(`No se pudieron cargar los cursos: ${cursosResponse.error.message}`);
     } else {
-      setRows(cursosResponse.data || []);
-      setStatusMessage(`Cursos cargados: ${(cursosResponse.data || []).length}`);
+      setRows(loadedRows);
+      setStatusMessage(`Cursos cargados: ${loadedRows.length}`);
     }
 
     if (masterResponse.error) {
@@ -499,12 +522,27 @@ export default function ScormsCursosTable({ userSession }) {
       setMasterRows(masterResponse.data || []);
     }
 
+    if (!canAccessScormChangeAlerts) {
+      setCourseScormUpdates([]);
+    } else if (scormUpdatesResponse?.error) {
+      setCourseScormUpdates([]);
+      setError((previous) => previous || `No se pudieron cargar las alertas de cambios de SCORMs: ${scormUpdatesResponse.error.message}`);
+    } else {
+      setCourseScormUpdates(scormUpdatesResponse?.data || []);
+    }
+
     setLoading(false);
-  }, []);
+  }, [canAccessScormChangeAlerts, userSession?.id, userSession?.name]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!canAccessScormChangeAlerts && cursosSubView === 'alertas_scorms') {
+      setCursosSubView('general');
+    }
+  }, [canAccessScormChangeAlerts, cursosSubView]);
 
   useEffect(() => {
     if (!detailModalRow) {
@@ -797,6 +835,95 @@ export default function ScormsCursosTable({ userSession }) {
 
     return Array.from(dedupedMatches.values());
   }, [scormsByCode, scormsModalRows]);
+
+
+  const courseRowsByUniqueId = useMemo(() => {
+    return rows.reduce((acc, row) => {
+      const uniqueId = getCourseUniqueId(row);
+
+      if (!uniqueId) {
+        return acc;
+      }
+
+      if (!acc[uniqueId] || rowIsParentCourse(row)) {
+        acc[uniqueId] = row;
+      }
+
+      return acc;
+    }, {});
+  }, [rows]);
+
+  const courseScormChangeAlerts = useMemo(() => {
+    if (!canAccessScormChangeAlerts) {
+      return [];
+    }
+
+    return courseScormUpdates
+      .filter((update) => !String(update.usuario || '').trim())
+      .map((update) => {
+        const uniqueId = String(update.IDUnico || '').trim();
+        const row = courseRowsByUniqueId[uniqueId] || { IDUnico: uniqueId };
+        const added = parseScormChangeList(update.scorms_anadidos);
+        const removed = parseScormChangeList(update.scorms_eliminados);
+
+        if (!uniqueId || (added.length === 0 && removed.length === 0)) {
+          return null;
+        }
+
+        return {
+          id: update.id,
+          update,
+          row,
+          uniqueId,
+          added,
+          removed,
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => {
+        const leftCreated = new Date(left.update.created_at || 0).getTime();
+        const rightCreated = new Date(right.update.created_at || 0).getTime();
+
+        if (leftCreated !== rightCreated) {
+          return rightCreated - leftCreated;
+        }
+
+        return left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' });
+      });
+  }, [canAccessScormChangeAlerts, courseRowsByUniqueId, courseScormUpdates]);
+
+  const acknowledgeScormCourseChanges = async (alert) => {
+    if (!canAccessScormChangeAlerts || !alert?.id) {
+      return;
+    }
+
+    const updateId = alert.id;
+    const userLabel = String(userSession?.name || userSession?.id || 'ADMIN').trim();
+    setAcknowledgingScormChangeIds((previous) => [...new Set([...previous, updateId])]);
+    setError('');
+
+    const response = await supabase
+      .from('scorms_cursos_actualizaciones')
+      .update({
+        scorms_anadidos: alert.added.map((reference) => reference.label).join(', '),
+        scorms_eliminados: alert.removed.map((reference) => reference.label).join(', '),
+        usuario: userLabel,
+      })
+      .eq('id', updateId)
+      .select('*')
+      .single();
+
+    if (response.error) {
+      setError(`No se pudo marcar la alerta como realizada: ${response.error.message}`);
+      setAcknowledgingScormChangeIds((previous) => previous.filter((id) => id !== updateId));
+      return;
+    }
+
+    setCourseScormUpdates((previous) => previous.map((update) => (Number(update.id) === Number(updateId) ? response.data : update)));
+    setScormChangeDetails((previous) => (Number(previous?.id) === Number(updateId) ? null : previous));
+    setStatusMessage(`Alerta de cambios de SCORMs cerrada para ${alert.row.curso_nombre || alert.row.curso_codigo || alert.uniqueId}.`);
+    setAcknowledgingScormChangeIds((previous) => previous.filter((id) => id !== updateId));
+  };
 
   const filteredMasterScormRows = useMemo(() => {
     const search = String(scormSearchText || '').trim().toLowerCase();
@@ -2387,6 +2514,21 @@ export default function ScormsCursosTable({ userSession }) {
     );
   };
 
+  const cursosSubViewTitle =
+    cursosSubView === 'general'
+      ? 'Vista general'
+      : cursosSubView === 'planes'
+        ? 'Planes de aprendizaje'
+        : cursosSubView === 'relaciones'
+          ? 'Cursos relacionados'
+          : cursosSubView === 'traducciones'
+            ? 'Traducciones'
+            : cursosSubView === 'validacion'
+              ? 'Validación pendiente'
+              : cursosSubView === 'alertas_scorms'
+                ? 'Alertas cambios cursos'
+                : 'Publicación pendiente';
+
   const handleExportCursosGeneralExcel = () => {
     const exported = exportRowsToExcel({
       rows: filteredRows,
@@ -2407,20 +2549,7 @@ export default function ScormsCursosTable({ userSession }) {
     <section className="card card-wide">
       <div className="card-header">
         <div>
-          <h2>
-            CURSOS ·{' '}
-            {cursosSubView === 'general'
-              ? 'Vista general'
-                              : cursosSubView === 'planes'
-                  ? 'Planes de aprendizaje'
-                  : cursosSubView === 'relaciones'
-                    ? 'Cursos relacionados'
-                    : cursosSubView === 'traducciones'
-                      ? 'Traducciones'
-                       : cursosSubView === 'validacion'
-                        ? 'Validación pendiente'
-                        : 'Publicación pendiente'}
-          </h2>
+          <h2>CURSOS · {cursosSubViewTitle}</h2>
           <p className="status">Vista conectada a la tabla `scorms_cursos`.</p>
         </div>
         <div className="header-actions cursos-header-actions">
@@ -2475,6 +2604,18 @@ export default function ScormsCursosTable({ userSession }) {
                 {publishCoursesCount}
               </span>
             </button>
+            {canAccessScormChangeAlerts ? (
+              <button
+                type="button"
+                className={`secondary view-select-button ${cursosSubView === 'alertas_scorms' ? 'is-selected' : ''} ${courseScormChangeAlerts.length > 0 ? 'pending-highlight' : ''}`}
+                onClick={() => setCursosSubView('alertas_scorms')}
+              >
+                Alertas cambios cursos
+                <span className="preset-kpi-badge" title="Cursos con cambios en SCORMs asociados">
+                  {courseScormChangeAlerts.length}
+                </span>
+              </button>
+            ) : null}
           </div>
           <div className="header-actions-row">
             <button
@@ -2596,7 +2737,60 @@ export default function ScormsCursosTable({ userSession }) {
         </section>
       ) : null}
 
-      {cursosSubView === 'general' ? (
+      {cursosSubView === 'alertas_scorms' ? (
+        <section className="individuales-view">
+          <div className="status-board-actions" style={{ marginBottom: '0.8rem' }}>
+            <strong>Cursos con altas o bajas de SCORMs asociados: {courseScormChangeAlerts.length}</strong>
+          </div>
+          {courseScormChangeAlerts.length === 0 ? (
+            <p className="status">No hay alertas pendientes de cambios en SCORMs asociados.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table className="cursos-table compact-rows">
+                <thead>
+                  <tr>
+                    <th>Curso código</th>
+                    <th>Curso nombre</th>
+                    <th>Idioma</th>
+                    <th>Instructor</th>
+                    <th>Materia</th>
+                    <th>Añadidos</th>
+                    <th>Eliminados</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courseScormChangeAlerts.map((alert) => {
+                    const isAcknowledging = acknowledgingScormChangeIds.includes(alert.id);
+
+                    return (
+                      <tr key={`scorm-change-${alert.id}`} onDoubleClick={() => setScormChangeDetails(alert)}>
+                        <td>{String(alert.row.curso_codigo || '-')}</td>
+                        <td className="col-curso_nombre">{String(alert.row.curso_nombre || '-')}</td>
+                        <td>{String(alert.row.curso_idioma || '-')}</td>
+                        <td>{String(alert.row.curso_instructor || '-')}</td>
+                        <td>{String(alert.row.materia || '-')}</td>
+                        <td><span className="scorm-change-count added">+{alert.added.length}</span></td>
+                        <td><span className="scorm-change-count removed">-{alert.removed.length}</span></td>
+                        <td>
+                          <div className="row-actions">
+                            <button type="button" className="secondary" onClick={() => setScormChangeDetails(alert)}>
+                              Detalles
+                            </button>
+                            <button type="button" onClick={() => acknowledgeScormCourseChanges(alert)} disabled={isAcknowledging}>
+                              {isAcknowledging ? 'Guardando...' : 'CAMBIOS REALIZADOS'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : cursosSubView === 'general' ? (
         <>
           <div className="details-grid" style={{ marginBottom: '0.8rem' }}>
             <label>
@@ -3226,6 +3420,79 @@ export default function ScormsCursosTable({ userSession }) {
                 })}
               </div>
             )}
+          </section>
+        </div>
+      ) : null}
+
+      {scormChangeDetails ? (
+        <div className="modal-overlay" role="presentation">
+          <section className="modal-content modal-content-narrow" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Detalle de cambios de SCORMs</h3>
+                <p>{scormChangeDetails.row.curso_nombre || scormChangeDetails.row.curso_codigo || scormChangeDetails.uniqueId}</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setScormChangeDetails(null)}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="scorm-change-detail-grid">
+              <section className="scorm-change-panel added">
+                <h4>SCORMs añadidos ({scormChangeDetails.added.length})</h4>
+                {scormChangeDetails.added.length === 0 ? (
+                  <p className="status">Sin SCORMs añadidos.</p>
+                ) : (
+                  <ul className="scorm-change-list">
+                    {scormChangeDetails.added.map((reference) => (
+                      <li key={`added-${reference.key}`}>
+                        <strong>{reference.label}</strong>
+                        {reference.name ? <span>{reference.name}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="scorm-change-panel removed">
+                <h4>SCORMs eliminados ({scormChangeDetails.removed.length})</h4>
+                {scormChangeDetails.removed.length === 0 ? (
+                  <p className="status">Sin SCORMs eliminados.</p>
+                ) : (
+                  <ul className="scorm-change-list">
+                    {scormChangeDetails.removed.map((reference) => (
+                      <li key={`removed-${reference.key}`}>
+                        <strong>{reference.label}</strong>
+                        {reference.name ? <span>{reference.name}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+
+            <footer className="modal-footer">
+              <button
+                type="button"
+                className="secondary"
+                disabled={!scormChangeDetails.row?.id}
+                onClick={() => {
+                  if (scormChangeDetails.row?.id) {
+                    openDetailModal(scormChangeDetails.row);
+                    setScormChangeDetails(null);
+                  }
+                }}
+              >
+                Abrir curso
+              </button>
+              <button
+                type="button"
+                onClick={() => acknowledgeScormCourseChanges(scormChangeDetails)}
+                disabled={acknowledgingScormChangeIds.includes(scormChangeDetails.id)}
+              >
+                {acknowledgingScormChangeIds.includes(scormChangeDetails.id) ? 'Guardando...' : 'CAMBIOS REALIZADOS'}
+              </button>
+            </footer>
           </section>
         </div>
       ) : null}
