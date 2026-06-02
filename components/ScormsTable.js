@@ -513,7 +513,9 @@ export default function ScormsTable({ userSession }) {
   const [tagManagerModalOpen, setTagManagerModalOpen] = useState(false);
   const [tagManagerSearch, setTagManagerSearch] = useState('');
   const [tagManagerDraft, setTagManagerDraft] = useState({ etiqueta_codigo: '', etiqueta_nombre: '', clasificacion_scorm: '' });
+  const [tagManagerCreateModalOpen, setTagManagerCreateModalOpen] = useState(false);
   const [tagManagerSubmitting, setTagManagerSubmitting] = useState(false);
+  const [tagManagerDeletingId, setTagManagerDeletingId] = useState(null);
   const [tagManagerEditDraft, setTagManagerEditDraft] = useState(null);
   const [singleTagPickerOpen, setSingleTagPickerOpen] = useState(false);
   const [singleTagPickerSearch, setSingleTagPickerSearch] = useState('');
@@ -974,6 +976,10 @@ export default function ScormsTable({ userSession }) {
       ),
     );
   }, [tagCatalogRows, tagManagerSearch]);
+  const tagClassificationOptions = useMemo(() => [...new Set(tagCatalogRows
+    .map((row) => String(row.clasificacion_scorm || '').trim())
+    .filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'es')), [tagCatalogRows]);
   const singleTagPickerRows = useMemo(() => {
     const lookup = normalizeFilterLookupText(singleTagPickerSearch);
     if (!lookup) return tagCatalogRows;
@@ -3131,6 +3137,11 @@ export default function ScormsTable({ userSession }) {
   };
 
   const submitTagManager = async () => {
+    if (!canPublishAsAdmin) {
+      setError('Solo los usuarios ADMIN pueden crear etiquetas.');
+      return;
+    }
+
     const payload = {
       etiqueta_codigo: String(tagManagerDraft.etiqueta_codigo || '').trim().toUpperCase(),
       etiqueta_nombre: String(tagManagerDraft.etiqueta_nombre || '').trim(),
@@ -3153,11 +3164,70 @@ export default function ScormsTable({ userSession }) {
     }
 
     setTagManagerDraft({ etiqueta_codigo: '', etiqueta_nombre: '', clasificacion_scorm: '' });
+    setTagManagerCreateModalOpen(false);
     await fetchData();
     setStatusMessage(`Etiqueta ${payload.etiqueta_codigo} creada con ID ${nextId}.`);
   };
 
+  const deleteTagManagerRow = async (tagRow) => {
+    if (!canPublishAsAdmin) {
+      setError('Solo los usuarios ADMIN pueden eliminar etiquetas.');
+      return;
+    }
+
+    const tagCode = String(tagRow?.etiqueta_codigo || '').trim().toUpperCase();
+    if (!tagRow?.id || !tagCode) {
+      return;
+    }
+
+    if (!window.confirm(`¿Eliminar la etiqueta ${tagCode}? También se quitará de todos los SCORMs que la tengan aplicada.`)) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+    setTagManagerDeletingId(tagRow.id);
+
+    const affectedRows = rows
+      .map((row) => {
+        const currentCodes = getRowTagCodes(row);
+        if (!currentCodes.includes(tagCode)) {
+          return null;
+        }
+        return { id: row.id, scorm_etiquetas: stringifyTagCodes(currentCodes.filter((code) => code !== tagCode)) };
+      })
+      .filter(Boolean);
+
+    const updateResults = await Promise.all(affectedRows.map((row) =>
+      supabase.from('scorms_master').update({ scorm_etiquetas: row.scorm_etiquetas }).eq('id', row.id)
+    ));
+    const failedUpdate = updateResults.find((result) => result.error);
+
+    if (failedUpdate?.error) {
+      setTagManagerDeletingId(null);
+      setError(`No se pudo quitar la etiqueta ${tagCode} de los SCORMs asociados: ${failedUpdate.error.message}`);
+      return;
+    }
+
+    const { error: deleteError } = await supabase.from('scorms_etiquetas').delete().eq('id', tagRow.id);
+    setTagManagerDeletingId(null);
+
+    if (deleteError) {
+      setError(`La etiqueta se quitó de los SCORMs asociados, pero no se pudo eliminar del catálogo: ${deleteError.message}`);
+      await fetchData();
+      return;
+    }
+
+    await fetchData();
+    setStatusMessage(`Etiqueta ${tagCode} eliminada correctamente de catálogo y de ${affectedRows.length} SCORM(s).`);
+  };
+
   const submitTagManagerEdit = async () => {
+    if (!canPublishAsAdmin) {
+      setError('Solo los usuarios ADMIN pueden editar etiquetas.');
+      return;
+    }
+
     if (!tagManagerEditDraft?.id) {
       return;
     }
@@ -5214,15 +5284,12 @@ export default function ScormsTable({ userSession }) {
                 <p>Alta/edición rápida y filtrado tipo Qlik de etiquetas.</p>
               </div>
               <div className="header-actions">
-                <button type="button" onClick={submitTagManager} disabled={tagManagerSubmitting}>{tagManagerSubmitting ? 'Guardando...' : 'Añadir etiqueta'}</button>
+                <button type="button" onClick={() => setTagManagerCreateModalOpen(true)}>Crear etiqueta</button>
                 <button type="button" className="secondary" onClick={() => setTagManagerModalOpen(false)}>Cerrar</button>
               </div>
             </header>
             <div className="details-grid">
               <label><span>Buscar</span><input value={tagManagerSearch} onChange={(e) => setTagManagerSearch(e.target.value)} /></label>
-              <label><span>Código</span><input value={tagManagerDraft.etiqueta_codigo} onChange={(e) => setTagManagerDraft((p) => ({ ...p, etiqueta_codigo: e.target.value }))} /></label>
-              <label><span>Nombre</span><input value={tagManagerDraft.etiqueta_nombre} onChange={(e) => setTagManagerDraft((p) => ({ ...p, etiqueta_nombre: e.target.value }))} /></label>
-              <label><span>Clasificación SCORM</span><input value={tagManagerDraft.clasificacion_scorm} onChange={(e) => setTagManagerDraft((p) => ({ ...p, clasificacion_scorm: e.target.value }))} /></label>
             </div>
             <div className="table-shell">
               <table>
@@ -5231,13 +5298,46 @@ export default function ScormsTable({ userSession }) {
                   {tagCatalogFilteredRows.map((tagRow) => (
                     <tr key={tagRow.id || tagRow.etiqueta_codigo}>
                       <td>{tagRow.id || '-'}</td><td>{tagRow.etiqueta_codigo}</td><td>{tagRow.etiqueta_nombre}</td><td>{tagRow.clasificacion_scorm}</td>
-                      <td><button type="button" className="secondary" onClick={() => setTagManagerEditDraft(tagRow)}>Editar</button></td>
+                      <td>
+                        <div className="header-actions">
+                          <button type="button" className="secondary" onClick={() => setTagManagerEditDraft(tagRow)}>Editar</button>
+                          <button type="button" className="delete-button" onClick={() => deleteTagManagerRow(tagRow)} disabled={tagManagerDeletingId === tagRow.id}>
+                            {tagManagerDeletingId === tagRow.id ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {tagManagerCreateModalOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="crear-etiqueta-title">
+            <header className="modal-header">
+              <div>
+                <h3 id="crear-etiqueta-title">Crear etiqueta</h3>
+                <p>La clasificación SCORM puede seleccionarse o escribirse para crear una nueva.</p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setTagManagerCreateModalOpen(false)} disabled={tagManagerSubmitting}>Cerrar</button>
+            </header>
+            <div className="details-grid">
+              <label><span>Código</span><input value={tagManagerDraft.etiqueta_codigo} onChange={(e) => setTagManagerDraft((p) => ({ ...p, etiqueta_codigo: e.target.value }))} /></label>
+              <label><span>Nombre</span><input value={tagManagerDraft.etiqueta_nombre} onChange={(e) => setTagManagerDraft((p) => ({ ...p, etiqueta_nombre: e.target.value }))} /></label>
+              <label><span>Clasificación SCORM</span><input list="tag-classification-options" value={tagManagerDraft.clasificacion_scorm} onChange={(e) => setTagManagerDraft((p) => ({ ...p, clasificacion_scorm: e.target.value }))} /></label>
+              <datalist id="tag-classification-options">
+                {tagClassificationOptions.map((classification) => <option key={classification} value={classification} />)}
+              </datalist>
+            </div>
+            <footer className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setTagManagerCreateModalOpen(false)} disabled={tagManagerSubmitting}>Cancelar</button>
+              <button type="button" onClick={submitTagManager} disabled={tagManagerSubmitting}>{tagManagerSubmitting ? 'Guardando...' : 'Crear etiqueta'}</button>
+            </footer>
           </div>
         </div>
       )}

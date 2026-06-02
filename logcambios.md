@@ -1,3 +1,19 @@
+## v1.75.0 - Alta modal, eliminación y nuevas clasificaciones en el gestor de etiquetas
+
+### Cambios consolidados
+- Para usuarios ADMIN, el botón **Crear etiqueta** del **Gestor de etiquetas** abre ahora un modal independiente en el que se informa el código, el nombre y la clasificación SCORM de la nueva etiqueta.
+- El campo **Clasificación SCORM** del alta permite seleccionar una clasificación ya existente o escribir libremente una nueva, consolidando la creación de nuevas `clasificacion_scorm` desde el mismo flujo.
+- Cada etiqueta del gestor incorpora la acción **Eliminar**, con confirmación previa para evitar borrados accidentales.
+- Al eliminar una etiqueta, primero se retira su código de `scorm_etiquetas` en todos los registros de `scorms_master` que la tenían aplicada y después se elimina la fila del catálogo `scorms_etiquetas`.
+- Las acciones de creación, edición y eliminación de etiquetas incluyen una validación adicional en cliente para limitar su ejecución a usuarios ADMIN.
+- Se actualiza versión visible de APP y `package.json` a `1.75.0`.
+
+### Versionado
+- Versión anterior: `1.74.1`
+- Nueva versión consolidada: `1.75.0`
+
+---
+
 ## v1.74.1 - Registro automático de cambios de SCORMs en cursos
 
 ### Cambios consolidados
