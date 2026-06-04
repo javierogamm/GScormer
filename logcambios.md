@@ -1,3 +1,17 @@
+## v1.77.0 - Reordenamiento visual y panel lateral para añadir SCORMs a cursos
+
+### Cambios consolidados
+- La tabla de SCORMs asociados del detalle de curso muestra una línea azul y un mensaje de ayuda durante el arrastre para indicar si el SCORM se colocará antes o después de la fila destino.
+- El reordenamiento por drag & drop ahora calcula la posición de inserción según la mitad superior o inferior de la fila sobre la que se suelta, haciendo más claro el destino final.
+- La acción de añadir SCORMs al curso abre un panel lateral con buscador y tabla de selección, evitando que el bloque de vinculación aparezca debajo del listado principal.
+- Se actualiza versión visible de APP y `package.json` a `1.77.0`.
+
+### Versionado
+- Versión anterior: `1.76.1`
+- Nueva versión consolidada: `1.77.0`
+
+---
+
 ## v1.76.1 - Mensaje accionable para columnas de orden en alertas de cursos
 
 ### Cambios consolidados
