@@ -4491,8 +4491,16 @@ export default function ScormsCursosTable({ userSession }) {
 
       {detailModalRow && detailDraft ? (
         <div className="modal-overlay" role="presentation">
-          <section className="modal-content detail-modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
+          <section
+            className={[
+              'modal-content detail-modal-content',
+              detailLinkScormsVisible ? 'detail-modal-with-scorm-drawer' : '',
+            ].filter(Boolean).join(' ')}
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header modal-header-sticky">
               <div>
                 <h3>Detalle del curso</h3>
               </div>
@@ -4507,6 +4515,9 @@ export default function ScormsCursosTable({ userSession }) {
                 </button>
                 <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
                   Cerrar
+                </button>
+                <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
+                  {detailSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </div>
@@ -4663,12 +4674,6 @@ export default function ScormsCursosTable({ userSession }) {
 
                 {detailLinkScormsVisible ? (
                   <>
-                    <button
-                      type="button"
-                      className="course-detail-scorms-drawer-backdrop"
-                      aria-label="Cerrar panel de añadir SCORMs"
-                      onClick={() => setDetailLinkScormsVisible(false)}
-                    />
                     <aside className="course-detail-scorms-drawer" role="complementary" aria-label="Añadir SCORMs al curso">
                       <div className="course-detail-scorms-drawer-header">
                         <div>
@@ -4850,11 +4855,6 @@ export default function ScormsCursosTable({ userSession }) {
               </div>
             </details>
 
-            <footer className="modal-footer">
-              <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
-                {detailSaving ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </footer>
           </section>
         </div>
       ) : null}
