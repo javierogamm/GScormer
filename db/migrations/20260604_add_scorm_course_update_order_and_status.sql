@@ -9,3 +9,5 @@ where actualizacion_estado is null;
 
 create index if not exists scorms_cursos_actualizaciones_estado_idx
   on public.scorms_cursos_actualizaciones (actualizacion_estado);
+
+notify pgrst, 'reload schema';

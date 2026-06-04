@@ -1,3 +1,21 @@
+## v1.76.1 - Mensaje accionable para columnas de orden en alertas de cursos
+
+### Cambios consolidados
+- El registro de alertas solo envía `scorms_orden_anterior` y `scorms_orden_nuevo` cuando realmente hay reordenamiento, evitando bloquear alertas simples de altas o bajas si esas columnas aún no existen en Supabase.
+- Si se intenta registrar un reordenamiento y Supabase indica que faltan columnas de orden o no actualizó la caché de esquema, la app muestra un mensaje accionable con la migración/columnas necesarias.
+- La migración de columnas de orden ahora incluye `notify pgrst, 'reload schema'` para forzar la recarga de la caché de PostgREST tras aplicar el SQL.
+- Se actualiza versión visible de APP y `package.json` a `1.76.1`.
+
+### Columnas necesarias en `scorms_cursos_actualizaciones`
+- `scorms_orden_anterior text null`
+- `scorms_orden_nuevo text null`
+
+### Versionado
+- Versión anterior: `1.76.0`
+- Nueva versión consolidada: `1.76.1`
+
+---
+
 ## v1.76.0 - Reordenamiento de SCORMs y acciones realizadas en alertas de cursos
 
 ### Cambios consolidados

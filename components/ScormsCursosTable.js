@@ -355,6 +355,14 @@ const getScormUpdateStatus = (update) => String(update?.actualizacion_estado || 
 
 const isScormUpdatePending = (update) => normalizeText(getScormUpdateStatus(update)) === 'PENDIENTE';
 
+const isMissingScormOrderColumnsError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('scorms_orden_anterior') || message.includes('scorms_orden_nuevo') || message.includes('schema cache');
+};
+
+const getMissingScormOrderColumnsMessage = () =>
+  'Faltan las columnas scorms_orden_anterior y scorms_orden_nuevo en scorms_cursos_actualizaciones o Supabase todavía no ha refrescado la caché de esquema. Ejecuta la migración 20260604_add_scorm_course_update_order_and_status.sql o crea ambas columnas como text y recarga la caché de PostgREST.';
+
 const normalizeAgentLabel = (value) => {
   return String(value || '')
     .normalize('NFD')
@@ -1614,12 +1622,25 @@ export default function ScormsCursosTable({ userSession }) {
       usuario: String(userSession?.name || userSession?.id || 'Sin usuario').trim(),
       scorms_anadidos: added.join(', '),
       scorms_eliminados: removed.join(', '),
-      scorms_orden_anterior: reordered ? previousOrder.join(', ') : null,
-      scorms_orden_nuevo: reordered ? nextOrder.join(', ') : null,
       actualizacion_estado: 'Pendiente',
     };
 
+    if (reordered) {
+      payload.scorms_orden_anterior = previousOrder.join(', ');
+      payload.scorms_orden_nuevo = nextOrder.join(', ');
+    }
+
     const response = await supabase.from('scorms_cursos_actualizaciones').insert(payload).select('*').single();
+
+    if (response.error && reordered && isMissingScormOrderColumnsError(response.error)) {
+      return {
+        ...response,
+        error: {
+          ...response.error,
+          message: getMissingScormOrderColumnsMessage(),
+        },
+      };
+    }
 
     if (!response.error && response.data && canAccessScormChangeAlerts) {
       setCourseScormUpdates((previous) => [response.data, ...previous]);
