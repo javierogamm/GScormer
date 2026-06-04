@@ -1659,6 +1659,39 @@ textarea:focus {
   color: #a61e3c;
 }
 
+.scorm-change-count.reordered {
+  background: #e8ddff;
+  color: #5f3dc4;
+}
+
+.scorm-change-panel.reordered {
+  border-color: #c8b6ff;
+  background: #f8f5ff;
+}
+
+.scorm-order-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.scorm-order-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.dragging-row {
+  opacity: 0.55;
+  outline: 2px dashed #71a8f5;
+}
+
 .scorm-change-detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
