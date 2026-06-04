@@ -1,3 +1,20 @@
+## v1.76.0 - Reordenamiento de SCORMs y acciones realizadas en alertas de cursos
+
+### Cambios consolidados
+- El modal de detalle/edición de cursos conserva el orden actual de los SCORMs asociados y permite reordenarlos mediante drag & drop, con controles alternativos de subir y bajar.
+- El guardado del curso compara el orden anterior y el nuevo; cuando el conjunto de SCORMs es el mismo pero cambia la secuencia, registra una alerta de reordenamiento además de las altas y bajas.
+- Las alertas de cambios de cursos muestran si hubo reordenamiento y su detalle compara el orden anterior frente al orden nuevo.
+- Se añade la acción **Acción ejecutada** para marcar una alerta como `Realizado`, retirarla de la vista de pendientes y consultarla desde la nueva vista **Acciones realizadas**.
+- La app interpreta `actualizacion_estado` nulo como **Pendiente** y registra las nuevas alertas con estado **Pendiente**.
+- Se añade migración defensiva para `actualizacion_estado`, `scorms_orden_anterior` y `scorms_orden_nuevo` en `scorms_cursos_actualizaciones`.
+- Se actualiza versión visible de APP y `package.json` a `1.76.0`.
+
+### Versionado
+- Versión anterior: `1.75.0`
+- Nueva versión consolidada: `1.76.0`
+
+---
+
 ## v1.75.0 - Alta modal, eliminación y nuevas clasificaciones en el gestor de etiquetas
 
 ### Cambios consolidados

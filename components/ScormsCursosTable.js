@@ -285,10 +285,14 @@ const getScormReferenceLabel = (row) => {
 const normalizeScormReferenceLabel = (value) => String(value || '').trim().toUpperCase();
 
 const getScormReferenceLabelsFromIds = (ids = [], sourceRows = []) => {
-  const selectedIds = new Set(ids.map((id) => Number(id)));
+  const rowsById = sourceRows.reduce((acc, row) => {
+    acc[Number(row.id)] = row;
+    return acc;
+  }, {});
 
-  return sourceRows
-    .filter((row) => selectedIds.has(Number(row.id)))
+  return ids
+    .map((id) => rowsById[Number(id)])
+    .filter(Boolean)
     .map((row) => getScormReferenceLabel(row))
     .filter(Boolean);
 };
@@ -331,6 +335,25 @@ const resolveScormReferenceDiff = (previousLabels = [], nextLabels = []) => {
     removed: Array.from(previousMap.entries()).filter(([key]) => !nextMap.has(key)).map(([, label]) => label),
   };
 };
+
+const resolveScormOrderChange = (previousLabels = [], nextLabels = []) => {
+  const previousNormalized = previousLabels.map((label) => normalizeScormReferenceLabel(label)).filter(Boolean);
+  const nextNormalized = nextLabels.map((label) => normalizeScormReferenceLabel(label)).filter(Boolean);
+  const nextSet = new Set(nextNormalized);
+  const previousSet = new Set(previousNormalized);
+  const previousCommonOrder = previousNormalized.filter((label) => nextSet.has(label));
+  const nextCommonOrder = nextNormalized.filter((label) => previousSet.has(label));
+
+  if (previousCommonOrder.length < 2 || previousCommonOrder.length !== nextCommonOrder.length) {
+    return false;
+  }
+
+  return previousCommonOrder.some((label, index) => label !== nextCommonOrder[index]);
+};
+
+const getScormUpdateStatus = (update) => String(update?.actualizacion_estado || 'Pendiente').trim() || 'Pendiente';
+
+const isScormUpdatePending = (update) => normalizeText(getScormUpdateStatus(update)) === 'PENDIENTE';
 
 const normalizeAgentLabel = (value) => {
   return String(value || '')
@@ -498,6 +521,7 @@ export default function ScormsCursosTable({ userSession }) {
   const [paDetailsModalRow, setPaDetailsModalRow] = useState(null);
   const [courseScormUpdates, setCourseScormUpdates] = useState([]);
   const [scormChangeDetails, setScormChangeDetails] = useState(null);
+  const [draggingDetailScormId, setDraggingDetailScormId] = useState(null);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
@@ -913,9 +937,13 @@ export default function ScormsCursosTable({ userSession }) {
         const row = courseRowsByUniqueId[uniqueId] || { IDUnico: uniqueId };
         const added = parseScormChangeList(update.scorms_anadidos);
         const removed = parseScormChangeList(update.scorms_eliminados);
+        const previousOrder = parseScormChangeList(update.scorms_orden_anterior);
+        const nextOrder = parseScormChangeList(update.scorms_orden_nuevo);
+        const reordered = previousOrder.length > 0 && nextOrder.length > 0;
         const userLabel = String(update.usuario || '').trim();
+        const status = getScormUpdateStatus(update);
 
-        if (!uniqueId || (added.length === 0 && removed.length === 0)) {
+        if (!uniqueId || (added.length === 0 && removed.length === 0 && !reordered)) {
           return null;
         }
 
@@ -926,7 +954,11 @@ export default function ScormsCursosTable({ userSession }) {
           uniqueId,
           added,
           removed,
+          previousOrder,
+          nextOrder,
+          reordered,
           userLabel,
+          status,
         };
       })
       .filter(Boolean)
@@ -941,6 +973,16 @@ export default function ScormsCursosTable({ userSession }) {
         return left.uniqueId.localeCompare(right.uniqueId, 'es', { sensitivity: 'base' });
       });
   }, [canAccessScormChangeAlerts, courseRowsByUniqueId, courseScormUpdates]);
+
+  const pendingScormChangeAlerts = useMemo(
+    () => courseScormChangeAlerts.filter((alert) => isScormUpdatePending(alert.update)),
+    [courseScormChangeAlerts],
+  );
+
+  const completedScormChangeAlerts = useMemo(
+    () => courseScormChangeAlerts.filter((alert) => !isScormUpdatePending(alert.update)),
+    [courseScormChangeAlerts],
+  );
 
   const filteredMasterScormRows = useMemo(() => {
     const search = String(scormSearchText || '').trim().toLowerCase();
@@ -1363,9 +1405,12 @@ export default function ScormsCursosTable({ userSession }) {
   }, [detailScormSearchText, masterRows]);
 
   const associatedDetailScormRows = useMemo(() => {
-    const selectedIds = new Set(detailSelectedScormIds);
+    const rowsById = masterRows.reduce((acc, row) => {
+      acc[row.id] = row;
+      return acc;
+    }, {});
 
-    return masterRows.filter((row) => selectedIds.has(row.id));
+    return detailSelectedScormIds.map((id) => rowsById[id]).filter(Boolean);
   }, [detailSelectedScormIds, masterRows]);
 
   const linkableDetailScormRows = useMemo(() => {
@@ -1466,6 +1511,43 @@ export default function ScormsCursosTable({ userSession }) {
     });
   };
 
+
+  const moveDetailScorm = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) {
+      return;
+    }
+
+    setDetailSelectedScormIds((previous) => {
+      const sourceIndex = previous.indexOf(sourceId);
+      const targetIndex = previous.indexOf(targetId);
+
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return previous;
+      }
+
+      const next = [...previous];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const moveDetailScormByStep = (scormId, step) => {
+    setDetailSelectedScormIds((previous) => {
+      const currentIndex = previous.indexOf(scormId);
+      const nextIndex = currentIndex + step;
+
+      if (currentIndex === -1 || nextIndex < 0 || nextIndex >= previous.length) {
+        return previous;
+      }
+
+      const next = [...previous];
+      const [moved] = next.splice(currentIndex, 1);
+      next.splice(nextIndex, 0, moved);
+      return next;
+    });
+  };
+
   const toggleDetailSelectedPlan = (planKey, options = {}) => {
     setDetailSelectedPlanKeys((previous) => {
       const isSelected = previous.includes(planKey);
@@ -1499,6 +1581,7 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailSelectedPlanKeys(associatedPlanKeys);
     setDetailAssociatedPlansVisible(false);
     setDetailLinkPlansVisible(false);
+    setDraggingDetailScormId(null);
   };
 
   const closeDetailModal = () => {
@@ -1516,12 +1599,13 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailSelectedPlanKeys([]);
     setDetailAssociatedPlansVisible(false);
     setDetailLinkPlansVisible(false);
+    setDraggingDetailScormId(null);
   };
 
-  const recordScormCourseUpdate = async ({ courseRow, added, removed }) => {
+  const recordScormCourseUpdate = async ({ courseRow, added, removed, reordered = false, previousOrder = [], nextOrder = [] }) => {
     const uniqueId = getCourseUniqueId(courseRow);
 
-    if (!uniqueId || (added.length === 0 && removed.length === 0)) {
+    if (!uniqueId || (added.length === 0 && removed.length === 0 && !reordered)) {
       return { data: null, error: null };
     }
 
@@ -1530,6 +1614,9 @@ export default function ScormsCursosTable({ userSession }) {
       usuario: String(userSession?.name || userSession?.id || 'Sin usuario').trim(),
       scorms_anadidos: added.join(', '),
       scorms_eliminados: removed.join(', '),
+      scorms_orden_anterior: reordered ? previousOrder.join(', ') : null,
+      scorms_orden_nuevo: reordered ? nextOrder.join(', ') : null,
+      actualizacion_estado: 'Pendiente',
     };
 
     const response = await supabase.from('scorms_cursos_actualizaciones').insert(payload).select('*').single();
@@ -1555,6 +1642,7 @@ export default function ScormsCursosTable({ userSession }) {
     const previousScormLabels = getScormReferenceLabelsFromContenido(detailModalRow.contenido);
     const nextScormLabels = getScormReferenceLabelsFromIds(detailSelectedScormIds, masterRows);
     const scormChanges = resolveScormReferenceDiff(previousScormLabels, nextScormLabels);
+    const scormsReordered = resolveScormOrderChange(previousScormLabels, nextScormLabels);
     payload.contenido = nextScormLabels.join(', ');
 
     if (String(payload.curso_estado || '').trim() === COURSE_STATUS_PENDING && !canValidateCourses) {
@@ -1579,6 +1667,9 @@ export default function ScormsCursosTable({ userSession }) {
       courseRow: response.data,
       added: scormChanges.added,
       removed: scormChanges.removed,
+      reordered: scormsReordered,
+      previousOrder: previousScormLabels,
+      nextOrder: nextScormLabels,
     });
 
     if (scormUpdateResponse.error) {
@@ -1646,7 +1737,7 @@ export default function ScormsCursosTable({ userSession }) {
       ...insertedPlanRows,
     ]);
     setStatusMessage(
-      `Curso actualizado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`} · PA desvinculados: ${planRowIdsToDelete.length} · PA vinculados: ${insertedPlanRows.length} · SCORMs añadidos: ${scormChanges.added.length} · SCORMs quitados: ${scormChanges.removed.length}`,
+      `Curso actualizado: ${response.data.curso_nombre || response.data.curso_codigo || `ID ${response.data.id}`} · PA desvinculados: ${planRowIdsToDelete.length} · PA vinculados: ${insertedPlanRows.length} · SCORMs añadidos: ${scormChanges.added.length} · SCORMs quitados: ${scormChanges.removed.length} · Reordenamiento SCORMs: ${scormsReordered ? 'sí' : 'no'}`,
     );
     setDetailSaving(false);
     setDetailModalRow(response.data);
@@ -1837,6 +1928,31 @@ export default function ScormsCursosTable({ userSession }) {
     setMoveHistory((previous) => [...previous, moveToRestore]);
     setStatusMessage('Rehacer aplicado correctamente.');
     setError('');
+  };
+
+  const markScormChangeAlertCompleted = async (alert) => {
+    if (!alert?.id) {
+      return;
+    }
+
+    setError('');
+    setStatusMessage('');
+
+    const response = await supabase
+      .from('scorms_cursos_actualizaciones')
+      .update({ actualizacion_estado: 'Realizado' })
+      .eq('id', alert.id)
+      .select('*')
+      .single();
+
+    if (response.error) {
+      setError(`No se pudo marcar la alerta como realizada: ${response.error.message}`);
+      return;
+    }
+
+    setCourseScormUpdates((previous) => previous.map((update) => (update.id === alert.id ? response.data : update)));
+    setScormChangeDetails((previous) => (previous?.id === alert.id ? null : previous));
+    setStatusMessage('Acción ejecutada: la alerta se movió a acciones realizadas.');
   };
 
   const submitCreateCurso = async () => {
@@ -2589,7 +2705,9 @@ export default function ScormsCursosTable({ userSession }) {
               ? 'Validación pendiente'
               : cursosSubView === 'alertas_scorms'
                 ? 'Alertas cambios cursos'
-                : 'Publicación pendiente';
+                : cursosSubView === 'acciones_realizadas'
+                  ? 'Acciones realizadas'
+                  : 'Publicación pendiente';
 
   const handleExportCursosGeneralExcel = () => {
     const exported = exportRowsToExcel({
@@ -2669,12 +2787,24 @@ export default function ScormsCursosTable({ userSession }) {
             {canAccessScormChangeAlerts ? (
               <button
                 type="button"
-                className={`secondary view-select-button ${cursosSubView === 'alertas_scorms' ? 'is-selected' : ''} ${courseScormChangeAlerts.length > 0 ? 'pending-highlight' : ''}`}
+                className={`secondary view-select-button ${cursosSubView === 'alertas_scorms' ? 'is-selected' : ''} ${pendingScormChangeAlerts.length > 0 ? 'pending-highlight' : ''}`}
                 onClick={() => setCursosSubView('alertas_scorms')}
               >
                 Alertas cambios cursos
                 <span className="preset-kpi-badge" title="Cursos con cambios en SCORMs asociados">
-                  {courseScormChangeAlerts.length}
+                  {pendingScormChangeAlerts.length}
+                </span>
+              </button>
+            ) : null}
+            {canAccessScormChangeAlerts ? (
+              <button
+                type="button"
+                className={`secondary view-select-button ${cursosSubView === 'acciones_realizadas' ? 'is-selected' : ''}`}
+                onClick={() => setCursosSubView('acciones_realizadas')}
+              >
+                Acciones realizadas
+                <span className="preset-kpi-badge" title="Alertas de cursos marcadas como realizadas">
+                  {completedScormChangeAlerts.length}
                 </span>
               </button>
             ) : null}
@@ -2799,13 +2929,13 @@ export default function ScormsCursosTable({ userSession }) {
         </section>
       ) : null}
 
-      {cursosSubView === 'alertas_scorms' ? (
+      {cursosSubView === 'alertas_scorms' || cursosSubView === 'acciones_realizadas' ? (
         <section className="individuales-view">
           <div className="status-board-actions" style={{ marginBottom: '0.8rem' }}>
-            <strong>Cursos con altas o bajas de SCORMs asociados: {courseScormChangeAlerts.length}</strong>
+            <strong>{cursosSubView === 'acciones_realizadas' ? 'Acciones realizadas' : 'Alertas pendientes'}: {(cursosSubView === 'acciones_realizadas' ? completedScormChangeAlerts : pendingScormChangeAlerts).length}</strong>
           </div>
-          {courseScormChangeAlerts.length === 0 ? (
-            <p className="status">No hay cambios registrados en SCORMs asociados.</p>
+          {(cursosSubView === 'acciones_realizadas' ? completedScormChangeAlerts : pendingScormChangeAlerts).length === 0 ? (
+            <p className="status">No hay cambios registrados en esta vista.</p>
           ) : (
             <div className="table-wrapper">
               <table className="cursos-table compact-rows">
@@ -2818,12 +2948,14 @@ export default function ScormsCursosTable({ userSession }) {
                     <th>Materia</th>
                     <th>Añadidos</th>
                     <th>Eliminados</th>
+                    <th>Reordenado</th>
+                    <th>Estado</th>
                     <th>Usuario cambio</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {courseScormChangeAlerts.map((alert) => {
+                  {(cursosSubView === 'acciones_realizadas' ? completedScormChangeAlerts : pendingScormChangeAlerts).map((alert) => {
                     return (
                       <tr key={`scorm-change-${alert.id}`} onDoubleClick={() => setScormChangeDetails(alert)}>
                         <td>{String(alert.row.curso_codigo || '-')}</td>
@@ -2833,15 +2965,19 @@ export default function ScormsCursosTable({ userSession }) {
                         <td>{String(alert.row.materia || '-')}</td>
                         <td><span className="scorm-change-count added">+{alert.added.length}</span></td>
                         <td><span className="scorm-change-count removed">-{alert.removed.length}</span></td>
+                        <td><span className={`scorm-change-count ${alert.reordered ? 'reordered' : ''}`}>{alert.reordered ? 'Sí' : 'No'}</span></td>
+                        <td>{alert.status}</td>
                         <td>{alert.userLabel || '-'}</td>
                         <td>
                           <div className="row-actions">
                             <button type="button" className="secondary" onClick={() => setScormChangeDetails(alert)}>
                               Detalles
                             </button>
-                            <button type="button" className="secondary" onClick={() => setScormChangeDetails(alert)}>
-                              Cambio registrado
-                            </button>
+                            {isScormUpdatePending(alert.update) ? (
+                              <button type="button" className="secondary" onClick={() => markScormChangeAlertCompleted(alert)}>
+                                Acción ejecutada
+                              </button>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -3531,6 +3667,32 @@ export default function ScormsCursosTable({ userSession }) {
                   </ul>
                 )}
               </section>
+
+              <section className="scorm-change-panel reordered">
+                <h4>Reordenamiento ({scormChangeDetails.reordered ? 'Sí' : 'No'})</h4>
+                {scormChangeDetails.reordered ? (
+                  <div className="scorm-order-comparison">
+                    <div>
+                      <strong>Orden anterior</strong>
+                      <ol className="scorm-change-list">
+                        {scormChangeDetails.previousOrder.map((reference) => (
+                          <li key={`previous-order-${reference.key}`}>{reference.label}</li>
+                        ))}
+                      </ol>
+                    </div>
+                    <div>
+                      <strong>Orden nuevo</strong>
+                      <ol className="scorm-change-list">
+                        {scormChangeDetails.nextOrder.map((reference) => (
+                          <li key={`next-order-${reference.key}`}>{reference.label}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="status">Sin reordenamiento registrado.</p>
+                )}
+              </section>
             </div>
 
             <footer className="modal-footer">
@@ -3547,7 +3709,12 @@ export default function ScormsCursosTable({ userSession }) {
               >
                 Abrir curso
               </button>
-              <span className="status">Cambio registrado por: {scormChangeDetails.userLabel || '-'}</span>
+              {isScormUpdatePending(scormChangeDetails.update) ? (
+                <button type="button" onClick={() => markScormChangeAlertCompleted(scormChangeDetails)}>
+                  Acción ejecutada
+                </button>
+              ) : null}
+              <span className="status">Estado: {scormChangeDetails.status} · Cambio registrado por: {scormChangeDetails.userLabel || '-'}</span>
             </footer>
           </section>
         </div>
@@ -4369,7 +4536,7 @@ export default function ScormsCursosTable({ userSession }) {
                   <section className="course-detail-scorms-subpanel">
                     <h4>SCORMs asociados al curso</h4>
                     <p className="status">
-                      Descheca los SCORMs que quieras retirar. El cambio no se aplicará hasta pulsar <strong>Guardar cambios</strong>.
+                      Descheca los SCORMs que quieras retirar o arrástralos para reordenarlos. El cambio no se aplicará hasta pulsar <strong>Guardar cambios</strong>.
                     </p>
                     {associatedDetailScormRows.length === 0 ? (
                       <p className="status">No hay SCORMs asociados a este curso.</p>
@@ -4378,6 +4545,7 @@ export default function ScormsCursosTable({ userSession }) {
                         <table className="compact-rows">
                           <thead>
                             <tr>
+                              <th>Orden</th>
                               <th>Asociado</th>
                               <th>Código</th>
                               <th>Nombre</th>
@@ -4385,8 +4553,36 @@ export default function ScormsCursosTable({ userSession }) {
                             </tr>
                           </thead>
                           <tbody>
-                            {associatedDetailScormRows.map((row) => (
-                              <tr key={`detail-associated-scorm-${row.id}`}>
+                            {associatedDetailScormRows.map((row, index) => (
+                              <tr
+                                key={`detail-associated-scorm-${row.id}`}
+                                draggable
+                                className={draggingDetailScormId === row.id ? 'dragging-row' : ''}
+                                onDragStart={(event) => {
+                                  setDraggingDetailScormId(row.id);
+                                  event.dataTransfer.effectAllowed = 'move';
+                                  event.dataTransfer.setData('text/plain', String(row.id));
+                                }}
+                                onDragOver={(event) => {
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = 'move';
+                                }}
+                                onDrop={(event) => {
+                                  event.preventDefault();
+                                  const sourceId = Number(event.dataTransfer.getData('text/plain')) || draggingDetailScormId;
+                                  moveDetailScorm(sourceId, row.id);
+                                  setDraggingDetailScormId(null);
+                                }}
+                                onDragEnd={() => setDraggingDetailScormId(null)}
+                              >
+                                <td>
+                                  <div className="scorm-order-controls">
+                                    <span className="drag-handle" title="Arrastra para reordenar">↕</span>
+                                    <span>{index + 1}</span>
+                                    <button type="button" className="txt-icon-button" onClick={() => moveDetailScormByStep(row.id, -1)} disabled={index === 0}>↑</button>
+                                    <button type="button" className="txt-icon-button" onClick={() => moveDetailScormByStep(row.id, 1)} disabled={index === associatedDetailScormRows.length - 1}>↓</button>
+                                  </div>
+                                </td>
                                 <td>
                                   <input
                                     type="checkbox"
