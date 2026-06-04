@@ -759,10 +759,19 @@ input:focus {
 }
 
 .modal-content.detail-modal-content {
+  position: relative;
   width: min(1680px, calc(100vw - 2.4rem));
   min-width: min(75vw, calc(100vw - 2.4rem));
   max-width: calc(100vw - 2.4rem);
   resize: both;
+  transition: width 0.22s ease, min-width 0.22s ease, transform 0.22s ease;
+  --scorm-drawer-width: min(520px, 34vw);
+}
+
+.modal-content.detail-modal-content.detail-modal-with-scorm-drawer {
+  width: min(1180px, calc(100vw - var(--scorm-drawer-width) - 3.2rem));
+  min-width: min(58vw, calc(100vw - var(--scorm-drawer-width) - 3.2rem));
+  transform: translateX(calc((var(--scorm-drawer-width) / -2) - 0.4rem));
 }
 
 .modal-header {
@@ -770,6 +779,20 @@ input:focus {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.modal-header.modal-header-sticky {
+  position: sticky;
+  top: -1rem;
+  z-index: 20;
+  align-items: flex-start;
+  margin: -1rem -1rem 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #dce7f7;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 10px 22px rgba(15, 28, 43, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 .modal-header h3 {
@@ -1009,6 +1032,13 @@ input:focus {
     width: 100%;
     min-width: 0;
     resize: vertical;
+    transform: none;
+  }
+
+  .modal-content.detail-modal-content.detail-modal-with-scorm-drawer {
+    width: 100%;
+    min-width: 0;
+    transform: none;
   }
 
   .course-detail-scorms-actions {
@@ -1690,6 +1720,138 @@ textarea:focus {
 .dragging-row {
   opacity: 0.55;
   outline: 2px dashed #71a8f5;
+}
+
+.scorm-order-table tbody tr {
+  position: relative;
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.scorm-order-table tbody tr.drop-target-before,
+.scorm-order-table tbody tr.drop-target-after {
+  background: #eef6ff;
+  box-shadow: inset 0 0 0 1px #9fc7ff;
+}
+
+.scorm-order-table tbody tr.drop-target-before td:first-child,
+.scorm-order-table tbody tr.drop-target-after td:first-child {
+  position: relative;
+}
+
+.scorm-order-table tbody tr.drop-target-before td:first-child::before,
+.scorm-order-table tbody tr.drop-target-after td:first-child::after {
+  content: '';
+  position: absolute;
+  left: 0.35rem;
+  right: -100vw;
+  height: 4px;
+  border-radius: 999px;
+  background: #1d74d8;
+  box-shadow: 0 0 0 3px rgba(29, 116, 216, 0.16);
+  pointer-events: none;
+}
+
+.scorm-order-table tbody tr.drop-target-before td:first-child::before {
+  top: -2px;
+}
+
+.scorm-order-table tbody tr.drop-target-after td:first-child::after {
+  bottom: -2px;
+}
+
+.scorm-order-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  border-radius: 999px;
+  background: #e8f2ff;
+  color: #285ea8;
+  font-weight: 800;
+}
+
+.scorm-drop-helper {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #9fc7ff;
+  border-radius: 10px;
+  background: #eaf4ff;
+  color: #174f93;
+  font-weight: 700;
+}
+
+.course-detail-scorms-drawer {
+  position: fixed;
+  top: 4vh;
+  right: 1.2rem;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: var(--scorm-drawer-width);
+  height: 92vh;
+  padding: 1rem;
+  overflow: auto;
+  background: #ffffff;
+  border: 1px solid #bfd8ff;
+  border-radius: 14px;
+  box-shadow: -18px 0 48px rgba(15, 28, 43, 0.2);
+  animation: scormDrawerSlideRight 0.22s ease-out;
+}
+
+@keyframes scormDrawerSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-1.2rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.course-detail-scorms-drawer-header {
+  position: sticky;
+  top: -1rem;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: -1rem -1rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid #dce7f7;
+  border-radius: 14px 14px 0 0;
+  backdrop-filter: blur(8px);
+}
+
+.course-detail-scorms-drawer-header h4 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.course-detail-scorms-drawer-table {
+  margin-top: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 700px) {
+  .course-detail-scorms-drawer {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    transform: none;
+    animation: none;
+  }
+
+  .course-detail-scorms-drawer-header {
+    flex-direction: column;
+  }
 }
 
 .scorm-change-detail-grid {

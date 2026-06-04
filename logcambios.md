@@ -1,3 +1,31 @@
+## v1.77.1 - Panel lateral integrado y acciones fijas en detalle de curso
+
+### Cambios consolidados
+- El panel de añadir SCORMs deja de aplicar una capa de fondo azul sobre el detalle del curso y se integra como extensión lateral del modal.
+- Al abrir el panel lateral de SCORMs, el modal de detalle se desplaza suavemente hacia la izquierda y el panel se despliega hacia la derecha con el mismo alto del modal.
+- Los botones superiores de Cerrar y Guardar cambios quedan fijos en la cabecera del modal aunque se haga scroll dentro del detalle del curso.
+- Se actualiza versión visible de APP y `package.json` a `1.77.1`.
+
+### Versionado
+- Versión anterior: `1.77.0`
+- Nueva versión consolidada: `1.77.1`
+
+---
+
+## v1.77.0 - Reordenamiento visual y panel lateral para añadir SCORMs a cursos
+
+### Cambios consolidados
+- La tabla de SCORMs asociados del detalle de curso muestra una línea azul y un mensaje de ayuda durante el arrastre para indicar si el SCORM se colocará antes o después de la fila destino.
+- El reordenamiento por drag & drop ahora calcula la posición de inserción según la mitad superior o inferior de la fila sobre la que se suelta, haciendo más claro el destino final.
+- La acción de añadir SCORMs al curso abre un panel lateral con buscador y tabla de selección, evitando que el bloque de vinculación aparezca debajo del listado principal.
+- Se actualiza versión visible de APP y `package.json` a `1.77.0`.
+
+### Versionado
+- Versión anterior: `1.76.1`
+- Nueva versión consolidada: `1.77.0`
+
+---
+
 ## v1.76.1 - Mensaje accionable para columnas de orden en alertas de cursos
 
 ### Cambios consolidados

@@ -530,6 +530,7 @@ export default function ScormsCursosTable({ userSession }) {
   const [courseScormUpdates, setCourseScormUpdates] = useState([]);
   const [scormChangeDetails, setScormChangeDetails] = useState(null);
   const [draggingDetailScormId, setDraggingDetailScormId] = useState(null);
+  const [detailScormDropTarget, setDetailScormDropTarget] = useState(null);
   const scopedInstructorAgents = userSession?.agentFilters?.instructores || [];
   const canDeleteAsAdmin = userSession?.admin === true;
   const canValidateCourses = userSession?.validador === true;
@@ -1520,7 +1521,7 @@ export default function ScormsCursosTable({ userSession }) {
   };
 
 
-  const moveDetailScorm = (sourceId, targetId) => {
+  const moveDetailScorm = (sourceId, targetId, placement = 'before') => {
     if (!sourceId || !targetId || sourceId === targetId) {
       return;
     }
@@ -1535,9 +1536,19 @@ export default function ScormsCursosTable({ userSession }) {
 
       const next = [...previous];
       const [moved] = next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, moved);
+      const targetIndexAfterRemoval = next.indexOf(targetId);
+      const insertionIndex = placement === 'after' ? targetIndexAfterRemoval + 1 : targetIndexAfterRemoval;
+
+      next.splice(insertionIndex, 0, moved);
       return next;
     });
+  };
+
+  const getDetailScormDropPlacement = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const cursorOffset = event.clientY - bounds.top;
+
+    return cursorOffset > bounds.height / 2 ? 'after' : 'before';
   };
 
   const moveDetailScormByStep = (scormId, step) => {
@@ -1590,6 +1601,7 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailAssociatedPlansVisible(false);
     setDetailLinkPlansVisible(false);
     setDraggingDetailScormId(null);
+    setDetailScormDropTarget(null);
   };
 
   const closeDetailModal = () => {
@@ -1608,6 +1620,7 @@ export default function ScormsCursosTable({ userSession }) {
     setDetailAssociatedPlansVisible(false);
     setDetailLinkPlansVisible(false);
     setDraggingDetailScormId(null);
+    setDetailScormDropTarget(null);
   };
 
   const recordScormCourseUpdate = async ({ courseRow, added, removed, reordered = false, previousOrder = [], nextOrder = [] }) => {
@@ -4478,8 +4491,16 @@ export default function ScormsCursosTable({ userSession }) {
 
       {detailModalRow && detailDraft ? (
         <div className="modal-overlay" role="presentation">
-          <section className="modal-content detail-modal-content" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
+          <section
+            className={[
+              'modal-content detail-modal-content',
+              detailLinkScormsVisible ? 'detail-modal-with-scorm-drawer' : '',
+            ].filter(Boolean).join(' ')}
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header modal-header-sticky">
               <div>
                 <h3>Detalle del curso</h3>
               </div>
@@ -4494,6 +4515,9 @@ export default function ScormsCursosTable({ userSession }) {
                 </button>
                 <button type="button" className="secondary" onClick={closeDetailModal} disabled={detailSaving}>
                   Cerrar
+                </button>
+                <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
+                  {detailSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </div>
@@ -4547,9 +4571,10 @@ export default function ScormsCursosTable({ userSession }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDetailLinkScormsVisible((previous) => !previous)}
+                    className={detailLinkScormsVisible ? 'action-button' : undefined}
+                    onClick={() => setDetailLinkScormsVisible(true)}
                   >
-                    VINCULAR SCORMS
+                    Añadir SCORMs
                   </button>
                 </div>
 
@@ -4557,13 +4582,18 @@ export default function ScormsCursosTable({ userSession }) {
                   <section className="course-detail-scorms-subpanel">
                     <h4>SCORMs asociados al curso</h4>
                     <p className="status">
-                      Descheca los SCORMs que quieras retirar o arrástralos para reordenarlos. El cambio no se aplicará hasta pulsar <strong>Guardar cambios</strong>.
+                      Descheca los SCORMs que quieras retirar o arrástralos para reordenarlos. La línea azul indica exactamente si el SCORM se colocará antes o después de la fila destino.
                     </p>
+                    {draggingDetailScormId && detailScormDropTarget ? (
+                      <p className="scorm-drop-helper" aria-live="polite">
+                        Se colocará {detailScormDropTarget.placement === 'after' ? 'después' : 'antes'} del SCORM marcado.
+                      </p>
+                    ) : null}
                     {associatedDetailScormRows.length === 0 ? (
                       <p className="status">No hay SCORMs asociados a este curso.</p>
                     ) : (
                       <div className="table-wrapper">
-                        <table className="compact-rows">
+                        <table className="compact-rows scorm-order-table">
                           <thead>
                             <tr>
                               <th>Orden</th>
@@ -4574,41 +4604,110 @@ export default function ScormsCursosTable({ userSession }) {
                             </tr>
                           </thead>
                           <tbody>
-                            {associatedDetailScormRows.map((row, index) => (
-                              <tr
-                                key={`detail-associated-scorm-${row.id}`}
-                                draggable
-                                className={draggingDetailScormId === row.id ? 'dragging-row' : ''}
-                                onDragStart={(event) => {
-                                  setDraggingDetailScormId(row.id);
-                                  event.dataTransfer.effectAllowed = 'move';
-                                  event.dataTransfer.setData('text/plain', String(row.id));
-                                }}
-                                onDragOver={(event) => {
-                                  event.preventDefault();
-                                  event.dataTransfer.dropEffect = 'move';
-                                }}
-                                onDrop={(event) => {
-                                  event.preventDefault();
-                                  const sourceId = Number(event.dataTransfer.getData('text/plain')) || draggingDetailScormId;
-                                  moveDetailScorm(sourceId, row.id);
-                                  setDraggingDetailScormId(null);
-                                }}
-                                onDragEnd={() => setDraggingDetailScormId(null)}
-                              >
-                                <td>
-                                  <div className="scorm-order-controls">
-                                    <span className="drag-handle" title="Arrastra para reordenar">↕</span>
-                                    <span>{index + 1}</span>
-                                    <button type="button" className="txt-icon-button" onClick={() => moveDetailScormByStep(row.id, -1)} disabled={index === 0}>↑</button>
-                                    <button type="button" className="txt-icon-button" onClick={() => moveDetailScormByStep(row.id, 1)} disabled={index === associatedDetailScormRows.length - 1}>↓</button>
-                                  </div>
-                                </td>
+                            {associatedDetailScormRows.map((row, index) => {
+                              const dropPlacement = detailScormDropTarget?.id === row.id ? detailScormDropTarget.placement : null;
+
+                              return (
+                                <tr
+                                  key={`detail-associated-scorm-${row.id}`}
+                                  draggable
+                                  className={[
+                                    draggingDetailScormId === row.id ? 'dragging-row' : '',
+                                    dropPlacement ? `drop-target-${dropPlacement}` : '',
+                                  ].filter(Boolean).join(' ')}
+                                  onDragStart={(event) => {
+                                    setDraggingDetailScormId(row.id);
+                                    setDetailScormDropTarget(null);
+                                    event.dataTransfer.effectAllowed = 'move';
+                                    event.dataTransfer.setData('text/plain', String(row.id));
+                                  }}
+                                  onDragOver={(event) => {
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = 'move';
+
+                                    if (draggingDetailScormId !== row.id) {
+                                      setDetailScormDropTarget({ id: row.id, placement: getDetailScormDropPlacement(event) });
+                                    }
+                                  }}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    const sourceId = Number(event.dataTransfer.getData('text/plain')) || draggingDetailScormId;
+                                    const placement = detailScormDropTarget?.id === row.id ? detailScormDropTarget.placement : getDetailScormDropPlacement(event);
+                                    moveDetailScorm(sourceId, row.id, placement);
+                                    setDraggingDetailScormId(null);
+                                    setDetailScormDropTarget(null);
+                                  }}
+                                  onDragEnd={() => {
+                                    setDraggingDetailScormId(null);
+                                    setDetailScormDropTarget(null);
+                                  }}
+                                >
+                                  <td>
+                                    <div className="scorm-order-controls">
+                                      <span className="drag-handle" title="Arrastra para reordenar">↕</span>
+                                      <span className="scorm-order-number">{index + 1}</span>
+                                      <button type="button" className="txt-icon-button" onClick={() => moveDetailScormByStep(row.id, -1)} disabled={index === 0}>↑</button>
+                                      <button type="button" className="txt-icon-button" onClick={() => moveDetailScormByStep(row.id, 1)} disabled={index === associatedDetailScormRows.length - 1}>↓</button>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="checkbox"
+                                      checked
+                                      onChange={() => toggleDetailSelectedScorm(row.id, { confirmRemoval: true })}
+                                    />
+                                  </td>
+                                  <td>{getScormReferenceLabel(row)}</td>
+                                  <td>{String(row.scorm_name || '-')}</td>
+                                  <td>{String(row.scorm_responsable || '-')}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+
+                <p className="status">Seleccionados: {detailSelectedScormIds.length} · Se guardan en contenido al guardar cambios.</p>
+
+                {detailLinkScormsVisible ? (
+                  <>
+                    <aside className="course-detail-scorms-drawer" role="complementary" aria-label="Añadir SCORMs al curso">
+                      <div className="course-detail-scorms-drawer-header">
+                        <div>
+                          <h4>Añadir SCORMs</h4>
+                          <p className="status">Busca y selecciona SCORMs disponibles sin desplazar el detalle del curso hacia abajo.</p>
+                        </div>
+                        <button type="button" className="secondary" onClick={() => setDetailLinkScormsVisible(false)}>
+                          Cerrar
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Buscar SCORM para añadir..."
+                        value={detailScormSearchText}
+                        onChange={(event) => setDetailScormSearchText(event.target.value)}
+                      />
+                      <div className="table-wrapper course-detail-scorms-drawer-table">
+                        <table className="compact-rows">
+                          <thead>
+                            <tr>
+                              <th>Añadir</th>
+                              <th>Código</th>
+                              <th>Nombre</th>
+                              <th>Responsable</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {linkableDetailScormRows.slice(0, 40).map((row) => (
+                              <tr key={`detail-linkable-scorm-${row.id}`}>
                                 <td>
                                   <input
                                     type="checkbox"
-                                    checked
-                                    onChange={() => toggleDetailSelectedScorm(row.id, { confirmRemoval: true })}
+                                    checked={false}
+                                    onChange={() => toggleDetailSelectedScorm(row.id)}
                                   />
                                 </td>
                                 <td>{getScormReferenceLabel(row)}</td>
@@ -4619,54 +4718,12 @@ export default function ScormsCursosTable({ userSession }) {
                           </tbody>
                         </table>
                       </div>
-                    )}
-                  </section>
+                      <p className="status">
+                        Mostrando {Math.min(linkableDetailScormRows.length, 40)} de {linkableDetailScormRows.length} SCORMs disponibles. Las nuevas vinculaciones se guardan al pulsar <strong>Guardar cambios</strong>.
+                      </p>
+                    </aside>
+                  </>
                 ) : null}
-
-                {detailLinkScormsVisible ? (
-                  <section className="course-detail-scorms-subpanel">
-                    <h4>Vincular SCORMs</h4>
-                    <input
-                      type="text"
-                      placeholder="Buscar SCORM para añadir..."
-                      value={detailScormSearchText}
-                      onChange={(event) => setDetailScormSearchText(event.target.value)}
-                    />
-                    <div className="table-wrapper" style={{ marginTop: '0.6rem' }}>
-                      <table className="compact-rows">
-                        <thead>
-                          <tr>
-                            <th>Añadir</th>
-                            <th>Código</th>
-                            <th>Nombre</th>
-                            <th>Responsable</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {linkableDetailScormRows.slice(0, 40).map((row) => (
-                            <tr key={`detail-linkable-scorm-${row.id}`}>
-                              <td>
-                                <input
-                                  type="checkbox"
-                                  checked={false}
-                                  onChange={() => toggleDetailSelectedScorm(row.id)}
-                                />
-                              </td>
-                              <td>{getScormReferenceLabel(row)}</td>
-                              <td>{String(row.scorm_name || '-')}</td>
-                              <td>{String(row.scorm_responsable || '-')}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="status">
-                      Mostrando {Math.min(linkableDetailScormRows.length, 40)} de {linkableDetailScormRows.length} SCORMs disponibles. Las nuevas vinculaciones se guardan al pulsar <strong>Guardar cambios</strong>.
-                    </p>
-                  </section>
-                ) : null}
-
-                <p className="status">Seleccionados: {detailSelectedScormIds.length} · Se guardan en contenido al guardar cambios.</p>
               </div>
             </details>
 
@@ -4798,11 +4855,6 @@ export default function ScormsCursosTable({ userSession }) {
               </div>
             </details>
 
-            <footer className="modal-footer">
-              <button type="button" onClick={saveDetailModal} disabled={detailSaving}>
-                {detailSaving ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </footer>
           </section>
         </div>
       ) : null}
