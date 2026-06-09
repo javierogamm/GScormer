@@ -20,11 +20,32 @@ const PIE_COLORS = ['#4f8fe8', '#4db69b', '#f2b35d', '#9b7de3', '#e9788f', '#5bb
 const EMPTY_SCORM_FILTERS = { category: [], responsible: [], language: [], dateFrom: '', dateTo: '' };
 const EMPTY_COURSE_FILTERS = { course: [], matter: [], typology: [], plan: [] };
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
+const ANALYTICS_STATE_STORAGE_KEY = 'gscormer_analytics_state';
 const SCORM_REFERENCE_REGEX = /(?:\b([a-z]{2,3})\s*[-_]\s*)?\b(SCR\d{4})\b/gi;
 
 const cleanValue = (value, fallback = 'Sin informar') => String(value || '').trim() || fallback;
 const formatCount = (value) => new Intl.NumberFormat('es-ES').format(value);
 const normalizeText = (value) => String(value || '').trim().toLocaleUpperCase('es-ES');
+
+const readPersistedAnalyticsState = () => {
+  try {
+    const storedValue = globalThis?.localStorage?.getItem(ANALYTICS_STATE_STORAGE_KEY);
+    if (!storedValue) return null;
+    const parsed = JSON.parse(storedValue);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const restoreFilterState = (defaults, storedFilters) => Object.keys(defaults).reduce((result, key) => {
+  if (Array.isArray(defaults[key])) {
+    result[key] = Array.isArray(storedFilters?.[key]) ? storedFilters[key].filter((value) => typeof value === 'string') : [];
+  } else {
+    result[key] = typeof storedFilters?.[key] === 'string' ? storedFilters[key] : defaults[key];
+  }
+  return result;
+}, {});
 
 const splitResponsibles = (value) => {
   const values = String(value || '').split(/[&,;|]/).map((item) => item.trim()).filter(Boolean);
@@ -154,6 +175,9 @@ const buildCourseModels = (rows) => {
     return {
       key,
       label: getCourseLabel(representative, key),
+      code: cleanValue(representative.curso_codigo || representative.codigo_individual || key, 'Sin código'),
+      name: cleanValue(representative.curso_nombre, 'Sin nombre'),
+      instructors: [...new Set(groupedRows.flatMap((row) => String(row.curso_instructor || '').split(/[&,;|]/).map((value) => value.trim()).filter(Boolean)))],
       matters: [...matters],
       typologies: [...typologies],
       plans: [...plans],
@@ -269,6 +293,58 @@ function ActiveFilterChips({ scormFilters, courseFilters, onToggleScorm, onToggl
   );
 }
 
+function FilteredScormList({ rows }) {
+  return (
+    <section className="analytics-results-section filter-scorm">
+      <div className="analytics-results-heading">
+        <div><span className="analytics-eyebrow">Resultado filtrado</span><h2>Lista de SCORMs</h2></div>
+        <strong>{formatCount(rows.length)} SCORMs</strong>
+      </div>
+      <div className="analytics-results-table-wrap">
+        <table className="analytics-results-table">
+          <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Responsable</th><th>Idioma</th><th>Estado</th></tr></thead>
+          <tbody>
+            {rows.map((row) => <tr key={row.id}>
+              <td>{cleanValue(row.scorm_code, '-')}</td><td>{cleanValue(row.scorm_name, '-')}</td>
+              <td>{cleanValue(row.scorm_categoria, '-')}</td><td>{cleanValue(row.scorm_responsable, '-')}</td>
+              <td>{cleanValue(row.scorm_idioma, '-')}</td><td>{cleanValue(row.scorm_estado, '-')}</td>
+            </tr>)}
+            {!rows.length && <tr><td colSpan="6" className="analytics-results-empty">No hay SCORMs compatibles con la selección actual.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function FilteredCourseList({ courses, compatibleScormReferences, hasScormFilters }) {
+  return (
+    <section className="analytics-results-section filter-course">
+      <div className="analytics-results-heading">
+        <div><span className="analytics-eyebrow">Resultado filtrado</span><h2>Lista de cursos</h2></div>
+        <strong>{formatCount(courses.length)} cursos</strong>
+      </div>
+      <div className="analytics-results-table-wrap">
+        <table className="analytics-results-table">
+          <thead><tr><th>Código</th><th>Nombre</th><th>Materia</th><th>Tipología</th><th>Planes de aprendizaje</th><th>Nº SCORMs</th></tr></thead>
+          <tbody>
+            {courses.map((course) => {
+              const scormCount = hasScormFilters
+                ? course.scorms.filter((reference) => courseReferenceMatchesMasterReferences(reference, compatibleScormReferences)).length
+                : course.scorms.length;
+              return <tr key={course.key}>
+                <td>{course.code}</td><td>{course.name}</td><td>{course.matters.join(', ') || '-'}</td>
+                <td>{course.typologies.join(', ') || '-'}</td><td>{course.plans.join(', ') || '-'}</td><td>{formatCount(scormCount)}</td>
+              </tr>;
+            })}
+            {!courses.length && <tr><td colSpan="6" className="analytics-results-empty">No hay cursos compatibles con la selección actual.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function MeasureToggle({ value, onChange }) {
   return (
     <div className="analytics-measure-toggle" aria-label="Cambiar medida">
@@ -280,18 +356,19 @@ function MeasureToggle({ value, onChange }) {
 
 export default function StatisticsPage() {
   const router = useRouter();
+  const [persistedAnalyticsState] = useState(() => readPersistedAnalyticsState());
   const [authReady, setAuthReady] = useState(false);
   const [userSession, setUserSession] = useState(null);
-  const [activeSection, setActiveSection] = useState('scorms');
+  const [activeSection, setActiveSection] = useState(persistedAnalyticsState?.activeSection === 'cursos' ? 'cursos' : 'scorms');
   const [scormRows, setScormRows] = useState([]);
   const [courseRows, setCourseRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [scormFilters, setScormFilters] = useState(EMPTY_SCORM_FILTERS);
-  const [courseFilters, setCourseFilters] = useState(EMPTY_COURSE_FILTERS);
-  const [matterMeasure, setMatterMeasure] = useState('courses');
-  const [typologyMeasure, setTypologyMeasure] = useState('courses');
-  const [planMeasure, setPlanMeasure] = useState('courses');
+  const [scormFilters, setScormFilters] = useState(() => restoreFilterState(EMPTY_SCORM_FILTERS, persistedAnalyticsState?.scormFilters));
+  const [courseFilters, setCourseFilters] = useState(() => restoreFilterState(EMPTY_COURSE_FILTERS, persistedAnalyticsState?.courseFilters));
+  const [matterMeasure, setMatterMeasure] = useState(persistedAnalyticsState?.matterMeasure === 'scorms' ? 'scorms' : 'courses');
+  const [typologyMeasure, setTypologyMeasure] = useState(persistedAnalyticsState?.typologyMeasure === 'scorms' ? 'scorms' : 'courses');
+  const [planMeasure, setPlanMeasure] = useState(persistedAnalyticsState?.planMeasure === 'scorms' ? 'scorms' : 'courses');
 
   useEffect(() => {
     let mounted = true;
@@ -304,7 +381,7 @@ export default function StatisticsPage() {
     const loadRows = async () => {
       try {
         const [scormResponse, courseResponse] = await Promise.all([
-          supabase.from('scorms_master').select('id, scorm_code, scorm_categoria, scorm_responsable, scorm_idioma, created_at').order('id', { ascending: true }),
+          supabase.from('scorms_master').select('id, scorm_code, scorm_name, scorm_categoria, scorm_responsable, scorm_idioma, scorm_estado, created_at').order('id', { ascending: true }),
           supabase.from('scorms_cursos').select('*').order('id', { ascending: true }),
         ]);
         if (!mounted) return;
@@ -348,6 +425,17 @@ export default function StatisticsPage() {
     loadDashboard();
     return () => { mounted = false; };
   }, [router]);
+
+  useEffect(() => {
+    globalThis?.localStorage?.setItem(ANALYTICS_STATE_STORAGE_KEY, JSON.stringify({
+      activeSection,
+      scormFilters,
+      courseFilters,
+      matterMeasure,
+      typologyMeasure,
+      planMeasure,
+    }));
+  }, [activeSection, scormFilters, courseFilters, matterMeasure, typologyMeasure, planMeasure]);
 
   const scormAvailableValues = useMemo(() => Object.keys(SCORM_DIMENSIONS).reduce((result, dimension) => {
     result[dimension] = [...new Set(scormRows.flatMap((row) => scormValuesForDimension(row, dimension)))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
@@ -488,6 +576,7 @@ export default function StatisticsPage() {
               <HorizontalBarChart data={scormChartData.category} selectedValues={scormFilters.category} onToggle={(value) => toggleScormFilter('category', value)} ariaLabel="SCORMs por categoría" emptyMessage="No hay categorías para los filtros actuales." unitLabel="SCORMs" /></article>
             <article className="analytics-chart-card"><header><div><span>Gráfico 2</span><h2>SCORMs por responsable</h2></div><strong>Nº SCORMs</strong></header><p className="analytics-chart-help">Desplázate horizontalmente para consultar todos los responsables.</p><VerticalBarChart data={scormChartData.responsible} selectedValues={scormFilters.responsible} onToggle={(value) => toggleScormFilter('responsible', value)} /></article>
             <article className="analytics-chart-card"><header><div><span>Gráfico 3</span><h2>SCORMs por idioma</h2></div><strong>Nº SCORMs</strong></header><p className="analytics-chart-help">El total central se actualiza con todos los filtros aplicados.</p><PieChart data={filteredLanguageData} total={filteredScormRows.length} selectedValues={scormFilters.language} onToggle={(value) => toggleScormFilter('language', value)} /></article>
+            <FilteredScormList rows={filteredScormRows} />
           </div>}
         </> : <>
           <aside className="analytics-filter-panel" aria-label="Filtros de cursos">
@@ -508,6 +597,7 @@ export default function StatisticsPage() {
             </div>
             <section className="analytics-plans-section"><div className="analytics-plans-heading"><div><span className="analytics-eyebrow">Planes de aprendizaje</span><h2>PA (Código - Nombre)</h2></div><MeasureToggle value={planMeasure} onChange={setPlanMeasure} /></div><p className="analytics-chart-help">La medida puede mostrar cursos únicos o asociaciones SCORM de cada plan.</p>
               <HorizontalBarChart data={courseChartData.plan} selectedValues={courseFilters.plan} onToggle={(value) => toggleCourseFilter('plan', value)} ariaLabel="Cursos o SCORMs por plan de aprendizaje" emptyMessage="No hay planes de aprendizaje para los filtros actuales." unitLabel={planMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} filterScope="plan" /></section>
+            <FilteredCourseList courses={filteredCourses} compatibleScormReferences={scormFilteredReferences} hasScormFilters={Boolean(scormFilterCount)} />
           </div>}
         </>}
       </section>

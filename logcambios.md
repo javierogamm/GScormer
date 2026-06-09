@@ -1,3 +1,21 @@
+## v1.81.0 - Listas de resultados y persistencia de filtros estadísticos
+
+### Cambios consolidados
+- Se añade debajo de los gráficos de **SCORMs** una lista plana con todos los SCORMs compatibles con la selección asociativa actual, mostrando código, nombre, categoría, responsable, idioma y estado.
+- Se añade debajo de los gráficos y planes de **CURSOS** una lista plana con los cursos filtrados, mostrando código, nombre, materia, tipología, planes de aprendizaje y número de SCORMs compatibles.
+- Ambas listas muestran el contador total de resultados, cabecera fija y scroll vertical/horizontal para consultar selecciones amplias.
+- Los filtros de SCORMs, cursos y PA se guardan en `gscormer_analytics_state` y se restauran al volver a `/estadisticas`, incluso después de salir a la vista de gestión.
+- También se conservan la sección activa y las medidas elegidas para materia, tipología y planes de aprendizaje.
+- La restauración valida la estructura de filtros persistida para mantener compatibilidad con estados incompletos o antiguos.
+- La acción **Quitar todos** continúa limpiando la selección activa y actualiza inmediatamente el estado persistido.
+- Se actualiza la versión visible de APP y `package.json` a `1.81.0`.
+
+### Versionado
+- Versión anterior: `1.80.0`
+- Nueva versión consolidada: `1.81.0`
+
+---
+
 ## v1.80.0 - Filtros asociativos entre SCORMs, cursos y PA
 
 ### Cambios consolidados
