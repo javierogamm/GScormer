@@ -139,7 +139,32 @@ export default function HomePage() {
   useEffect(() => {
     let isMounted = true;
 
+    const readStoredSession = () => {
+      try {
+        const storedValue = globalThis?.localStorage?.getItem(SESSION_STORAGE_KEY);
+        if (!storedValue) {
+          return null;
+        }
+
+        const storedSession = JSON.parse(storedValue);
+        if (!storedSession?.id || !storedSession?.name) {
+          return null;
+        }
+
+        return storedSession;
+      } catch (_error) {
+        return null;
+      }
+    };
+
     const reconnectBrowserSession = async () => {
+      const storedSession = readStoredSession();
+
+      if (storedSession) {
+        applyUserSession(storedSession);
+        setAuthReady(true);
+      }
+
       try {
         const response = await fetch('/api/auth/session', {
           method: 'GET',
@@ -159,14 +184,15 @@ export default function HomePage() {
         }
 
         if (response.ok && sessionJson?.user) {
-          applyUserSession(sessionJson.user);
-          setAuthReady(true);
+          applyUserSession({ ...storedSession, ...sessionJson.user });
           return;
         }
 
-        clearStoredSession();
+        if (!storedSession) {
+          clearStoredSession();
+        }
       } catch (_error) {
-        if (isMounted) {
+        if (isMounted && !storedSession) {
           clearStoredSession();
         }
       } finally {

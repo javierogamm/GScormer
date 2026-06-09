@@ -1,3 +1,18 @@
+## v1.79.1 - Retorno a gestión sin relogueo
+
+### Cambios consolidados
+- La pantalla principal recupera inmediatamente la sesión activa almacenada en `gscormer_user_session` cuando se vuelve desde `/estadisticas`.
+- El botón **Volver a gestión** mantiene la navegación interna existente y ya no conduce al formulario de acceso durante la renovación de la sesión.
+- La validación mediante `/api/auth/session` se conserva en segundo plano para actualizar los datos del usuario sin bloquear la entrada a la gestión.
+- Si la renovación del servidor falla puntualmente, la sesión local válida se mantiene y no se elimina; el login solo se muestra cuando no existe ninguna sesión almacenada ni renovable.
+- Se actualiza la versión visible de APP y `package.json` a `1.79.1`.
+
+### Versionado
+- Versión anterior: `1.79.0`
+- Nueva versión consolidada: `1.79.1`
+
+---
+
 ## v1.79.0 - Analítica de cursos y planes de aprendizaje
 
 ### Cambios consolidados
