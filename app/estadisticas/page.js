@@ -272,7 +272,6 @@ export default function StatisticsPage() {
         setUserSession(storedSession);
         setAuthReady(true);
         loadRows();
-        refreshServerSession(storedSession);
         return;
       }
       if (!await refreshServerSession(null)) { if (mounted) router.replace('/'); return; }

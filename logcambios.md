@@ -1,3 +1,19 @@
+## v1.79.2 - Conservación de la cookie al navegar entre gestión y estadísticas
+
+### Cambios consolidados
+- Se corrige el error **No se pudieron cargar los datos: Sesión no válida** que podía aparecer al volver desde estadísticas.
+- Cuando existe `gscormer_user_session`, la pantalla principal restaura la sesión y comienza la carga de datos sin ejecutar una renovación adicional de `/api/auth/session` que pudiera invalidar la cookie `gscormer_session`.
+- La vista estadística aplica la misma regla: durante la navegación interna reutiliza la sesión existente sin renovar ni eliminar la cookie del servidor.
+- La validación mediante `/api/auth/session` se mantiene para accesos directos en los que no existe ninguna sesión local, preservando el control de acceso inicial.
+- Las peticiones de datos a `/api/db` conservan así la cookie autenticada creada durante el login original.
+- Se actualiza la versión visible de APP y `package.json` a `1.79.2`.
+
+### Versionado
+- Versión anterior: `1.79.1`
+- Nueva versión consolidada: `1.79.2`
+
+---
+
 ## v1.79.1 - Retorno a gestión sin relogueo
 
 ### Cambios consolidados

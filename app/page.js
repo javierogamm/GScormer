@@ -163,6 +163,7 @@ export default function HomePage() {
       if (storedSession) {
         applyUserSession(storedSession);
         setAuthReady(true);
+        return;
       }
 
       try {
@@ -184,15 +185,13 @@ export default function HomePage() {
         }
 
         if (response.ok && sessionJson?.user) {
-          applyUserSession({ ...storedSession, ...sessionJson.user });
+          applyUserSession(sessionJson.user);
           return;
         }
 
-        if (!storedSession) {
-          clearStoredSession();
-        }
+        clearStoredSession();
       } catch (_error) {
-        if (isMounted && !storedSession) {
+        if (isMounted) {
           clearStoredSession();
         }
       } finally {
