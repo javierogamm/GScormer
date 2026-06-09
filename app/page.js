@@ -458,6 +458,9 @@ export default function HomePage() {
             >
               CURSOS
             </button>
+            <button type="button" className="secondary analytics-entry-button" onClick={() => { globalThis.location.href = '/estadisticas'; }}>
+              <span aria-hidden="true">▥</span> ESTADÍSTICAS
+            </button>
             <button type="button" className="secondary" onClick={openAgentModal}>
               Asociar mi usuario a agente
             </button>

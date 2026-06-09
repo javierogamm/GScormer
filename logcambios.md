@@ -1,3 +1,20 @@
+## v1.78.0 - Vista estadística interactiva para SCORMs
+
+### Cambios consolidados
+- Se incorpora el acceso **ESTADÍSTICAS** en la cabecera principal y una URL independiente en `/estadisticas`, protegida por la sesión existente de GScormer.
+- Se crea un espacio analítico con secciones por pestañas para **SCORMs** y **CURSOS**, además de hojas de **Vista general** y **Detalle de selección**.
+- La hoja general de SCORMs incluye los tres gráficos solicitados: barras horizontales por categoría con scroll vertical y diez barras visibles, barras verticales por responsable con scroll horizontal y gráfico de tarta por idioma.
+- Los gráficos funcionan como filtros contextuales: al seleccionar una barra, porción o elemento de leyenda se recalculan los demás gráficos; una segunda selección permite retirar el filtro.
+- Se añade selección múltiple por categoría, responsable e idioma, filtros por rango de fechas, chips para retirar criterios individualmente y una acción para limpiar toda la selección.
+- Se añade una hoja de detalle que resume el resultado filtrado y permite continuar aplicando filtros sobre cualquiera de las dimensiones disponibles.
+- Se actualiza la versión visible de APP y `package.json` a `1.78.0`.
+
+### Versionado
+- Versión anterior: `1.77.1`
+- Nueva versión consolidada: `1.78.0`
+
+---
+
 ## v1.77.1 - Panel lateral integrado y acciones fijas en detalle de curso
 
 ### Cambios consolidados
