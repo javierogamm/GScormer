@@ -1954,8 +1954,7 @@ textarea:focus {
   overflow: hidden;
 }
 
-.analytics-section-tabs,
-.analytics-sheet-tabs {
+.analytics-section-tabs {
   display: flex;
   gap: 0.35rem;
   padding: 0 1.2rem;
@@ -1967,28 +1966,17 @@ textarea:focus {
   background: #f7fbff;
 }
 
-.analytics-section-tabs button,
-.analytics-sheet-tabs button {
+.analytics-section-tabs button {
   position: relative;
   border-radius: 9px 9px 0 0;
   background: transparent;
   color: var(--muted);
 }
 
-.analytics-section-tabs button.is-active,
-.analytics-sheet-tabs button.is-active {
+.analytics-section-tabs button.is-active {
   background: #fff;
   color: #174d78;
   box-shadow: inset 0 -3px #2fa6c9;
-}
-
-.analytics-sheet-tabs {
-  padding-top: 0.6rem;
-  background: #fff;
-}
-
-.analytics-sheet-tabs button {
-  font-size: 0.82rem;
 }
 
 .analytics-filter-panel {
@@ -2328,86 +2316,12 @@ textarea:focus {
   margin: 1rem 1.2rem 0;
 }
 
-.analytics-coming-soon {
-  display: grid;
-  place-items: center;
-  min-height: 480px;
-  padding: 2rem;
-  text-align: center;
-}
-
-.analytics-coming-soon span {
-  color: #2b94b3;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-}
-
-.analytics-coming-soon h2 {
-  margin-bottom: 0;
-  color: #173e62;
-}
-
-.analytics-coming-soon p {
-  max-width: 620px;
-  color: var(--muted);
-}
-
-.analytics-detail-sheet {
-  display: grid;
-  grid-template-columns: 210px repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  padding: 1rem 1.2rem 1.2rem;
-}
-
-.analytics-detail-sheet > div,
-.analytics-detail-sheet section {
-  padding: 1rem;
-  border: 1px solid #d8e5f2;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.analytics-detail-sheet > div {
-  display: grid;
-  align-content: center;
-  text-align: center;
-}
-
-.analytics-detail-sheet > div strong {
-  color: #2487a7;
-  font-size: 2.5rem;
-}
-
-.analytics-detail-sheet section h3 {
-  margin-top: 0;
-}
-
-.analytics-detail-sheet section > div {
-  display: grid;
-  gap: 0.35rem;
-  max-height: 420px;
-  overflow-y: auto;
-}
-
-.analytics-detail-sheet section button {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background: #f3f8fc;
-  color: #315776;
-  font-size: 0.75rem;
-  text-align: left;
-}
-
 @media (max-width: 1100px) {
   .analytics-filter-controls {
     grid-template-columns: repeat(2, minmax(170px, 1fr));
   }
 
-  .analytics-grid,
-  .analytics-detail-sheet {
+  .analytics-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2430,5 +2344,112 @@ textarea:focus {
 
   .analytics-horizontal-row {
     grid-template-columns: minmax(100px, 38%) 1fr 36px;
+  }
+}
+
+.analytics-filter-controls-courses {
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+}
+
+.analytics-courses-layout {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.2rem 1.2rem;
+}
+
+.analytics-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.analytics-courses-grid .analytics-scroll-vertical {
+  max-height: 456px;
+}
+
+.analytics-courses-grid .analytics-horizontal-row {
+  grid-template-columns: minmax(115px, 36%) 1fr 42px;
+}
+
+.analytics-measure-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 1px solid #cdddec;
+  border-radius: 9px;
+  background: #edf4fa;
+}
+
+.analytics-measure-toggle button {
+  padding: 0.32rem 0.5rem;
+  border-radius: 6px;
+  background: transparent;
+  color: #607b94;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.analytics-measure-toggle button:hover {
+  transform: none;
+}
+
+.analytics-measure-toggle button.is-active {
+  background: #fff;
+  color: #176b83;
+  box-shadow: 0 1px 5px rgba(38, 87, 126, 0.16);
+}
+
+.analytics-plans-section {
+  padding: 1rem;
+  border: 1px solid #c9deed;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f6fbff, #fff);
+  box-shadow: 0 7px 20px rgba(42, 91, 132, 0.08);
+}
+
+.analytics-plans-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.analytics-plans-heading h2 {
+  margin: 0.2rem 0 0;
+  color: #173e62;
+  font-size: 1.08rem;
+}
+
+.analytics-plans-section .analytics-scroll-vertical {
+  max-height: 570px;
+}
+
+@media (max-width: 1320px) {
+  .analytics-courses-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .analytics-courses-grid .analytics-chart-card:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .analytics-filter-controls-courses,
+  .analytics-courses-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-courses-grid .analytics-chart-card:first-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .analytics-plans-heading,
+  .analytics-chart-card header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

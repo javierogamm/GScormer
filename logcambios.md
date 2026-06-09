@@ -1,3 +1,22 @@
+## v1.79.0 - Analítica de cursos y planes de aprendizaje
+
+### Cambios consolidados
+- El gráfico de tarta de SCORMs recalcula ahora tanto sus porciones como el total central utilizando exactamente el conjunto resultante de todos los filtros aplicados, incluido el filtro de idioma.
+- Se elimina la hoja y la navegación de **Detalle de selección**, dejando una única hoja analítica por cada sección.
+- Se desarrolla la sección **CURSOS** con filtros cruzados por curso, materia, tipología y plan de aprendizaje.
+- Se añade el gráfico horizontal **SCORMs por curso**, con scroll vertical y medida fija de número de SCORMs asociados.
+- Se añaden gráficos horizontales por **Materia** y **Tipología**, ambos con scroll vertical y selector para alternar la medida entre **Nº Cursos** y **Nº SCORMs**.
+- Se incorpora debajo de los gráficos de cursos el bloque **PLANES DE APRENDIZAJE**, agrupado por `PA Código - PA Nombre`, con barras horizontales y selector de medida entre **Nº Cursos** y **Nº SCORMs**.
+- Los cursos se consolidan por su identificador único disponible para evitar duplicar conteos por traducciones o vinculaciones a varios PA; los SCORMs se obtienen de las referencias guardadas en `contenido`.
+- Las selecciones realizadas en cualquier gráfico o filtro de CURSOS se aplican contextualmente al resto de gráficos y se pueden retirar individualmente o mediante **Quitar todos**.
+- Se actualiza la versión visible de APP y `package.json` a `1.79.0`.
+
+### Versionado
+- Versión anterior: `1.78.1`
+- Nueva versión consolidada: `1.79.0`
+
+---
+
 ## v1.78.1 - Acceso a estadísticas sin relogueo
 
 ### Cambios consolidados
