@@ -76,6 +76,55 @@ const extractScormReferences = (contenido) => {
   return references;
 };
 
+const getScormReferenceCode = (reference) => normalizeText(reference).match(/(SCR\d{4})$/)?.[1] || '';
+
+const getMasterScormReference = (row) => {
+  const code = normalizeText(row.scorm_code);
+  const language = normalizeText(row.scorm_idioma);
+  if (!code) return '';
+  return language ? `${language}-${code}` : code;
+};
+
+const collectCourseScormReferences = (courses) => {
+  const references = new Set();
+  courses.forEach((course) => course.scorms.forEach((reference) => {
+    const normalized = normalizeText(reference);
+    if (normalized) references.add(normalized);
+  }));
+  return references;
+};
+
+const collectMasterScormReferences = (rows) => {
+  const references = new Set();
+  rows.forEach((row) => {
+    const reference = getMasterScormReference(row);
+    if (reference) references.add(reference);
+  });
+  return references;
+};
+
+const courseReferenceMatchesMasterReferences = (courseReference, masterReferences) => {
+  const normalized = normalizeText(courseReference);
+  const code = getScormReferenceCode(normalized);
+  if (!code) return false;
+  if (normalized !== code) return masterReferences.has(normalized);
+  return [...masterReferences].some((reference) => getScormReferenceCode(reference) === code);
+};
+
+const courseMatchesScormReferences = (course, references) => course.scorms.some((reference) =>
+  courseReferenceMatchesMasterReferences(reference, references)
+);
+
+const masterScormMatchesReferences = (row, courseReferences) => {
+  const masterReference = getMasterScormReference(row);
+  const code = getScormReferenceCode(masterReference);
+  if (!masterReference || !code) return false;
+  return [...courseReferences].some((reference) => {
+    const normalized = normalizeText(reference);
+    return normalized === code ? true : normalized === masterReference;
+  });
+};
+
 const buildCourseModels = (rows) => {
   const grouped = new Map();
 
@@ -113,14 +162,14 @@ const buildCourseModels = (rows) => {
   }).sort((left, right) => left.label.localeCompare(right.label, 'es', { sensitivity: 'base' }));
 };
 
-function HorizontalBarChart({ data, selectedValues = [], onToggle, ariaLabel, emptyMessage, unitLabel }) {
+function HorizontalBarChart({ data, selectedValues = [], onToggle, ariaLabel, emptyMessage, unitLabel, filterScope = 'scorm' }) {
   const maxValue = Math.max(...data.map((item) => item.value), 1);
   return (
     <div className="analytics-scroll analytics-scroll-vertical" role="list" aria-label={ariaLabel}>
       {data.map((item) => {
         const selected = selectedValues.includes(item.label);
         return (
-          <button type="button" className={`analytics-horizontal-row${selected ? ' is-selected' : ''}`} key={item.label}
+          <button type="button" className={`analytics-horizontal-row filter-${filterScope}${selected ? ' is-selected' : ''}`} key={item.label}
             onClick={() => onToggle(item.label)} title={`${item.label}: ${formatCount(item.value)} ${unitLabel}`} aria-pressed={selected}>
             <span className="analytics-axis-label">{item.label}</span>
             <span className="analytics-horizontal-track"><span className="analytics-horizontal-bar" style={{ width: `${Math.max((item.value / maxValue) * 100, item.value ? 2 : 0)}%` }} /></span>
@@ -133,7 +182,7 @@ function HorizontalBarChart({ data, selectedValues = [], onToggle, ariaLabel, em
   );
 }
 
-function VerticalBarChart({ data, selectedValues, onToggle }) {
+function VerticalBarChart({ data, selectedValues, onToggle, filterScope = 'scorm' }) {
   const maxValue = Math.max(...data.map((item) => item.value), 1);
   return (
     <div className="analytics-scroll analytics-scroll-horizontal" aria-label="SCORMs por responsable">
@@ -141,7 +190,7 @@ function VerticalBarChart({ data, selectedValues, onToggle }) {
         {data.map((item) => {
           const selected = selectedValues.includes(item.label);
           return (
-            <button type="button" className={`analytics-vertical-item${selected ? ' is-selected' : ''}`} key={item.label}
+            <button type="button" className={`analytics-vertical-item filter-${filterScope}${selected ? ' is-selected' : ''}`} key={item.label}
               onClick={() => onToggle(item.label)} title={`${item.label}: ${formatCount(item.value)} SCORMs`} aria-pressed={selected}>
               <strong>{formatCount(item.value)}</strong>
               <span className="analytics-vertical-track"><span className="analytics-vertical-bar" style={{ height: `${Math.max((item.value / maxValue) * 100, 3)}%` }} /></span>
@@ -165,7 +214,7 @@ const piePath = (startAngle, endAngle) => {
   return `M 50 50 L ${start.x} ${start.y} A 46 46 0 ${endAngle - startAngle > 180 ? 1 : 0} 1 ${end.x} ${end.y} Z`;
 };
 
-function PieChart({ data, selectedValues, onToggle, total }) {
+function PieChart({ data, selectedValues, onToggle, total, filterScope = 'scorm' }) {
   const sliceTotal = data.reduce((sum, item) => sum + item.value, 0);
   let accumulatedAngle = 0;
   return (
@@ -179,7 +228,7 @@ function PieChart({ data, selectedValues, onToggle, total }) {
             accumulatedAngle += sliceAngle;
             const selected = selectedValues.includes(item.label);
             return <path key={item.label} d={piePath(startAngle, endAngle)} fill={PIE_COLORS[index % PIE_COLORS.length]}
-              className={selected ? 'is-selected' : ''} onClick={() => onToggle(item.label)} role="button" tabIndex="0"
+              className={`${filterScope === 'scorm' ? 'filter-scorm' : `filter-${filterScope}`}${selected ? ' is-selected' : ''}`} onClick={() => onToggle(item.label)} role="button" tabIndex="0"
               aria-label={`${item.label}: ${formatCount(item.value)} SCORMs`} aria-pressed={selected}
               onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onToggle(item.label); } }} />;
           }) : <circle cx="50" cy="50" r="46" fill="#e8eef7" />}
@@ -189,7 +238,7 @@ function PieChart({ data, selectedValues, onToggle, total }) {
       <div className="analytics-legend">
         {data.map((item, index) => {
           const selected = selectedValues.includes(item.label);
-          return <button type="button" className={`analytics-legend-item${selected ? ' is-selected' : ''}`} key={item.label}
+          return <button type="button" className={`analytics-legend-item filter-${filterScope}${selected ? ' is-selected' : ''}`} key={item.label}
             onClick={() => onToggle(item.label)} aria-pressed={selected}>
             <span className="analytics-legend-color" style={{ background: PIE_COLORS[index % PIE_COLORS.length] }} />
             <span>{item.label}</span><strong>{formatCount(item.value)}</strong>
@@ -197,6 +246,25 @@ function PieChart({ data, selectedValues, onToggle, total }) {
         })}
         {!data.length && <div className="analytics-empty-chart">No hay idiomas para los filtros actuales.</div>}
       </div>
+    </div>
+  );
+}
+
+function ActiveFilterChips({ scormFilters, courseFilters, onToggleScorm, onToggleCourse, onClearDate }) {
+  return (
+    <div className="analytics-filter-chips">
+      {Object.keys(SCORM_DIMENSIONS).flatMap((dimension) => scormFilters[dimension].map((value) => (
+        <button type="button" className="filter-scorm" key={`scorm-${dimension}-${value}`} onClick={() => onToggleScorm(dimension, value)}>
+          <span>{SCORM_DIMENSIONS[dimension].label}: {value}</span><strong>×</strong>
+        </button>
+      )))}
+      {scormFilters.dateFrom && <button type="button" className="filter-scorm" onClick={() => onClearDate('dateFrom')}><span>Desde: {scormFilters.dateFrom}</span><strong>×</strong></button>}
+      {scormFilters.dateTo && <button type="button" className="filter-scorm" onClick={() => onClearDate('dateTo')}><span>Hasta: {scormFilters.dateTo}</span><strong>×</strong></button>}
+      {Object.keys(COURSE_DIMENSIONS).flatMap((dimension) => courseFilters[dimension].map((value) => (
+        <button type="button" className={dimension === 'plan' ? 'filter-plan' : 'filter-course'} key={`course-${dimension}-${value}`} onClick={() => onToggleCourse(dimension, value)}>
+          <span>{COURSE_DIMENSIONS[dimension].label}: {value}</span><strong>×</strong>
+        </button>
+      )))}
     </div>
   );
 }
@@ -236,7 +304,7 @@ export default function StatisticsPage() {
     const loadRows = async () => {
       try {
         const [scormResponse, courseResponse] = await Promise.all([
-          supabase.from('scorms_master').select('id, scorm_categoria, scorm_responsable, scorm_idioma, created_at').order('id', { ascending: true }),
+          supabase.from('scorms_master').select('id, scorm_code, scorm_categoria, scorm_responsable, scorm_idioma, created_at').order('id', { ascending: true }),
           supabase.from('scorms_cursos').select('*').order('id', { ascending: true }),
         ]);
         if (!mounted) return;
@@ -286,7 +354,20 @@ export default function StatisticsPage() {
     return result;
   }, {}), [scormRows]);
 
-  const rowsMatchingScormFilters = (excludedDimension = '') => scormRows.filter((row) => {
+  const courseModels = useMemo(() => buildCourseModels(courseRows), [courseRows]);
+  const courseValues = (course, dimension) => {
+    if (dimension === 'course') return [course.label];
+    if (dimension === 'matter') return course.matters;
+    if (dimension === 'typology') return course.typologies;
+    return course.plans;
+  };
+
+  const scormFilterCount = Object.keys(SCORM_DIMENSIONS).reduce((sum, dimension) => sum + scormFilters[dimension].length, 0)
+    + Number(Boolean(scormFilters.dateFrom)) + Number(Boolean(scormFilters.dateTo));
+  const courseFilterCount = Object.keys(COURSE_DIMENSIONS).reduce((sum, dimension) => sum + courseFilters[dimension].length, 0);
+  const totalFilterCount = scormFilterCount + courseFilterCount;
+
+  const rowsMatchingOwnScormFilters = (excludedDimension = '') => scormRows.filter((row) => {
     const matches = Object.keys(SCORM_DIMENSIONS).every((dimension) => dimension === excludedDimension || !scormFilters[dimension].length
       || scormValuesForDimension(row, dimension).some((value) => scormFilters[dimension].includes(value)));
     if (!matches) return false;
@@ -295,29 +376,48 @@ export default function StatisticsPage() {
       && !(scormFilters.dateTo && (!rowDate || rowDate > scormFilters.dateTo));
   });
 
-  const filteredScormRows = useMemo(() => rowsMatchingScormFilters(), [scormFilters, scormRows]);
+  const coursesMatchingOwnFilters = (excludedDimension = '') => courseModels.filter((course) => Object.keys(COURSE_DIMENSIONS).every((dimension) =>
+    dimension === excludedDimension || !courseFilters[dimension].length || courseValues(course, dimension).some((value) => courseFilters[dimension].includes(value))));
+
+  const courseFilteredReferences = useMemo(
+    () => collectCourseScormReferences(coursesMatchingOwnFilters()),
+    [courseFilters, courseModels]
+  );
+  const scormFilteredReferences = useMemo(
+    () => collectMasterScormReferences(rowsMatchingOwnScormFilters()),
+    [scormFilters, scormRows]
+  );
+
+  const applyCourseCompatibilityToScorms = (rows) => courseFilterCount
+    ? rows.filter((row) => masterScormMatchesReferences(row, courseFilteredReferences))
+    : rows;
+  const applyScormCompatibilityToCourses = (courses) => scormFilterCount
+    ? courses.filter((course) => courseMatchesScormReferences(course, scormFilteredReferences))
+    : courses;
+
+  const filteredScormRows = useMemo(
+    () => applyCourseCompatibilityToScorms(rowsMatchingOwnScormFilters()),
+    [scormFilters, courseFilters, scormRows, courseModels]
+  );
+  const filteredCourses = useMemo(
+    () => applyScormCompatibilityToCourses(coursesMatchingOwnFilters()),
+    [scormFilters, courseFilters, scormRows, courseModels]
+  );
+
   const scormChartData = useMemo(() => Object.keys(SCORM_DIMENSIONS).reduce((result, dimension) => {
     const counts = new Map();
-    rowsMatchingScormFilters(dimension).forEach((row) => scormValuesForDimension(row, dimension).forEach((value) => counts.set(value, (counts.get(value) || 0) + 1)));
+    applyCourseCompatibilityToScorms(rowsMatchingOwnScormFilters(dimension)).forEach((row) =>
+      scormValuesForDimension(row, dimension).forEach((value) => counts.set(value, (counts.get(value) || 0) + 1)));
     result[dimension] = [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'es'));
     return result;
-  }, {}), [scormFilters, scormRows]);
+  }, {}), [scormFilters, courseFilters, scormRows, courseModels]);
+
   const filteredLanguageData = useMemo(() => {
     const counts = new Map();
     filteredScormRows.forEach((row) => scormValuesForDimension(row, 'language').forEach((value) => counts.set(value, (counts.get(value) || 0) + 1)));
     return [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
   }, [filteredScormRows]);
 
-  const courseModels = useMemo(() => buildCourseModels(courseRows), [courseRows]);
-  const courseValues = (course, dimension) => {
-    if (dimension === 'course') return [course.label];
-    if (dimension === 'matter') return course.matters;
-    if (dimension === 'typology') return course.typologies;
-    return course.plans;
-  };
-  const coursesMatchingFilters = (excludedDimension = '') => courseModels.filter((course) => Object.keys(COURSE_DIMENSIONS).every((dimension) =>
-    dimension === excludedDimension || !courseFilters[dimension].length || courseValues(course, dimension).some((value) => courseFilters[dimension].includes(value))));
-  const filteredCourses = useMemo(() => coursesMatchingFilters(), [courseFilters, courseModels]);
   const courseAvailableValues = useMemo(() => Object.keys(COURSE_DIMENSIONS).reduce((result, dimension) => {
     result[dimension] = [...new Set(courseModels.flatMap((course) => courseValues(course, dimension)))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     return result;
@@ -325,11 +425,14 @@ export default function StatisticsPage() {
 
   const buildCourseDimensionData = (dimension, measure) => {
     const groups = new Map();
-    coursesMatchingFilters(dimension).forEach((course) => courseValues(course, dimension).forEach((label) => {
+    applyScormCompatibilityToCourses(coursesMatchingOwnFilters(dimension)).forEach((course) => courseValues(course, dimension).forEach((label) => {
       if (!groups.has(label)) groups.set(label, { courses: new Set(), scorms: new Set() });
       const group = groups.get(label);
       group.courses.add(course.key);
-      course.scorms.forEach((reference) => group.scorms.add(`${course.key}|${reference}`));
+      course.scorms.forEach((reference) => {
+        const isCompatibleScorm = !scormFilterCount || courseReferenceMatchesMasterReferences(reference, scormFilteredReferences);
+        if (isCompatibleScorm) group.scorms.add(`${course.key}|${reference}`);
+      });
     }));
     return [...groups.entries()].map(([label, group]) => ({ label, value: measure === 'scorms' ? group.scorms.size : group.courses.size }))
       .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'es'));
@@ -340,21 +443,24 @@ export default function StatisticsPage() {
     matter: buildCourseDimensionData('matter', matterMeasure),
     typology: buildCourseDimensionData('typology', typologyMeasure),
     plan: buildCourseDimensionData('plan', planMeasure),
-  }), [courseFilters, courseModels, matterMeasure, typologyMeasure, planMeasure]);
+  }), [scormFilters, courseFilters, scormRows, courseModels, matterMeasure, typologyMeasure, planMeasure]);
 
   const toggleScormFilter = (dimension, value) => setScormFilters((current) => ({ ...current,
     [dimension]: current[dimension].includes(value) ? current[dimension].filter((item) => item !== value) : [...current[dimension], value] }));
   const toggleCourseFilter = (dimension, value) => setCourseFilters((current) => ({ ...current,
     [dimension]: current[dimension].includes(value) ? current[dimension].filter((item) => item !== value) : [...current[dimension], value] }));
-  const scormFilterCount = Object.keys(SCORM_DIMENSIONS).reduce((sum, dimension) => sum + scormFilters[dimension].length, 0) + Number(Boolean(scormFilters.dateFrom)) + Number(Boolean(scormFilters.dateTo));
-  const courseFilterCount = Object.keys(COURSE_DIMENSIONS).reduce((sum, dimension) => sum + courseFilters[dimension].length, 0);
+  const clearAllFilters = () => {
+    setScormFilters(EMPTY_SCORM_FILTERS);
+    setCourseFilters(EMPTY_COURSE_FILTERS);
+  };
+  const clearScormDateFilter = (field) => setScormFilters((current) => ({ ...current, [field]: '' }));
 
   if (!authReady) return <main className="page auth-page"><section className="card auth-card"><h1>GScormer Analytics</h1><p className={loadError ? 'status error' : 'status'}>{loadError || 'Validando sesión...'}</p></section></main>;
 
   return (
     <main className="page analytics-page">
       <section className="card analytics-topbar">
-        <div><p className="analytics-eyebrow">GScormer · Versión {APP_VERSION}</p><h1>Vista estadística</h1><p className="status">Analiza la información y selecciona valores directamente sobre los gráficos.</p></div>
+        <div><p className="analytics-eyebrow">GScormer · Versión {APP_VERSION}</p><h1>Vista estadística</h1><p className="status">Los filtros se mantienen y cruzan automáticamente entre SCORMs, cursos y planes de aprendizaje.</p></div>
         <div className="header-actions"><button type="button" className="secondary" onClick={() => router.push('/')}>← Volver a gestión</button><span className="analytics-user"><span className="user-dot" />{userSession?.name}</span></div>
       </section>
 
@@ -366,18 +472,15 @@ export default function StatisticsPage() {
 
         {activeSection === 'scorms' ? <>
           <aside className="analytics-filter-panel" aria-label="Filtros de SCORMs">
-            <div className="analytics-filter-heading"><div><span className="analytics-eyebrow">Selección activa</span><strong>{scormFilterCount ? `${scormFilterCount} filtros aplicados` : 'Todos los SCORMs'}</strong></div>
-              <button type="button" className="secondary" onClick={() => setScormFilters(EMPTY_SCORM_FILTERS)} disabled={!scormFilterCount}>Quitar todos</button></div>
+            <div className="analytics-filter-heading"><div><span className="analytics-eyebrow">Selección asociativa</span><strong>{totalFilterCount ? `${totalFilterCount} filtros aplicados en SCORMs, cursos o PA` : 'Todos los SCORMs'}</strong></div>
+              <button type="button" className="secondary" onClick={clearAllFilters} disabled={!totalFilterCount}>Quitar todos</button></div>
             <div className="analytics-filter-controls">
               {Object.entries(SCORM_DIMENSIONS).map(([dimension, config]) => <label key={dimension}>{config.label}<select value="" onChange={(event) => event.target.value && toggleScormFilter(dimension, event.target.value)}><option value="">Seleccionar valor…</option>{scormAvailableValues[dimension].map((value) => <option value={value} key={value}>{value}</option>)}</select></label>)}
               <label>Fecha desde<input type="date" value={scormFilters.dateFrom} onChange={(event) => setScormFilters((current) => ({ ...current, dateFrom: event.target.value }))} /></label>
               <label>Fecha hasta<input type="date" value={scormFilters.dateTo} onChange={(event) => setScormFilters((current) => ({ ...current, dateTo: event.target.value }))} /></label>
             </div>
-            {scormFilterCount > 0 && <div className="analytics-filter-chips">
-              {Object.keys(SCORM_DIMENSIONS).flatMap((dimension) => scormFilters[dimension].map((value) => <button type="button" key={`${dimension}-${value}`} onClick={() => toggleScormFilter(dimension, value)}><span>{SCORM_DIMENSIONS[dimension].label}: {value}</span><strong>×</strong></button>))}
-              {scormFilters.dateFrom && <button type="button" onClick={() => setScormFilters((current) => ({ ...current, dateFrom: '' }))}><span>Desde: {scormFilters.dateFrom}</span><strong>×</strong></button>}
-              {scormFilters.dateTo && <button type="button" onClick={() => setScormFilters((current) => ({ ...current, dateTo: '' }))}><span>Hasta: {scormFilters.dateTo}</span><strong>×</strong></button>}
-            </div>}
+            {totalFilterCount > 0 && <ActiveFilterChips scormFilters={scormFilters} courseFilters={courseFilters}
+              onToggleScorm={toggleScormFilter} onToggleCourse={toggleCourseFilter} onClearDate={clearScormDateFilter} />}
           </aside>
           {loadError && <p className="status error analytics-message">{loadError}</p>}
           {loading ? <p className="status analytics-message">Cargando información estadística...</p> : <div className="analytics-grid">
@@ -388,22 +491,23 @@ export default function StatisticsPage() {
           </div>}
         </> : <>
           <aside className="analytics-filter-panel" aria-label="Filtros de cursos">
-            <div className="analytics-filter-heading"><div><span className="analytics-eyebrow">Selección activa</span><strong>{courseFilterCount ? `${courseFilterCount} filtros aplicados` : `${formatCount(filteredCourses.length)} cursos`}</strong></div>
-              <button type="button" className="secondary" onClick={() => setCourseFilters(EMPTY_COURSE_FILTERS)} disabled={!courseFilterCount}>Quitar todos</button></div>
+            <div className="analytics-filter-heading"><div><span className="analytics-eyebrow">Selección asociativa</span><strong>{totalFilterCount ? `${totalFilterCount} filtros aplicados en SCORMs, cursos o PA` : `${formatCount(filteredCourses.length)} cursos`}</strong></div>
+              <button type="button" className="secondary" onClick={clearAllFilters} disabled={!totalFilterCount}>Quitar todos</button></div>
             <div className="analytics-filter-controls analytics-filter-controls-courses">
               {Object.entries(COURSE_DIMENSIONS).map(([dimension, config]) => <label key={dimension}>{config.label}<select value="" onChange={(event) => event.target.value && toggleCourseFilter(dimension, event.target.value)}><option value="">Seleccionar valor…</option>{courseAvailableValues[dimension].map((value) => <option value={value} key={value}>{value}</option>)}</select></label>)}
             </div>
-            {courseFilterCount > 0 && <div className="analytics-filter-chips">{Object.keys(COURSE_DIMENSIONS).flatMap((dimension) => courseFilters[dimension].map((value) => <button type="button" key={`${dimension}-${value}`} onClick={() => toggleCourseFilter(dimension, value)}><span>{COURSE_DIMENSIONS[dimension].label}: {value}</span><strong>×</strong></button>))}</div>}
+            {totalFilterCount > 0 && <ActiveFilterChips scormFilters={scormFilters} courseFilters={courseFilters}
+              onToggleScorm={toggleScormFilter} onToggleCourse={toggleCourseFilter} onClearDate={clearScormDateFilter} />}
           </aside>
           {loadError && <p className="status error analytics-message">{loadError}</p>}
           {loading ? <p className="status analytics-message">Cargando información estadística...</p> : <div className="analytics-courses-layout">
             <div className="analytics-courses-grid">
-              <article className="analytics-chart-card"><header><div><span>Gráfico 1</span><h2>SCORMs por curso</h2></div><strong>Nº SCORMs</strong></header><p className="analytics-chart-help">Cada barra representa un curso único.</p><HorizontalBarChart data={courseChartData.course} selectedValues={courseFilters.course} onToggle={(value) => toggleCourseFilter('course', value)} ariaLabel="SCORMs por curso" emptyMessage="No hay cursos para los filtros actuales." unitLabel="SCORMs" /></article>
-              <article className="analytics-chart-card"><header><div><span>Gráfico 2</span><h2>Cursos por materia</h2></div><MeasureToggle value={matterMeasure} onChange={setMatterMeasure} /></header><p className="analytics-chart-help">Cambia la medida entre número de cursos y asociaciones SCORM.</p><HorizontalBarChart data={courseChartData.matter} selectedValues={courseFilters.matter} onToggle={(value) => toggleCourseFilter('matter', value)} ariaLabel="Cursos o SCORMs por materia" emptyMessage="No hay materias para los filtros actuales." unitLabel={matterMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} /></article>
-              <article className="analytics-chart-card"><header><div><span>Gráfico 3</span><h2>Cursos por tipología</h2></div><MeasureToggle value={typologyMeasure} onChange={setTypologyMeasure} /></header><p className="analytics-chart-help">Selecciona una tipología para filtrar todos los gráficos.</p><HorizontalBarChart data={courseChartData.typology} selectedValues={courseFilters.typology} onToggle={(value) => toggleCourseFilter('typology', value)} ariaLabel="Cursos o SCORMs por tipología" emptyMessage="No hay tipologías para los filtros actuales." unitLabel={typologyMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} /></article>
+              <article className="analytics-chart-card"><header><div><span>Gráfico 1</span><h2>SCORMs por curso</h2></div><strong>Nº SCORMs</strong></header><p className="analytics-chart-help">Cada barra representa un curso único.</p><HorizontalBarChart data={courseChartData.course} selectedValues={courseFilters.course} onToggle={(value) => toggleCourseFilter('course', value)} ariaLabel="SCORMs por curso" emptyMessage="No hay cursos para los filtros actuales." unitLabel="SCORMs" filterScope="course" /></article>
+              <article className="analytics-chart-card"><header><div><span>Gráfico 2</span><h2>Cursos por materia</h2></div><MeasureToggle value={matterMeasure} onChange={setMatterMeasure} /></header><p className="analytics-chart-help">Cambia la medida entre número de cursos y asociaciones SCORM.</p><HorizontalBarChart data={courseChartData.matter} selectedValues={courseFilters.matter} onToggle={(value) => toggleCourseFilter('matter', value)} ariaLabel="Cursos o SCORMs por materia" emptyMessage="No hay materias para los filtros actuales." unitLabel={matterMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} filterScope="course" /></article>
+              <article className="analytics-chart-card"><header><div><span>Gráfico 3</span><h2>Cursos por tipología</h2></div><MeasureToggle value={typologyMeasure} onChange={setTypologyMeasure} /></header><p className="analytics-chart-help">Selecciona una tipología para filtrar todos los gráficos.</p><HorizontalBarChart data={courseChartData.typology} selectedValues={courseFilters.typology} onToggle={(value) => toggleCourseFilter('typology', value)} ariaLabel="Cursos o SCORMs por tipología" emptyMessage="No hay tipologías para los filtros actuales." unitLabel={typologyMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} filterScope="course" /></article>
             </div>
             <section className="analytics-plans-section"><div className="analytics-plans-heading"><div><span className="analytics-eyebrow">Planes de aprendizaje</span><h2>PA (Código - Nombre)</h2></div><MeasureToggle value={planMeasure} onChange={setPlanMeasure} /></div><p className="analytics-chart-help">La medida puede mostrar cursos únicos o asociaciones SCORM de cada plan.</p>
-              <HorizontalBarChart data={courseChartData.plan} selectedValues={courseFilters.plan} onToggle={(value) => toggleCourseFilter('plan', value)} ariaLabel="Cursos o SCORMs por plan de aprendizaje" emptyMessage="No hay planes de aprendizaje para los filtros actuales." unitLabel={planMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} /></section>
+              <HorizontalBarChart data={courseChartData.plan} selectedValues={courseFilters.plan} onToggle={(value) => toggleCourseFilter('plan', value)} ariaLabel="Cursos o SCORMs por plan de aprendizaje" emptyMessage="No hay planes de aprendizaje para los filtros actuales." unitLabel={planMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} filterScope="plan" /></section>
           </div>}
         </>}
       </section>

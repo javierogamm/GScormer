@@ -1,3 +1,21 @@
+## v1.80.0 - Filtros asociativos entre SCORMs, cursos y PA
+
+### Cambios consolidados
+- Los filtros seleccionados en la sección **SCORMs** se mantienen al cambiar a **CURSOS** y limitan los cursos a aquellos que contienen referencias compatibles con los SCORMs filtrados.
+- Los filtros seleccionados por curso, materia, tipología o plan de aprendizaje se aplican también a la sección **SCORMs**, mostrando únicamente los SCORMs asociados a los cursos compatibles.
+- El cruce utiliza `scorm_code` y `scorm_idioma` de `scorms_master` frente a las referencias guardadas en `contenido` de `scorms_cursos`; cuando la referencia del curso incluye idioma se exige coincidencia de idioma y código, mientras que las referencias sin idioma se resuelven por código.
+- Todos los gráficos se recalculan con la selección combinada de ambas secciones, incluidas las medidas de cursos, materias, tipologías y planes de aprendizaje.
+- Los chips de filtros activos se muestran en ambas secciones y permiten retirar cualquier filtro sin necesidad de volver a la pestaña donde se creó.
+- La acción **Quitar todos** limpia conjuntamente los filtros de SCORMs, cursos y PA.
+- Se añaden colores diferenciados para reconocer el origen del filtro: verde para **SCORMs**, azul para **Cursos/Materia/Tipología** y morado para **Planes de aprendizaje**; los mismos colores se aplican a chips, barras y estados seleccionados.
+- Se actualiza la versión visible de APP y `package.json` a `1.80.0`.
+
+### Versionado
+- Versión anterior: `1.79.2`
+- Nueva versión consolidada: `1.80.0`
+
+---
+
 ## v1.79.2 - Conservación de la cookie al navegar entre gestión y estadísticas
 
 ### Cambios consolidados

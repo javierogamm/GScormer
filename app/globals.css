@@ -2453,3 +2453,75 @@ textarea:focus {
     flex-direction: column;
   }
 }
+
+/* Colores de selección asociativa por ámbito */
+.analytics-filter-chips button.filter-scorm {
+  border-color: #73c9b7;
+  background: #e4f8f3;
+  color: #14675c;
+}
+
+.analytics-filter-chips button.filter-course {
+  border-color: #86b8ec;
+  background: #e8f2ff;
+  color: #235f9d;
+}
+
+.analytics-filter-chips button.filter-plan {
+  border-color: #b59ae7;
+  background: #f1ebff;
+  color: #6842a7;
+}
+
+.analytics-horizontal-row.filter-scorm.is-selected,
+.analytics-legend-item.filter-scorm.is-selected,
+.analytics-vertical-item.filter-scorm.is-selected {
+  background: #e4f8f3;
+  box-shadow: inset 3px 0 #2f9f88;
+}
+
+.analytics-horizontal-row.filter-course.is-selected,
+.analytics-legend-item.filter-course.is-selected,
+.analytics-vertical-item.filter-course.is-selected {
+  background: #e8f2ff;
+  box-shadow: inset 3px 0 #4b8fd4;
+}
+
+.analytics-horizontal-row.filter-plan.is-selected,
+.analytics-legend-item.filter-plan.is-selected,
+.analytics-vertical-item.filter-plan.is-selected {
+  background: #f1ebff;
+  box-shadow: inset 3px 0 #8b68cf;
+}
+
+.analytics-horizontal-row.filter-scorm.is-selected .analytics-horizontal-bar {
+  background: linear-gradient(90deg, #238d77, #55c5ad);
+}
+
+.analytics-horizontal-row.filter-course.is-selected .analytics-horizontal-bar {
+  background: linear-gradient(90deg, #367fc5, #72ade7);
+}
+
+.analytics-horizontal-row.filter-plan.is-selected .analytics-horizontal-bar {
+  background: linear-gradient(90deg, #7651bc, #ad8de6);
+}
+
+.analytics-vertical-item.filter-scorm.is-selected .analytics-vertical-bar {
+  background: linear-gradient(180deg, #53c7ac, #238c79);
+}
+
+.analytics-vertical-item.filter-course.is-selected .analytics-vertical-bar {
+  background: linear-gradient(180deg, #78b3ed, #397fc2);
+}
+
+.analytics-pie-svg path.filter-scorm.is-selected {
+  stroke: #176c5f;
+}
+
+.analytics-pie-svg path.filter-course.is-selected {
+  stroke: #2e70b3;
+}
+
+.analytics-pie-svg path.filter-plan.is-selected {
+  stroke: #7651bc;
+}
