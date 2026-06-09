@@ -13,6 +13,7 @@ const DIMENSIONS = {
 
 const PIE_COLORS = ['#4f8fe8', '#4db69b', '#f2b35d', '#9b7de3', '#e9788f', '#5bb8d1', '#8cbf55', '#d98b5f'];
 const EMPTY_FILTERS = { category: [], responsible: [], language: [], dateFrom: '', dateTo: '' };
+const SESSION_STORAGE_KEY = 'gscormer_user_session';
 
 const cleanValue = (value, fallback = 'Sin informar') => String(value || '').trim() || fallback;
 
@@ -191,24 +192,21 @@ export default function StatisticsPage() {
   useEffect(() => {
     let mounted = true;
 
-    const loadDashboard = async () => {
+    const readStoredSession = () => {
       try {
-        const sessionResponse = await fetch('/api/auth/session', {
-          method: 'GET',
-          credentials: 'include',
-          cache: 'no-store',
-        });
-        const sessionJson = await sessionResponse.json().catch(() => null);
+        const storedValue = globalThis?.localStorage?.getItem(SESSION_STORAGE_KEY);
+        if (!storedValue) return null;
 
-        if (!mounted) return;
-        if (!sessionResponse.ok || !sessionJson?.user) {
-          router.replace('/');
-          return;
-        }
+        const storedSession = JSON.parse(storedValue);
+        if (!storedSession?.id || !storedSession?.name) return null;
+        return storedSession;
+      } catch (_error) {
+        return null;
+      }
+    };
 
-        setUserSession(sessionJson.user);
-        setAuthReady(true);
-
+    const loadRows = async () => {
+      try {
         const { data, error } = await supabase
           .from('scorms_master')
           .select('id, scorm_categoria, scorm_responsable, scorm_idioma, created_at')
@@ -225,6 +223,52 @@ export default function StatisticsPage() {
       } finally {
         if (mounted) setLoading(false);
       }
+    };
+
+    const refreshServerSession = async (storedSession) => {
+      try {
+        const sessionResponse = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const sessionJson = await sessionResponse.json().catch(() => null);
+
+        if (!mounted) return false;
+        if (sessionResponse.ok && sessionJson?.user) {
+          const refreshedSession = { ...storedSession, ...sessionJson.user };
+          setUserSession(refreshedSession);
+          setAuthReady(true);
+          globalThis?.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(refreshedSession));
+          return true;
+        }
+      } catch (_error) {
+        // La sesión local mantiene la navegación activa si falla la renovación.
+      }
+
+      return false;
+    };
+
+    const loadDashboard = async () => {
+      const storedSession = readStoredSession();
+
+      if (storedSession) {
+        setUserSession(storedSession);
+        setAuthReady(true);
+        loadRows();
+        refreshServerSession(storedSession);
+        return;
+      }
+
+      const serverSessionAvailable = await refreshServerSession(null);
+      if (!mounted) return;
+
+      if (!serverSessionAvailable) {
+        router.replace('/');
+        return;
+      }
+
+      loadRows();
     };
 
     loadDashboard();

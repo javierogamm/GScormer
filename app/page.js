@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ScormsTable from '../components/ScormsTable';
 import ScormsCursosTable from '../components/ScormsCursosTable';
 import { supabase } from '../lib/supabaseClient';
@@ -83,6 +84,7 @@ const stringifyAgentConfig = (config) => {
 };
 
 export default function HomePage() {
+  const router = useRouter();
   const [activeView, setActiveView] = useState('scorms');
   const [userSession, setUserSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -458,7 +460,7 @@ export default function HomePage() {
             >
               CURSOS
             </button>
-            <button type="button" className="secondary analytics-entry-button" onClick={() => { globalThis.location.href = '/estadisticas'; }}>
+            <button type="button" className="secondary analytics-entry-button" onClick={() => router.push('/estadisticas')}>
               <span aria-hidden="true">▥</span> ESTADÍSTICAS
             </button>
             <button type="button" className="secondary" onClick={openAgentModal}>

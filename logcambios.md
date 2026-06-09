@@ -1,3 +1,18 @@
+## v1.78.1 - Acceso a estadísticas sin relogueo
+
+### Cambios consolidados
+- El botón **ESTADÍSTICAS** utiliza ahora la navegación interna de Next.js hacia `/estadisticas`, evitando la recarga completa que provocaba el acceso mediante `location.href`.
+- La vista estadística recupera inmediatamente la sesión activa almacenada por la pantalla principal en `gscormer_user_session`, por lo que el usuario entra directamente sin volver al formulario de acceso.
+- La renovación de la sesión del servidor se mantiene en segundo plano; si esa renovación puntual falla pero existe una sesión local válida, la vista estadística permanece abierta y no redirige al inicio.
+- Cuando no existe ninguna sesión local, la vista conserva la validación mediante `/api/auth/session` antes de permitir el acceso.
+- Se actualiza la versión visible de APP y `package.json` a `1.78.1`.
+
+### Versionado
+- Versión anterior: `1.78.0`
+- Nueva versión consolidada: `1.78.1`
+
+---
+
 ## v1.78.0 - Vista estadística interactiva para SCORMs
 
 ### Cambios consolidados
