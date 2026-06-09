@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ScormsTable from '../components/ScormsTable';
 import ScormsCursosTable from '../components/ScormsCursosTable';
 import { supabase } from '../lib/supabaseClient';
@@ -83,6 +84,7 @@ const stringifyAgentConfig = (config) => {
 };
 
 export default function HomePage() {
+  const router = useRouter();
   const [activeView, setActiveView] = useState('scorms');
   const [userSession, setUserSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -137,7 +139,33 @@ export default function HomePage() {
   useEffect(() => {
     let isMounted = true;
 
+    const readStoredSession = () => {
+      try {
+        const storedValue = globalThis?.localStorage?.getItem(SESSION_STORAGE_KEY);
+        if (!storedValue) {
+          return null;
+        }
+
+        const storedSession = JSON.parse(storedValue);
+        if (!storedSession?.id || !storedSession?.name) {
+          return null;
+        }
+
+        return storedSession;
+      } catch (_error) {
+        return null;
+      }
+    };
+
     const reconnectBrowserSession = async () => {
+      const storedSession = readStoredSession();
+
+      if (storedSession) {
+        applyUserSession(storedSession);
+        setAuthReady(true);
+        return;
+      }
+
       try {
         const response = await fetch('/api/auth/session', {
           method: 'GET',
@@ -158,7 +186,6 @@ export default function HomePage() {
 
         if (response.ok && sessionJson?.user) {
           applyUserSession(sessionJson.user);
-          setAuthReady(true);
           return;
         }
 
@@ -457,6 +484,9 @@ export default function HomePage() {
               onClick={() => setActiveView('cursos')}
             >
               CURSOS
+            </button>
+            <button type="button" className="secondary analytics-entry-button" onClick={() => router.push('/estadisticas')}>
+              <span aria-hidden="true">▥</span> ESTADÍSTICAS
             </button>
             <button type="button" className="secondary" onClick={openAgentModal}>
               Asociar mi usuario a agente

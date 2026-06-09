@@ -1,3 +1,121 @@
+## v1.81.0 - Listas de resultados y persistencia de filtros estadísticos
+
+### Cambios consolidados
+- Se añade debajo de los gráficos de **SCORMs** una lista plana con todos los SCORMs compatibles con la selección asociativa actual, mostrando código, nombre, categoría, responsable, idioma y estado.
+- Se añade debajo de los gráficos y planes de **CURSOS** una lista plana con los cursos filtrados, mostrando código, nombre, materia, tipología, planes de aprendizaje y número de SCORMs compatibles.
+- Ambas listas muestran el contador total de resultados, cabecera fija y scroll vertical/horizontal para consultar selecciones amplias.
+- Los filtros de SCORMs, cursos y PA se guardan en `gscormer_analytics_state` y se restauran al volver a `/estadisticas`, incluso después de salir a la vista de gestión.
+- También se conservan la sección activa y las medidas elegidas para materia, tipología y planes de aprendizaje.
+- La restauración valida la estructura de filtros persistida para mantener compatibilidad con estados incompletos o antiguos.
+- La acción **Quitar todos** continúa limpiando la selección activa y actualiza inmediatamente el estado persistido.
+- Se actualiza la versión visible de APP y `package.json` a `1.81.0`.
+
+### Versionado
+- Versión anterior: `1.80.0`
+- Nueva versión consolidada: `1.81.0`
+
+---
+
+## v1.80.0 - Filtros asociativos entre SCORMs, cursos y PA
+
+### Cambios consolidados
+- Los filtros seleccionados en la sección **SCORMs** se mantienen al cambiar a **CURSOS** y limitan los cursos a aquellos que contienen referencias compatibles con los SCORMs filtrados.
+- Los filtros seleccionados por curso, materia, tipología o plan de aprendizaje se aplican también a la sección **SCORMs**, mostrando únicamente los SCORMs asociados a los cursos compatibles.
+- El cruce utiliza `scorm_code` y `scorm_idioma` de `scorms_master` frente a las referencias guardadas en `contenido` de `scorms_cursos`; cuando la referencia del curso incluye idioma se exige coincidencia de idioma y código, mientras que las referencias sin idioma se resuelven por código.
+- Todos los gráficos se recalculan con la selección combinada de ambas secciones, incluidas las medidas de cursos, materias, tipologías y planes de aprendizaje.
+- Los chips de filtros activos se muestran en ambas secciones y permiten retirar cualquier filtro sin necesidad de volver a la pestaña donde se creó.
+- La acción **Quitar todos** limpia conjuntamente los filtros de SCORMs, cursos y PA.
+- Se añaden colores diferenciados para reconocer el origen del filtro: verde para **SCORMs**, azul para **Cursos/Materia/Tipología** y morado para **Planes de aprendizaje**; los mismos colores se aplican a chips, barras y estados seleccionados.
+- Se actualiza la versión visible de APP y `package.json` a `1.80.0`.
+
+### Versionado
+- Versión anterior: `1.79.2`
+- Nueva versión consolidada: `1.80.0`
+
+---
+
+## v1.79.2 - Conservación de la cookie al navegar entre gestión y estadísticas
+
+### Cambios consolidados
+- Se corrige el error **No se pudieron cargar los datos: Sesión no válida** que podía aparecer al volver desde estadísticas.
+- Cuando existe `gscormer_user_session`, la pantalla principal restaura la sesión y comienza la carga de datos sin ejecutar una renovación adicional de `/api/auth/session` que pudiera invalidar la cookie `gscormer_session`.
+- La vista estadística aplica la misma regla: durante la navegación interna reutiliza la sesión existente sin renovar ni eliminar la cookie del servidor.
+- La validación mediante `/api/auth/session` se mantiene para accesos directos en los que no existe ninguna sesión local, preservando el control de acceso inicial.
+- Las peticiones de datos a `/api/db` conservan así la cookie autenticada creada durante el login original.
+- Se actualiza la versión visible de APP y `package.json` a `1.79.2`.
+
+### Versionado
+- Versión anterior: `1.79.1`
+- Nueva versión consolidada: `1.79.2`
+
+---
+
+## v1.79.1 - Retorno a gestión sin relogueo
+
+### Cambios consolidados
+- La pantalla principal recupera inmediatamente la sesión activa almacenada en `gscormer_user_session` cuando se vuelve desde `/estadisticas`.
+- El botón **Volver a gestión** mantiene la navegación interna existente y ya no conduce al formulario de acceso durante la renovación de la sesión.
+- La validación mediante `/api/auth/session` se conserva en segundo plano para actualizar los datos del usuario sin bloquear la entrada a la gestión.
+- Si la renovación del servidor falla puntualmente, la sesión local válida se mantiene y no se elimina; el login solo se muestra cuando no existe ninguna sesión almacenada ni renovable.
+- Se actualiza la versión visible de APP y `package.json` a `1.79.1`.
+
+### Versionado
+- Versión anterior: `1.79.0`
+- Nueva versión consolidada: `1.79.1`
+
+---
+
+## v1.79.0 - Analítica de cursos y planes de aprendizaje
+
+### Cambios consolidados
+- El gráfico de tarta de SCORMs recalcula ahora tanto sus porciones como el total central utilizando exactamente el conjunto resultante de todos los filtros aplicados, incluido el filtro de idioma.
+- Se elimina la hoja y la navegación de **Detalle de selección**, dejando una única hoja analítica por cada sección.
+- Se desarrolla la sección **CURSOS** con filtros cruzados por curso, materia, tipología y plan de aprendizaje.
+- Se añade el gráfico horizontal **SCORMs por curso**, con scroll vertical y medida fija de número de SCORMs asociados.
+- Se añaden gráficos horizontales por **Materia** y **Tipología**, ambos con scroll vertical y selector para alternar la medida entre **Nº Cursos** y **Nº SCORMs**.
+- Se incorpora debajo de los gráficos de cursos el bloque **PLANES DE APRENDIZAJE**, agrupado por `PA Código - PA Nombre`, con barras horizontales y selector de medida entre **Nº Cursos** y **Nº SCORMs**.
+- Los cursos se consolidan por su identificador único disponible para evitar duplicar conteos por traducciones o vinculaciones a varios PA; los SCORMs se obtienen de las referencias guardadas en `contenido`.
+- Las selecciones realizadas en cualquier gráfico o filtro de CURSOS se aplican contextualmente al resto de gráficos y se pueden retirar individualmente o mediante **Quitar todos**.
+- Se actualiza la versión visible de APP y `package.json` a `1.79.0`.
+
+### Versionado
+- Versión anterior: `1.78.1`
+- Nueva versión consolidada: `1.79.0`
+
+---
+
+## v1.78.1 - Acceso a estadísticas sin relogueo
+
+### Cambios consolidados
+- El botón **ESTADÍSTICAS** utiliza ahora la navegación interna de Next.js hacia `/estadisticas`, evitando la recarga completa que provocaba el acceso mediante `location.href`.
+- La vista estadística recupera inmediatamente la sesión activa almacenada por la pantalla principal en `gscormer_user_session`, por lo que el usuario entra directamente sin volver al formulario de acceso.
+- La renovación de la sesión del servidor se mantiene en segundo plano; si esa renovación puntual falla pero existe una sesión local válida, la vista estadística permanece abierta y no redirige al inicio.
+- Cuando no existe ninguna sesión local, la vista conserva la validación mediante `/api/auth/session` antes de permitir el acceso.
+- Se actualiza la versión visible de APP y `package.json` a `1.78.1`.
+
+### Versionado
+- Versión anterior: `1.78.0`
+- Nueva versión consolidada: `1.78.1`
+
+---
+
+## v1.78.0 - Vista estadística interactiva para SCORMs
+
+### Cambios consolidados
+- Se incorpora el acceso **ESTADÍSTICAS** en la cabecera principal y una URL independiente en `/estadisticas`, protegida por la sesión existente de GScormer.
+- Se crea un espacio analítico con secciones por pestañas para **SCORMs** y **CURSOS**, además de hojas de **Vista general** y **Detalle de selección**.
+- La hoja general de SCORMs incluye los tres gráficos solicitados: barras horizontales por categoría con scroll vertical y diez barras visibles, barras verticales por responsable con scroll horizontal y gráfico de tarta por idioma.
+- Los gráficos funcionan como filtros contextuales: al seleccionar una barra, porción o elemento de leyenda se recalculan los demás gráficos; una segunda selección permite retirar el filtro.
+- Se añade selección múltiple por categoría, responsable e idioma, filtros por rango de fechas, chips para retirar criterios individualmente y una acción para limpiar toda la selección.
+- Se añade una hoja de detalle que resume el resultado filtrado y permite continuar aplicando filtros sobre cualquiera de las dimensiones disponibles.
+- Se actualiza la versión visible de APP y `package.json` a `1.78.0`.
+
+### Versionado
+- Versión anterior: `1.77.1`
+- Nueva versión consolidada: `1.78.0`
+
+---
+
 ## v1.77.1 - Panel lateral integrado y acciones fijas en detalle de curso
 
 ### Cambios consolidados
