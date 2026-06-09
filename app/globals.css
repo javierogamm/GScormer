@@ -2094,6 +2094,56 @@ textarea:focus {
   font-size: 0.76rem;
 }
 
+.analytics-chart-selection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin: -0.35rem 0 0.75rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d6e4ef;
+  border-radius: 9px;
+  background: #f7fafc;
+}
+
+.analytics-chart-selection-actions > span {
+  color: #607b94;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.analytics-chart-selection-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 7px;
+  background: #258f7b;
+  color: #fff;
+  font-size: 0.72rem;
+}
+
+.analytics-chart-selection-actions button:hover:not(:disabled) {
+  background: #197866;
+  transform: none;
+}
+
+.analytics-chart-selection-actions button:disabled {
+  background: #dce6ed;
+  color: #8ba0b1;
+  cursor: not-allowed;
+}
+
+.analytics-chart-selection-actions button > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.78rem;
+}
+
 .analytics-scroll {
   scrollbar-color: #9fc5df #edf4f9;
   scrollbar-width: thin;

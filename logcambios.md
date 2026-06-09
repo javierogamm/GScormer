@@ -1,3 +1,20 @@
+## v1.82.0 - Selección múltiple confirmada y medidas compatibles en gráficos
+
+### Cambios consolidados
+- Todos los gráficos calculan ahora sus medidas con el conjunto completo de filtros aplicados, incluida la dimensión representada por el propio gráfico.
+- Al confirmar un filtro desde un gráfico, se ocultan los valores no seleccionados de ese mismo gráfico y solo permanecen visibles los resultados compatibles.
+- La selección dentro de cada gráfico pasa a ser provisional y permite marcar uno o varios valores antes de modificar los resultados de la hoja.
+- Se añade a cada gráfico una acción **✓ Confirmar** que consolida conjuntamente todos los valores marcados.
+- El contador de valores marcados y el estado visual de las barras, responsables, idiomas, cursos, materias, tipologías y planes permiten revisar la selección antes de confirmarla.
+- Para retirar una selección desde el propio gráfico se pueden desmarcar sus valores visibles y volver a pulsar **Confirmar**; los chips y **Quitar todos** continúan disponibles.
+- Se actualiza la versión visible de APP y `package.json` a `1.82.0`.
+
+### Versionado
+- Versión anterior: `1.81.0`
+- Nueva versión consolidada: `1.82.0`
+
+---
+
 ## v1.81.0 - Listas de resultados y persistencia de filtros estadísticos
 
 ### Cambios consolidados
