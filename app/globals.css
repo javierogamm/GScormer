@@ -2753,9 +2753,22 @@ textarea:focus {
   list-style: none;
 }
 
+.course-assistant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+
+.course-assistant-toolbar button {
+  padding: 0.48rem 0.7rem;
+  font-size: 0.72rem;
+}
+
 .course-assistant-selection li {
+  position: relative;
   display: grid;
-  grid-template-columns: 34px 18px minmax(0, 1fr) auto;
+  grid-template-columns: 22px 34px 18px minmax(0, 1fr) auto;
   gap: 0.65rem;
   align-items: center;
   padding: 0.75rem;
@@ -2763,10 +2776,51 @@ textarea:focus {
   border-radius: 10px;
   background: #f8fbfe;
   cursor: grab;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.course-assistant-selection li.is-selected {
+  border-color: #79b9df;
+  background: #eef8ff;
+  box-shadow: inset 3px 0 0 #278ac1;
 }
 
 .course-assistant-selection li.is-dragging {
-  opacity: 0.45;
+  opacity: 0.42;
+}
+
+.course-assistant-selection li.is-drop-before::before,
+.course-assistant-selection li.is-drop-after::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 3px;
+  border-radius: 999px;
+  background: #167ec1;
+  box-shadow: 0 0 0 2px #d8effd;
+  content: '';
+}
+
+.course-assistant-selection li.is-drop-before::before {
+  top: -0.38rem;
+}
+
+.course-assistant-selection li.is-drop-after::after {
+  bottom: -0.38rem;
+}
+
+.course-assistant-check {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.course-assistant-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #278ac1;
 }
 
 .course-assistant-order {
@@ -2816,6 +2870,13 @@ textarea:focus {
   font-size: 0.7rem;
 }
 
+.course-assistant-export-message {
+  margin: 0.65rem 0 0;
+  color: #267563;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .course-assistant-empty {
   margin: 0.85rem 0;
   padding: 2rem 1rem;
@@ -2837,11 +2898,11 @@ textarea:focus {
   }
 
   .course-assistant-selection li {
-    grid-template-columns: 30px 14px minmax(0, 1fr);
+    grid-template-columns: 20px 30px 14px minmax(0, 1fr);
   }
 
   .course-assistant-selection li button {
-    grid-column: 3;
+    grid-column: 4;
     justify-self: start;
   }
 }

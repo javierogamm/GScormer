@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { APP_VERSION } from '../../lib/appVersion';
 import { supabase } from '../../lib/supabaseClient';
+import { exportRowsToExcel } from '../../lib/excelExport';
 
 const SCORM_DIMENSIONS = {
   category: { field: 'scorm_categoria', label: 'Categoría' },
@@ -396,7 +397,11 @@ export default function StatisticsPage() {
   const [planMeasure, setPlanMeasure] = useState(persistedAnalyticsState?.planMeasure === 'scorms' ? 'scorms' : 'courses');
   const [assistantScormIds, setAssistantScormIds] = useState([]);
   const [assistantModalOpen, setAssistantModalOpen] = useState(false);
-  const [draggedAssistantScormId, setDraggedAssistantScormId] = useState(null);
+  const [assistantReorderSelection, setAssistantReorderSelection] = useState([]);
+  const [draggedAssistantScormIds, setDraggedAssistantScormIds] = useState([]);
+  const [assistantDropTarget, setAssistantDropTarget] = useState(null);
+  const [assistantExportMessage, setAssistantExportMessage] = useState('');
+  const assistantSelectionRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -613,16 +618,101 @@ export default function StatisticsPage() {
   }, [assistantModalOpen]);
 
   const addAssistantScorm = (scormId) => setAssistantScormIds((current) => current.includes(scormId) ? current : [...current, scormId]);
-  const removeAssistantScorm = (scormId) => setAssistantScormIds((current) => current.filter((id) => id !== scormId));
-  const dropAssistantScorm = (targetId) => {
-    if (!draggedAssistantScormId || draggedAssistantScormId === targetId) return;
+  const removeAssistantScorm = (scormId) => {
+    setAssistantScormIds((current) => current.filter((id) => id !== scormId));
+    setAssistantReorderSelection((current) => current.filter((id) => id !== scormId));
+    setAssistantExportMessage('');
+  };
+  const toggleAssistantReorderSelection = (scormId) => setAssistantReorderSelection((current) => current.includes(scormId)
+    ? current.filter((id) => id !== scormId)
+    : [...current, scormId]);
+  const selectAllAssistantScorms = () => setAssistantReorderSelection(
+    assistantReorderSelection.length === assistantScormIds.length ? [] : [...assistantScormIds],
+  );
+  const moveSelectedAssistantScorms = (destination) => {
+    if (!assistantReorderSelection.length) return;
+    const selectedSet = new Set(assistantReorderSelection);
     setAssistantScormIds((current) => {
-      const next = current.filter((id) => id !== draggedAssistantScormId);
-      const targetIndex = next.indexOf(targetId);
-      next.splice(targetIndex < 0 ? next.length : targetIndex, 0, draggedAssistantScormId);
-      return next;
+      const selected = current.filter((id) => selectedSet.has(id));
+      const remaining = current.filter((id) => !selectedSet.has(id));
+      return destination === 'top' ? [...selected, ...remaining] : [...remaining, ...selected];
     });
-    setDraggedAssistantScormId(null);
+  };
+  const startAssistantDrag = (event, scormId) => {
+    const idsToDrag = assistantReorderSelection.includes(scormId)
+      ? assistantScormIds.filter((id) => assistantReorderSelection.includes(id))
+      : [scormId];
+    if (!assistantReorderSelection.includes(scormId)) setAssistantReorderSelection([scormId]);
+    event.dataTransfer.setData('text/plain', JSON.stringify(idsToDrag));
+    event.dataTransfer.effectAllowed = 'move';
+    setDraggedAssistantScormIds(idsToDrag);
+    setAssistantExportMessage('');
+  };
+  const updateAssistantDropTarget = (event, targetId) => {
+    event.preventDefault();
+    if (draggedAssistantScormIds.includes(targetId)) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = event.clientY < bounds.top + (bounds.height / 2) ? 'before' : 'after';
+    setAssistantDropTarget((current) => current?.id === targetId && current?.position === position ? current : { id: targetId, position });
+    event.dataTransfer.dropEffect = 'move';
+  };
+  const dropAssistantScorms = (event, targetId) => {
+    event.preventDefault();
+    let transferredIds = [];
+    try { transferredIds = JSON.parse(event.dataTransfer.getData('text/plain') || '[]'); } catch (_error) { transferredIds = []; }
+    const idsToMove = (transferredIds.length ? transferredIds : draggedAssistantScormIds).filter((id) => assistantScormIds.includes(id));
+    if (!idsToMove.length || idsToMove.includes(targetId)) return;
+    const position = assistantDropTarget?.id === targetId ? assistantDropTarget.position : 'before';
+    const movingSet = new Set(idsToMove);
+    setAssistantScormIds((current) => {
+      const moving = current.filter((id) => movingSet.has(id));
+      const remaining = current.filter((id) => !movingSet.has(id));
+      const targetIndex = remaining.indexOf(targetId);
+      const insertionIndex = targetIndex < 0 ? remaining.length : targetIndex + (position === 'after' ? 1 : 0);
+      return [...remaining.slice(0, insertionIndex), ...moving, ...remaining.slice(insertionIndex)];
+    });
+    setAssistantDropTarget(null);
+    setDraggedAssistantScormIds([]);
+  };
+  const finishAssistantDrag = () => {
+    setDraggedAssistantScormIds([]);
+    setAssistantDropTarget(null);
+  };
+  const scrollAssistantSelectionDuringDrag = (event) => {
+    if (!draggedAssistantScormIds.length || !assistantSelectionRef.current) return;
+    assistantSelectionRef.current.scrollTop += event.deltaY;
+    event.preventDefault();
+  };
+  const autoScrollAssistantSelection = (event) => {
+    if (!draggedAssistantScormIds.length || !assistantSelectionRef.current) return;
+    const bounds = assistantSelectionRef.current.getBoundingClientRect();
+    const edgeSize = 56;
+    if (event.clientY < bounds.top + edgeSize) assistantSelectionRef.current.scrollTop -= 14;
+    if (event.clientY > bounds.bottom - edgeSize) assistantSelectionRef.current.scrollTop += 14;
+  };
+  const exportSelectedAssistantScorms = () => {
+    const selectedSet = new Set(assistantReorderSelection);
+    const rowsToExport = assistantSelectedRows
+      .map((row, index) => ({ row, order: index + 1 }))
+      .filter(({ row }) => selectedSet.has(row.id))
+      .map(({ row, order }) => ({
+        Orden: order,
+        Código: cleanValue(row.scorm_code, ''),
+        Nombre: cleanValue(row.scorm_name, ''),
+        Categoría: cleanValue(row.scorm_categoria, ''),
+        Responsable: cleanValue(row.scorm_responsable, ''),
+        Idioma: cleanValue(row.scorm_idioma, ''),
+        Estado: cleanValue(row.scorm_estado, ''),
+      }));
+    const exported = exportRowsToExcel({
+      rows: rowsToExport,
+      preferredKeys: ['Orden', 'Código', 'Nombre', 'Categoría', 'Responsable', 'Idioma', 'Estado'],
+      sheetName: 'scorms_seleccionados',
+      fileName: `scorms_seleccionados_${new Date().toISOString().slice(0, 10)}.xls`,
+    });
+    setAssistantExportMessage(exported
+      ? `Listado exportado correctamente (${rowsToExport.length} SCORM${rowsToExport.length === 1 ? '' : 's'}).`
+      : 'Selecciona al menos un SCORM para exportar el listado.');
   };
   const sendAssistantCourseToValidation = () => {
     if (!assistantScormIds.length) return;
@@ -708,22 +798,40 @@ export default function StatisticsPage() {
             </div>
 
             <div className="course-assistant-modal-summary">
-              <strong>{assistantSelectedRows.length} SCORMs añadidos</strong>
-              <span>Arrastra las filas para cambiar su número de orden.</span>
+              <strong>{assistantSelectedRows.length} SCORMs añadidos · {assistantReorderSelection.length} seleccionados</strong>
+              <span>Selecciona varios y arrastra cualquiera de ellos. La línea azul indica la posición de destino.</span>
             </div>
 
-            <ol className="course-assistant-selection">
-              {assistantSelectedRows.map((row, index) => <li key={`selected-${row.id}`} draggable onDragStart={() => setDraggedAssistantScormId(row.id)} onDragEnd={() => setDraggedAssistantScormId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => dropAssistantScorm(row.id)} className={draggedAssistantScormId === row.id ? 'is-dragging' : ''}>
-                <span className="course-assistant-order">{index + 1}</span>
-                <span className="course-assistant-drag" aria-hidden="true">⋮⋮</span>
-                <div><strong>{getMasterScormReference(row) || cleanValue(row.scorm_code, '-')}</strong><span>{cleanValue(row.scorm_categoria, '-')}</span><p>{cleanValue(row.scorm_name, '-')}</p></div>
-                <button type="button" className="secondary" onClick={() => removeAssistantScorm(row.id)} aria-label={`Quitar ${cleanValue(row.scorm_name, 'SCORM')}`}>Quitar</button>
-              </li>)}
+            <div className="course-assistant-toolbar" aria-label="Acciones sobre los SCORMs seleccionados">
+              <button type="button" className="secondary" disabled={!assistantScormIds.length} onClick={selectAllAssistantScorms}>
+                {assistantReorderSelection.length === assistantScormIds.length && assistantScormIds.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+              </button>
+              <button type="button" className="secondary" disabled={!assistantReorderSelection.length} onClick={() => moveSelectedAssistantScorms('top')}>↑ Enviar arriba</button>
+              <button type="button" className="secondary" disabled={!assistantReorderSelection.length} onClick={() => moveSelectedAssistantScorms('bottom')}>↓ Enviar abajo</button>
+              <button type="button" disabled={!assistantReorderSelection.length} onClick={exportSelectedAssistantScorms}>Exportar listado SCORMs</button>
+            </div>
+
+            <ol ref={assistantSelectionRef} className="course-assistant-selection" onWheel={scrollAssistantSelectionDuringDrag} onDragOver={autoScrollAssistantSelection}>
+              {assistantSelectedRows.map((row, index) => {
+                const selected = assistantReorderSelection.includes(row.id);
+                const dragging = draggedAssistantScormIds.includes(row.id);
+                const dropPosition = assistantDropTarget?.id === row.id ? assistantDropTarget.position : '';
+                return <li key={`selected-${row.id}`} draggable onDragStart={(event) => startAssistantDrag(event, row.id)} onDragEnd={finishAssistantDrag} onDragOver={(event) => updateAssistantDropTarget(event, row.id)} onDrop={(event) => dropAssistantScorms(event, row.id)} className={[selected ? 'is-selected' : '', dragging ? 'is-dragging' : '', dropPosition ? `is-drop-${dropPosition}` : ''].filter(Boolean).join(' ')}>
+                  <label className="course-assistant-check" title="Seleccionar para mover o exportar">
+                    <input type="checkbox" checked={selected} onChange={() => toggleAssistantReorderSelection(row.id)} aria-label={`Seleccionar ${cleanValue(row.scorm_name, 'SCORM')}`} />
+                  </label>
+                  <span className="course-assistant-order">{index + 1}</span>
+                  <span className="course-assistant-drag" aria-hidden="true">⋮⋮</span>
+                  <div><strong>{getMasterScormReference(row) || cleanValue(row.scorm_code, '-')}</strong><span>{cleanValue(row.scorm_categoria, '-')}</span><p>{cleanValue(row.scorm_name, '-')}</p></div>
+                  <button type="button" className="secondary" onClick={() => removeAssistantScorm(row.id)} aria-label={`Quitar ${cleanValue(row.scorm_name, 'SCORM')}`}>Quitar</button>
+                </li>;
+              })}
             </ol>
             {!assistantSelectedRows.length && <div className="course-assistant-empty">Añade SCORMs desde la tabla de resultados filtrados.</div>}
+            {assistantExportMessage ? <p className="course-assistant-export-message" role="status">{assistantExportMessage}</p> : null}
 
             <footer className="modal-footer course-assistant-actions">
-              <button type="button" className="secondary" disabled={!assistantScormIds.length} onClick={() => setAssistantScormIds([])}>Vaciar selección</button>
+              <button type="button" className="secondary" disabled={!assistantScormIds.length} onClick={() => { setAssistantScormIds([]); setAssistantReorderSelection([]); setAssistantExportMessage(''); }}>Vaciar selección</button>
               <button type="button" disabled={!assistantScormIds.length} onClick={sendAssistantCourseToValidation}>Pasar a validar</button>
             </footer>
           </section>

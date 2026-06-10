@@ -2444,3 +2444,19 @@
 ### Versionado
 - Versión anterior: `1.83.0`
 - Nueva versión consolidada: `1.83.1`
+
+---
+
+## v1.84.0 - Reordenación múltiple y exportación del asistente de cursos
+
+### Cambios consolidados
+- El modal **SCORMs del nuevo curso** permite seleccionar uno o varios SCORMs mediante casillas y arrastrarlos como un bloque, conservando su orden relativo.
+- Durante el arrastre se muestra una línea azul antes o después de la fila de destino para anticipar visualmente la posición final.
+- La lista permite continuar desplazándose con la rueda del ratón mientras se arrastra y añade desplazamiento automático al acercarse a sus bordes superior o inferior.
+- Se incorporan las acciones **Enviar arriba** y **Enviar abajo** para mover conjuntamente todos los SCORMs seleccionados al inicio o al final del curso.
+- Se añade **Exportar listado SCORMs**, que genera un archivo Excel con el orden, código, nombre, categoría, responsable, idioma y estado de los SCORMs seleccionados.
+- Se actualiza la versión visible de APP y `package.json` a `1.84.0`.
+
+### Versionado
+- Versión anterior: `1.83.1`
+- Nueva versión consolidada: `1.84.0`
