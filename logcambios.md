@@ -2426,3 +2426,21 @@
 ### Versionado
 - Versión anterior: `1.82.0`
 - Nueva versión consolidada: `1.83.0`
+
+---
+
+## v1.83.1 - Asistente integrado en resultados estadísticos de SCORMs
+
+### Cambios consolidados
+- Se eliminó la sección independiente **Asistente de cursos** de Estadísticas.
+- La composición del nuevo curso se integró directamente en la tabla inferior **Lista de SCORMs**, que ya refleja los filtros aplicados en los gráficos y controles estadísticos.
+- Cada fila filtrada incorpora ahora la acción **Añadir** para incluir ese SCORM en el nuevo curso, sin abandonar la vista estadística ni duplicar los filtros.
+- En la cabecera de la tabla se añadió el botón **Ver nuevo curso**, con contador de SCORMs seleccionados, que abre el modal de consolidación.
+- El modal muestra número de orden, código, categoría y nombre; permite reordenar mediante arrastrar y soltar, quitar SCORMs y vaciar la selección.
+- El modal solo se cierra mediante el botón **Cerrar**: pulsar fuera de su contenido no ejecuta ninguna acción de cierre.
+- La acción **Pasar a validar** mantiene el orden seleccionado y continúa abriendo el modal existente de creación de cursos con el estado **Pendiente de validación**.
+- Se retiraron los estilos del panel y catálogo independientes y se sustituyeron por estilos específicos para la acción integrada en tabla y el modal consolidado.
+
+### Versionado
+- Versión anterior: `1.83.0`
+- Nueva versión consolidada: `1.83.1`
