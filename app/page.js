@@ -85,7 +85,7 @@ const stringifyAgentConfig = (config) => {
 
 export default function HomePage() {
   const router = useRouter();
-  const [activeView, setActiveView] = useState('scorms');
+  const [activeView, setActiveView] = useState(() => globalThis?.location?.search?.includes('view=cursos') ? 'cursos' : 'scorms');
   const [userSession, setUserSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [loginName, setLoginName] = useState('');

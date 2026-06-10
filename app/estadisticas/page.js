@@ -21,6 +21,7 @@ const EMPTY_SCORM_FILTERS = { category: [], responsible: [], language: [], dateF
 const EMPTY_COURSE_FILTERS = { course: [], matter: [], typology: [], plan: [] };
 const SESSION_STORAGE_KEY = 'gscormer_user_session';
 const ANALYTICS_STATE_STORAGE_KEY = 'gscormer_analytics_state';
+const COURSE_ASSISTANT_STORAGE_KEY = 'gscormer_course_assistant_draft';
 const SCORM_REFERENCE_REGEX = /(?:\b([a-z]{2,3})\s*[-_]\s*)?\b(SCR\d{4})\b/gi;
 
 const cleanValue = (value, fallback = 'Sin informar') => String(value || '').trim() || fallback;
@@ -372,7 +373,7 @@ export default function StatisticsPage() {
   const [persistedAnalyticsState] = useState(() => readPersistedAnalyticsState());
   const [authReady, setAuthReady] = useState(false);
   const [userSession, setUserSession] = useState(null);
-  const [activeSection, setActiveSection] = useState(persistedAnalyticsState?.activeSection === 'cursos' ? 'cursos' : 'scorms');
+  const [activeSection, setActiveSection] = useState(['cursos', 'asistente'].includes(persistedAnalyticsState?.activeSection) ? persistedAnalyticsState.activeSection : 'scorms');
   const [scormRows, setScormRows] = useState([]);
   const [courseRows, setCourseRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -384,6 +385,9 @@ export default function StatisticsPage() {
   const [matterMeasure, setMatterMeasure] = useState(persistedAnalyticsState?.matterMeasure === 'scorms' ? 'scorms' : 'courses');
   const [typologyMeasure, setTypologyMeasure] = useState(persistedAnalyticsState?.typologyMeasure === 'scorms' ? 'scorms' : 'courses');
   const [planMeasure, setPlanMeasure] = useState(persistedAnalyticsState?.planMeasure === 'scorms' ? 'scorms' : 'courses');
+  const [assistantFilters, setAssistantFilters] = useState({ search: '', category: '', responsible: '', language: '' });
+  const [assistantScormIds, setAssistantScormIds] = useState([]);
+  const [draggedAssistantScormId, setDraggedAssistantScormId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -588,6 +592,44 @@ export default function StatisticsPage() {
   };
   const clearScormDateFilter = (field) => setScormFilters((current) => ({ ...current, [field]: '' }));
 
+  const assistantRows = useMemo(() => {
+    const search = normalizeText(assistantFilters.search);
+    return scormRows.filter((row) => {
+      const matchesSearch = !search || [row.scorm_code, row.scorm_name, row.scorm_categoria, row.scorm_responsable]
+        .some((value) => normalizeText(value).includes(search));
+      const matchesCategory = !assistantFilters.category || scormValuesForDimension(row, 'category').includes(assistantFilters.category);
+      const matchesResponsible = !assistantFilters.responsible || scormValuesForDimension(row, 'responsible').includes(assistantFilters.responsible);
+      const matchesLanguage = !assistantFilters.language || scormValuesForDimension(row, 'language').includes(assistantFilters.language);
+      return matchesSearch && matchesCategory && matchesResponsible && matchesLanguage;
+    });
+  }, [assistantFilters, scormRows]);
+
+  const assistantSelectedRows = useMemo(() => assistantScormIds
+    .map((id) => scormRows.find((row) => row.id === id))
+    .filter(Boolean), [assistantScormIds, scormRows]);
+
+  const addAssistantScorm = (scormId) => setAssistantScormIds((current) => current.includes(scormId) ? current : [...current, scormId]);
+  const removeAssistantScorm = (scormId) => setAssistantScormIds((current) => current.filter((id) => id !== scormId));
+  const dropAssistantScorm = (targetId) => {
+    if (!draggedAssistantScormId || draggedAssistantScormId === targetId) return;
+    setAssistantScormIds((current) => {
+      const next = current.filter((id) => id !== draggedAssistantScormId);
+      const targetIndex = next.indexOf(targetId);
+      next.splice(targetIndex < 0 ? next.length : targetIndex, 0, draggedAssistantScormId);
+      return next;
+    });
+    setDraggedAssistantScormId(null);
+  };
+  const sendAssistantCourseToValidation = () => {
+    if (!assistantScormIds.length) return;
+    globalThis?.localStorage?.setItem(COURSE_ASSISTANT_STORAGE_KEY, JSON.stringify({
+      scormIds: assistantScormIds,
+      courseStatus: 'Pendiente de validación',
+      createdAt: new Date().toISOString(),
+    }));
+    router.push('/?view=cursos&courseAssistant=1');
+  };
+
   if (!authReady) return <main className="page auth-page"><section className="card auth-card"><h1>GScormer Analytics</h1><p className={loadError ? 'status error' : 'status'}>{loadError || 'Validando sesión...'}</p></section></main>;
 
   return (
@@ -601,6 +643,7 @@ export default function StatisticsPage() {
         <div className="analytics-section-tabs" role="tablist" aria-label="Secciones estadísticas">
           <button type="button" className={activeSection === 'scorms' ? 'is-active' : ''} onClick={() => setActiveSection('scorms')}>SCORMs</button>
           <button type="button" className={activeSection === 'cursos' ? 'is-active' : ''} onClick={() => setActiveSection('cursos')}>CURSOS</button>
+          <button type="button" className={activeSection === 'asistente' ? 'is-active' : ''} onClick={() => setActiveSection('asistente')}>ASISTENTE DE CURSOS</button>
         </div>
 
         {activeSection === 'scorms' ? <>
@@ -624,7 +667,7 @@ export default function StatisticsPage() {
             <article className="analytics-chart-card"><header><div><span>Gráfico 3</span><h2>SCORMs por idioma</h2></div><strong>Nº SCORMs</strong></header><p className="analytics-chart-help">Marca uno o varios idiomas; el total se actualizará al confirmar.</p><ChartSelectionActions selectedValues={scormChartSelections.language} appliedValues={scormFilters.language} onConfirm={() => confirmScormChartSelection('language')} /><PieChart data={filteredLanguageData} total={filteredScormRows.length} selectedValues={scormChartSelections.language} onToggle={(value) => toggleScormChartSelection('language', value)} /></article>
             <FilteredScormList rows={filteredScormRows} />
           </div>}
-        </> : <>
+        </> : activeSection === 'cursos' ? <>
           <aside className="analytics-filter-panel" aria-label="Filtros de cursos">
             <div className="analytics-filter-heading"><div><span className="analytics-eyebrow">Selección asociativa</span><strong>{totalFilterCount ? `${totalFilterCount} filtros aplicados en SCORMs, cursos o PA` : `${formatCount(filteredCourses.length)} cursos`}</strong></div>
               <button type="button" className="secondary" onClick={clearAllFilters} disabled={!totalFilterCount}>Quitar todos</button></div>
@@ -646,7 +689,37 @@ export default function StatisticsPage() {
               <HorizontalBarChart data={courseChartData.plan} selectedValues={courseChartSelections.plan} onToggle={(value) => toggleCourseChartSelection('plan', value)} ariaLabel="Cursos o SCORMs por plan de aprendizaje" emptyMessage="No hay planes de aprendizaje para los filtros actuales." unitLabel={planMeasure === 'scorms' ? 'SCORMs' : 'Cursos'} filterScope="plan" /></section>
             <FilteredCourseList courses={filteredCourses} compatibleScormReferences={scormFilteredReferences} hasScormFilters={Boolean(scormFilterCount)} />
           </div>}
-        </>}
+        </> : <div className="course-assistant-layout">
+          <section className="course-assistant-catalog">
+            <div className="course-assistant-heading">
+              <div><span className="analytics-eyebrow">Composición previa</span><h2>Asistente de creación de cursos</h2><p className="status">Filtra el catálogo y añade SCORMs al curso hipotético. La selección no se guardará hasta completar el modal de creación.</p></div>
+              <strong>{formatCount(assistantRows.length)} disponibles</strong>
+            </div>
+            <div className="course-assistant-filters">
+              <label>Buscar<input type="search" value={assistantFilters.search} onChange={(event) => setAssistantFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Código, nombre, categoría…" /></label>
+              <label>Categoría<select value={assistantFilters.category} onChange={(event) => setAssistantFilters((current) => ({ ...current, category: event.target.value }))}><option value="">Todas</option>{scormAvailableValues.category.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+              <label>Responsable<select value={assistantFilters.responsible} onChange={(event) => setAssistantFilters((current) => ({ ...current, responsible: event.target.value }))}><option value="">Todos</option>{scormAvailableValues.responsible.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+              <label>Idioma<select value={assistantFilters.language} onChange={(event) => setAssistantFilters((current) => ({ ...current, language: event.target.value }))}><option value="">Todos</option>{scormAvailableValues.language.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+              <button type="button" className="secondary" onClick={() => setAssistantFilters({ search: '', category: '', responsible: '', language: '' })}>Limpiar filtros</button>
+            </div>
+            {loadError && <p className="status error analytics-message">{loadError}</p>}
+            {loading ? <p className="status analytics-message">Cargando catálogo de SCORMs...</p> : <div className="analytics-results-table-wrap course-assistant-table-wrap"><table className="analytics-results-table course-assistant-table"><thead><tr><th>Código</th><th>Categoría</th><th>Nombre</th><th>Idioma</th><th>Acción</th></tr></thead><tbody>
+              {assistantRows.map((row) => { const selected = assistantScormIds.includes(row.id); return <tr key={`assistant-${row.id}`}><td>{getMasterScormReference(row) || cleanValue(row.scorm_code, '-')}</td><td>{cleanValue(row.scorm_categoria, '-')}</td><td>{cleanValue(row.scorm_name, '-')}</td><td>{cleanValue(row.scorm_idioma, '-')}</td><td><button type="button" className={selected ? 'secondary' : ''} disabled={selected} onClick={() => addAssistantScorm(row.id)}>{selected ? 'Añadido' : 'Añadir'}</button></td></tr>; })}
+              {!assistantRows.length && <tr><td colSpan="5" className="analytics-results-empty">No hay SCORMs para los filtros actuales.</td></tr>}
+            </tbody></table></div>}
+          </section>
+          <aside className="course-assistant-drawer" aria-label="SCORMs añadidos al curso">
+            <div className="course-assistant-drawer-header"><div><span className="analytics-eyebrow">Curso hipotético</span><h2>SCORMs añadidos</h2></div><strong>{assistantSelectedRows.length}</strong></div>
+            <p className="status">Arrastra las filas para cambiar el orden. Código, categoría y nombre se transferirán al modal de creación.</p>
+            <ol className="course-assistant-selection">
+              {assistantSelectedRows.map((row, index) => <li key={`selected-${row.id}`} draggable onDragStart={() => setDraggedAssistantScormId(row.id)} onDragEnd={() => setDraggedAssistantScormId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => dropAssistantScorm(row.id)} className={draggedAssistantScormId === row.id ? 'is-dragging' : ''}>
+                <span className="course-assistant-order">{index + 1}</span><span className="course-assistant-drag" aria-hidden="true">⋮⋮</span><div><strong>{getMasterScormReference(row) || cleanValue(row.scorm_code, '-')}</strong><span>{cleanValue(row.scorm_categoria, '-')}</span><p>{cleanValue(row.scorm_name, '-')}</p></div><button type="button" className="secondary" onClick={() => removeAssistantScorm(row.id)} aria-label={`Quitar ${cleanValue(row.scorm_name, 'SCORM')}`}>Quitar</button>
+              </li>)}
+            </ol>
+            {!assistantSelectedRows.length && <div className="course-assistant-empty">Añade SCORMs desde la tabla para empezar a construir el curso.</div>}
+            <div className="course-assistant-actions"><button type="button" className="secondary" disabled={!assistantScormIds.length} onClick={() => setAssistantScormIds([])}>Vaciar</button><button type="button" disabled={!assistantScormIds.length} onClick={sendAssistantCourseToValidation}>Enviar a validar</button></div>
+          </aside>
+        </div>}
       </section>
     </main>
   );
