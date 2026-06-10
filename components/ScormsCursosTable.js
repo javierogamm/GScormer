@@ -44,6 +44,7 @@ const COURSE_STATUS_PENDING_VALIDATION = 'Pendiente de validación';
 const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
 const COURSE_STATUS_IN_PROGRESS = 'En proceso';
+const COURSE_ASSISTANT_STORAGE_KEY = 'gscormer_course_assistant_draft';
 const DEFAULT_LANGUAGES = ['ES', 'CAT', 'PT', 'GAL', 'IT'];
 const DEFAULT_RELATION_TYPE_PARENT = 'PADRE';
 const COURSE_SORT_OPTIONS = {
@@ -619,6 +620,30 @@ export default function ScormsCursosTable({ userSession }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!globalThis?.location?.search?.includes('courseAssistant=1')) {
+      return;
+    }
+
+    try {
+      const storedDraft = JSON.parse(globalThis?.localStorage?.getItem(COURSE_ASSISTANT_STORAGE_KEY) || 'null');
+      const scormIds = Array.isArray(storedDraft?.scormIds) ? storedDraft.scormIds.filter((id) => id !== null && id !== undefined) : [];
+      if (scormIds.length) {
+        setSelectedScormIds(scormIds);
+        setCreateDraft((previous) => ({
+          ...previous,
+          curso_estado: storedDraft.courseStatus || COURSE_STATUS_PENDING_VALIDATION,
+        }));
+        setCreateManagedFieldMode({});
+        setCreateModalOpen(true);
+      }
+      globalThis?.localStorage?.removeItem(COURSE_ASSISTANT_STORAGE_KEY);
+      globalThis?.history?.replaceState({}, '', '/?view=cursos');
+    } catch (_error) {
+      setError('No se pudo recuperar la selección del asistente de cursos.');
+    }
+  }, []);
 
   useEffect(() => {
     if (!canAccessScormChangeAlerts && cursosSubView === 'alertas_scorms') {

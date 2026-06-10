@@ -2670,3 +2670,178 @@ textarea:focus {
     flex-direction: column;
   }
 }
+
+/* Asistente de creación integrado en la tabla estadística de SCORMs */
+.analytics-results-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.analytics-results-actions > strong {
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  background: #edf5fc;
+  color: #426887;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.analytics-results-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.analytics-course-draft-count {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 0.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.analytics-results-section.filter-scorm .analytics-results-table th:last-child,
+.analytics-results-section.filter-scorm .analytics-results-table td:last-child {
+  width: 112px;
+  text-align: center;
+}
+
+.analytics-results-section.filter-scorm .analytics-results-table td:last-child button {
+  min-width: 76px;
+  padding: 0.38rem 0.55rem;
+  font-size: 0.7rem;
+}
+
+.course-assistant-modal-overlay {
+  cursor: default;
+}
+
+.course-assistant-modal {
+  max-width: 920px;
+}
+
+.course-assistant-modal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.85rem 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #d6e5ef;
+  border-radius: 10px;
+  background: #f3f8fc;
+  color: #627d94;
+  font-size: 0.78rem;
+}
+
+.course-assistant-modal-summary strong {
+  color: #19715f;
+}
+
+.course-assistant-selection {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 55vh;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.course-assistant-selection li {
+  display: grid;
+  grid-template-columns: 34px 18px minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #d5e3ee;
+  border-radius: 10px;
+  background: #f8fbfe;
+  cursor: grab;
+}
+
+.course-assistant-selection li.is-dragging {
+  opacity: 0.45;
+}
+
+.course-assistant-order {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #2f9f88;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.course-assistant-drag {
+  color: #8ca1b5;
+  font-weight: 800;
+}
+
+.course-assistant-selection li div {
+  min-width: 0;
+}
+
+.course-assistant-selection li div > strong,
+.course-assistant-selection li div > span {
+  display: inline-block;
+  margin-right: 0.5rem;
+  color: #244e70;
+  font-size: 0.78rem;
+}
+
+.course-assistant-selection li div > span {
+  color: #2b7b6c;
+}
+
+.course-assistant-selection li p {
+  margin: 0.22rem 0 0;
+  overflow: hidden;
+  color: #627d94;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-assistant-selection li button {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.7rem;
+}
+
+.course-assistant-empty {
+  margin: 0.85rem 0;
+  padding: 2rem 1rem;
+  border: 1px dashed #b9ccdc;
+  border-radius: 10px;
+  color: #7890a6;
+  text-align: center;
+}
+
+.course-assistant-actions {
+  justify-content: space-between;
+}
+
+@media (max-width: 680px) {
+  .analytics-results-actions,
+  .course-assistant-modal-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .course-assistant-selection li {
+    grid-template-columns: 30px 14px minmax(0, 1fr);
+  }
+
+  .course-assistant-selection li button {
+    grid-column: 3;
+    justify-self: start;
+  }
+}
