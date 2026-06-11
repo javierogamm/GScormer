@@ -1,3 +1,18 @@
+## v1.85.0 - Creación de cursos en borrador desde Estadísticas
+
+### Cambios consolidados
+- La acción final del asistente de cursos de **Estadísticas** pasa a denominarse **Crear borrador** y transfiere la selección de SCORMs con el estado `BORRADOR`.
+- El formulario de creación identifica el origen estadístico, muestra el contexto de creación en borrador y bloquea la edición del estado para garantizar que el registro se inserte siempre como `BORRADOR`.
+- Al guardar, el curso y sus SCORMs ordenados se crean en `scorms_cursos`; después, desde la gestión normal, el borrador puede enviarse al circuito existente de pendiente de validación, avisos y pendiente de publicar.
+- Los cursos en estado `BORRADOR` muestran en las vistas normales la acción **Pasar a pendiente de validación**, igual que los cursos en proceso, sin crear un circuito paralelo de publicación.
+- Se actualiza la versión visible de APP y `package.json` a `1.85.0`.
+
+### Versionado
+- Versión anterior: `1.84.0`
+- Nueva versión consolidada: `1.85.0`
+
+---
+
 ## v1.82.0 - Selección múltiple confirmada y medidas compatibles en gráficos
 
 ### Cambios consolidados
