@@ -40,6 +40,7 @@ const detailModalColumns = [
   ...columns.filter((column) => column.key !== 'curso_observaciones'),
   ...columns.filter((column) => column.key === 'curso_observaciones'),
 ];
+const COURSE_STATUS_DRAFT = 'BORRADOR';
 const COURSE_STATUS_PENDING_VALIDATION = 'Pendiente de validación';
 const COURSE_STATUS_PENDING = 'Pendiente de publicar';
 const COURSE_STATUS_PUBLISHED = 'Publicado';
@@ -449,6 +450,7 @@ export default function ScormsCursosTable({ userSession }) {
   const [detailSaving, setDetailSaving] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createFromAnalytics, setCreateFromAnalytics] = useState(false);
   const [createPlanModalOpen, setCreatePlanModalOpen] = useState(false);
   const [createPlanSubmitting, setCreatePlanSubmitting] = useState(false);
   const [editPlanModalOpen, setEditPlanModalOpen] = useState(false);
@@ -633,9 +635,10 @@ export default function ScormsCursosTable({ userSession }) {
         setSelectedScormIds(scormIds);
         setCreateDraft((previous) => ({
           ...previous,
-          curso_estado: storedDraft.courseStatus || COURSE_STATUS_PENDING_VALIDATION,
+          curso_estado: COURSE_STATUS_DRAFT,
         }));
         setCreateManagedFieldMode({});
+        setCreateFromAnalytics(true);
         setCreateModalOpen(true);
       }
       globalThis?.localStorage?.removeItem(COURSE_ASSISTANT_STORAGE_KEY);
@@ -1098,6 +1101,7 @@ export default function ScormsCursosTable({ userSession }) {
     setScormSearchText('');
     setSelectedScormIds([]);
     setCreateManagedFieldMode({});
+    setCreateFromAnalytics(false);
     setCreateDraft(getDefaultCreateDraft());
   };
 
@@ -2031,6 +2035,7 @@ export default function ScormsCursosTable({ userSession }) {
 
     const payload = {
       ...createDraft,
+      curso_estado: createFromAnalytics ? COURSE_STATUS_DRAFT : createDraft.curso_estado,
       curso_observaciones: createDraft.observaciones,
       IDUnico: getNextAvailableUniqueId(),
       relacion_tipo: DEFAULT_RELATION_TYPE_PARENT,
@@ -2882,7 +2887,7 @@ export default function ScormsCursosTable({ userSession }) {
             >
               Mis cursos
             </button>
-            <button type="button" className="secondary action-select-button" onClick={() => { setCreateManagedFieldMode({}); setCreateModalOpen(true); }}>
+            <button type="button" className="secondary action-select-button" onClick={() => { setCreateManagedFieldMode({}); setCreateFromAnalytics(false); setCreateModalOpen(true); }}>
               Crear Curso
             </button>
             {cursosSubView === 'planes' ? (
@@ -3142,7 +3147,7 @@ export default function ScormsCursosTable({ userSession }) {
                       })}
                       <td className="first-col-detail">
                         <div className="row-actions">
-                          {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                          {[COURSE_STATUS_DRAFT, COURSE_STATUS_IN_PROGRESS].includes(String(row.curso_estado || '').trim()) ? (
                             <button type="button" className="secondary action-button" onClick={() => setCoursePendingValidation(row)}>
                               Pasar a pendiente de validación
                             </button>
@@ -3220,7 +3225,7 @@ export default function ScormsCursosTable({ userSession }) {
                           <td>{String(row.curso_estado || '-')}</td>
                           <td>
                             <div className="row-actions">
-                              {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                              {[COURSE_STATUS_DRAFT, COURSE_STATUS_IN_PROGRESS].includes(String(row.curso_estado || '').trim()) ? (
                                 <button type="button" className="secondary action-button" onClick={() => setCoursePendingValidation(row)}>
                                   Pasar a pendiente de validación
                                 </button>
@@ -3286,7 +3291,7 @@ export default function ScormsCursosTable({ userSession }) {
                           <td>{String(row.relacion_tipo || '-')}</td>
                           <td>
                             <div className="row-actions">
-                              {String(row.curso_estado || '').trim() === COURSE_STATUS_IN_PROGRESS ? (
+                              {[COURSE_STATUS_DRAFT, COURSE_STATUS_IN_PROGRESS].includes(String(row.curso_estado || '').trim()) ? (
                                 <button type="button" className="secondary action-button" onClick={() => setCoursePendingValidation(row)}>
                                   Pasar a pendiente de validación
                                 </button>
@@ -4075,8 +4080,10 @@ export default function ScormsCursosTable({ userSession }) {
           <section className="modal-content modal-content-large" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h3>Crear Curso</h3>
-                <p>Rellena los datos y relaciona SCORMs para guardar en la columna contenido.</p>
+                <h3>{createFromAnalytics ? 'Crear curso en borrador' : 'Crear Curso'}</h3>
+                <p>{createFromAnalytics
+                  ? 'Completa los datos para guardar en la tabla el curso procedente de Estadísticas con estado BORRADOR.'
+                  : 'Rellena los datos y relaciona SCORMs para guardar en la columna contenido.'}</p>
               </div>
               <button type="button" className="secondary" onClick={resetCreateCursoState} disabled={createSubmitting}>
                 Cerrar
@@ -4176,6 +4183,7 @@ export default function ScormsCursosTable({ userSession }) {
                         <input
                           type="text"
                           value={String(createDraft[key] || '')}
+                          disabled={createFromAnalytics && key === 'curso_estado'}
                           onChange={(event) =>
                             setCreateDraft((previous) => ({
                               ...previous,
@@ -4237,7 +4245,7 @@ export default function ScormsCursosTable({ userSession }) {
 
             <footer className="modal-footer">
               <button type="button" onClick={submitCreateCurso} disabled={createSubmitting}>
-                {createSubmitting ? 'Creando...' : 'Crear Curso'}
+                {createSubmitting ? 'Creando...' : createFromAnalytics ? 'Crear borrador' : 'Crear Curso'}
               </button>
             </footer>
           </section>

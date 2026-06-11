@@ -714,11 +714,11 @@ export default function StatisticsPage() {
       ? `Listado exportado correctamente (${rowsToExport.length} SCORM${rowsToExport.length === 1 ? '' : 's'}).`
       : 'Selecciona al menos un SCORM para exportar el listado.');
   };
-  const sendAssistantCourseToValidation = () => {
+  const sendAssistantCourseToDraft = () => {
     if (!assistantScormIds.length) return;
     globalThis?.localStorage?.setItem(COURSE_ASSISTANT_STORAGE_KEY, JSON.stringify({
       scormIds: assistantScormIds,
-      courseStatus: 'Pendiente de validación',
+      courseStatus: 'BORRADOR',
       createdAt: new Date().toISOString(),
     }));
     router.push('/?view=cursos&courseAssistant=1');
@@ -792,7 +792,7 @@ export default function StatisticsPage() {
               <div>
                 <span className="analytics-eyebrow">Curso hipotético</span>
                 <h3 id="course-assistant-title">SCORMs del nuevo curso</h3>
-                <p className="status">Reordena los SCORMs antes de abrir el formulario de creación del curso.</p>
+                <p className="status">Reordena los SCORMs antes de abrir el formulario que creará el curso en estado BORRADOR.</p>
               </div>
               <button type="button" className="secondary" onClick={() => setAssistantModalOpen(false)}>Cerrar</button>
             </div>
@@ -832,7 +832,7 @@ export default function StatisticsPage() {
 
             <footer className="modal-footer course-assistant-actions">
               <button type="button" className="secondary" disabled={!assistantScormIds.length} onClick={() => { setAssistantScormIds([]); setAssistantReorderSelection([]); setAssistantExportMessage(''); }}>Vaciar selección</button>
-              <button type="button" disabled={!assistantScormIds.length} onClick={sendAssistantCourseToValidation}>Pasar a validar</button>
+              <button type="button" disabled={!assistantScormIds.length} onClick={sendAssistantCourseToDraft}>Crear borrador</button>
             </footer>
           </section>
         </div>
