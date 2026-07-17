@@ -1,3 +1,16 @@
+## v1.85.1 - Compatibilidad de asociaciones de agente en JSON
+
+### Cambios consolidados
+- Se refuerza la lectura de asociaciones de agente para admitir tanto el JSON nuevo con `responsables` e `instructores` como formatos JSON legacy en array, cadena o claves antiguas (`agent`, `agente`, `responsable`, `instructor`).
+- Cuando una asociación legacy no separa responsables e instructores, se conserva la compatibilidad aplicando el mismo conjunto a ambos ámbitos para no bloquear vistas ni acciones dependientes del agente tras el cambio de formato JSON.
+- Se actualiza la versión visible de APP y `package.json` a `1.85.1`.
+
+### Versionado
+- Versión anterior: `1.85.0`
+- Nueva versión consolidada: `1.85.1`
+
+---
+
 ## v1.85.0 - Creación de cursos en borrador desde Estadísticas
 
 ### Cambios consolidados
