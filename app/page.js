@@ -61,9 +61,21 @@ const parseAgentConfig = (agentValue) => {
   try {
     const parsed = JSON.parse(raw);
 
+    if (Array.isArray(parsed)) {
+      const legacyValues = dedupeValues(parsed);
+      return { responsables: legacyValues, instructores: legacyValues };
+    }
+
+    if (typeof parsed === 'string') {
+      const legacyValues = dedupeValues(parseAgentList(parsed));
+      return { responsables: legacyValues, instructores: legacyValues };
+    }
+
     if (parsed && typeof parsed === 'object') {
-      const responsables = dedupeValues(Array.isArray(parsed.responsables) ? parsed.responsables : []);
-      const instructores = dedupeValues(Array.isArray(parsed.instructores) ? parsed.instructores : []);
+      const legacyResponsables = parsed.responsables ?? parsed.responsable ?? parsed.agente ?? parsed.agent ?? [];
+      const legacyInstructores = parsed.instructores ?? parsed.instructor ?? parsed.agente ?? parsed.agent ?? [];
+      const responsables = dedupeValues(Array.isArray(legacyResponsables) ? legacyResponsables : parseAgentList(legacyResponsables));
+      const instructores = dedupeValues(Array.isArray(legacyInstructores) ? legacyInstructores : parseAgentList(legacyInstructores));
       return { responsables, instructores };
     }
   } catch (_error) {
